@@ -32,10 +32,10 @@
 
 <section class="panel"><h2>02 · четыре недели – четыре слоя</h2>
 <table class="t"><tr><th>неделя</th><th>слой папки</th><th>фазы Demo</th><th>что появляется</th></tr>
-<tr><td><span class="wk w1">1 · собрать</span></td><td>центр и онтология</td><td>00–06</td><td><code>self.md</code>, <code>AGENTS.md</code>, <code>log.md</code>, сырьё и опись, правило имён, типы сущностей и связи, уборка с чистилищем</td></tr>
+<tr><td><span class="wk w1">1 · собрать</span></td><td>центр и онтология</td><td>00–06</td><td><code>self.md</code>, <code>AGENTS.md</code>, сырьё и опись, правило имён, типы сущностей и связи, уборка с чистилищем</td></tr>
 <tr><td><span class="wk">2 · научить</span></td><td>скиллы</td><td>07</td><td>повторяемая работа твоего дня записана шагами: интервью для self, разбор звонка, обзор недели, self чужими глазами</td></tr>
 <tr><td><span class="wk">3 · отпустить</span></td><td>рутины и проверки</td><td>08–09</td><td>реестр рутин с бюджетом, проверка «кто я», проверки кодом, агенты в своих полосах, сбой становится правилом</td></tr>
-<tr><td><span class="wk">4 · пользоваться</span></td><td>точка входа и петля</td><td>10</td><td>одна страница на утро, self.md учится по журналу, сетап на зиму</td></tr></table>
+<tr><td><span class="wk">4 · пользоваться</span></td><td>точка входа и петля</td><td>10</td><td>одна страница на утро, self.md учится по обзорам недели, сетап на зиму</td></tr></table>
 <p>Сегодня, на воркшопе 1, нужны фазы 00–06. Остальное видно на графе пунктиром: план папки виден раньше самих файлов.</p></section>
 
 <section class="panel"><h2>03 · абстракции, из которых собрана папка</h2>
@@ -43,7 +43,7 @@
 <tr><td class="g">●</td><td>self</td><td><code>self.md</code></td><td>центр: пять разделов о тебе; агент читает первым</td><td>01</td></tr>
 <tr><td class="g">■</td><td>срез контекста</td><td><code>context/</code></td><td>длинное из self: как решаю на примерах, ритм, фокус месяца снимком с датой</td><td>01</td></tr>
 <tr><td class="g">◆</td><td>роутер</td><td><code>AGENTS.md</code> + <code>CLAUDE.md</code></td><td>пять правил агента; Claude Code читает <code>CLAUDE.md</code> с одной строкой <code>@AGENTS.md</code>, Codex и Cursor – <code>AGENTS.md</code></td><td>02</td></tr>
-<tr><td class="g">⊓</td><td>журнал</td><td><code>log.md</code>, <code>sessions/</code></td><td>строка в конце каждой сессии: дата · что сделал · что осталось · файлы</td><td>02</td></tr>
+<tr><td class="g">⊓</td><td>сессия</td><td><code>sessions/</code></td><td>запрос агенту, итог и тронутые файлы одним файлом</td><td>08</td></tr>
 <tr><td class="g">◇</td><td>границы</td><td><code>{rule} boundaries</code></td><td>никогда · только чтение · спросить меня</td><td>02</td></tr>
 <tr><td class="g">Y</td><td>подключение</td><td><code>tools/</code></td><td>где открыть папку и один источник на чтение: календарь, LMS</td><td>02–03</td></tr>
 <tr><td class="g">□</td><td>сырьё</td><td><code>raw/</code></td><td>CV, экспорт чатов, расшифровки как есть; никто не правит</td><td>03</td></tr>
@@ -54,7 +54,7 @@
 <tr><td class="g">▢</td><td>черновик и чистилище</td><td><code>drafts/</code></td><td>всё с датой; спорное – одним списком с датой разбора через 30 дней</td><td>06</td></tr>
 <tr><td class="g">◇</td><td>исходящее черновиком</td><td><code>{rule} drafts before sending</code></td><td>агент пишет письмо, отправляет человек</td><td>06</td></tr>
 <tr><td class="g">○</td><td>скилл</td><td><code>skills/</code></td><td>шаги, вход, выход и ссылки на правила; агент берёт его, когда задача совпала</td><td>07</td></tr>
-<tr><td class="g">⧗</td><td>рутина и реестр</td><td><code>routines/</code></td><td>что работает без тебя: когда, чем, бюджет, проверка, журнал</td><td>08</td></tr>
+<tr><td class="g">⧗</td><td>рутина и реестр</td><td><code>routines/</code></td><td>что работает без тебя: когда, чем, бюджет, проверка</td><td>08</td></tr>
 <tr><td class="g">▲</td><td>проверка</td><td><code>evals/</code>, <code>bin/check.mjs</code></td><td>восемь вопросов «кто я» моделью; имена и поля кодом</td><td>08</td></tr>
 <tr><td class="g">●</td><td>агенты в полосах</td><td>скиллы + папки</td><td>разбор звонков, обзор недели, критик, хранитель пишут в одну онтологию</td><td>09</td></tr>
 <tr><td class="g">◇</td><td>память</td><td><code>{rule} memory</code></td><td>что выучено о тебе – строкой в self после твоего «да»; сбой – запись в <code>decisions/</code></td><td>09</td></tr>
@@ -87,7 +87,7 @@ human_verified: true
 <tr><td><code>звонок.txt</code></td><td><code>{raw} call transcript supplier – 2026-11-06.md</code></td><td>сырьё отдельно от разобранного</td></tr>
 <tr><td><code>Нина.md</code></td><td><code>{person} Nina.md</code></td><td>живая сущность без даты</td></tr>
 <tr><td><code>how-i-decide.md</code></td><td><code>{context} how-i-decide.md</code></td><td>срез self</td></tr></table>
-<p>Снимки (встреча, решение, черновик, обзор) несут дату в конце, живые файлы (человек, проект, правило) – без даты. Центр папки без типа: <code>self.md</code>, <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>, <code>log.md</code>. Старое руками не переименовываем: агент составляет список, человек подтверждает его целиком.</p></section>
+<p>Снимки (встреча, решение, черновик, обзор) несут дату в конце, живые файлы (человек, проект, правило) – без даты. Центр папки без типа: <code>self.md</code>, <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>. Старое руками не переименовываем: агент составляет список, человек подтверждает его целиком.</p></section>
 
 <section class="panel"><h2>06 · подстроить под себя</h2>
 <div class="cols"><div><h3>анкета</h3><p>Восемь вопросов: кто ты, чем занят, проект на лабу, как решаешь, как с тобой работать, ритм, где материалы, чего не трогать. Ответы заполняют <code>self.md</code> и срезы <code>context/</code>. Свой файл ответов – <code>harness/bin/new.sh ~/self --answers my.json</code>.</p></div>

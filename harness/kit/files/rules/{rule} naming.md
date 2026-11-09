@@ -13,7 +13,7 @@ type: rule
 - **тип** в фигурных скобках: `{context}` `{rule}` `{person}` `{project}` `{decision}` `{meeting}` `{note}` `{raw}` `{draft}` `{skill}` `{routine}` `{eval}` `{dashboard}` `{tool}`. Полный список с полями – [[{ontology} types]].
 - **описание** – о чём, с именем человека или проекта.
 - **дата в конце** у снимков: встреча, решение, черновик, обзор. У живых файлов (человек, проект, правило) даты нет.
-- центр папки без типа: `self.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `log.md`.
+- центр папки без типа: `self.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`.
 
 | было | стало |
 |---|---|

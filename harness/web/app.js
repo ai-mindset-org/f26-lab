@@ -41,7 +41,7 @@
     automation:{ label: 'рутина',     sym: 'hourglass', fill: false,  size: 130, glyph: '⧗', ax: 0.76,  ay: 0.36 },
     eval:      { label: 'проверка',   sym: 'triangle', fill: true,    size: 150, glyph: '▲', ax: 0.88,  ay: -0.16 },
     code:      { label: 'код',        sym: 'times',    fill: false,   size: 90,  glyph: '×', ax: 0.84,  ay: -0.56 },
-    session:   { label: 'журнал',     sym: 'gate',     fill: false,   size: 130, glyph: '⊓', ax: 0.34,  ay: -0.3 },
+    session:   { label: 'сессия',     sym: 'gate',     fill: false,   size: 130, glyph: '⊓', ax: 0.34,  ay: -0.3 },
     dashboard: { label: 'точка входа',sym: 'cross',    fill: true,    size: 190, glyph: '✚', ax: 0.66,  ay: 0.72 },
     agent:     { label: 'агент',      sym: 'circle',   fill: 'accent', size: 230, glyph: '●', ax: 0.3,   ay: 0.4 },
     ghost:     { label: 'план',       sym: 'circle',   fill: false,   size: 60,  glyph: '◌' },
@@ -64,7 +64,6 @@
   function layerOf(p) {
     if (p === 'self.md') return 'self';
     if (p === 'README.md' || p === 'CLAUDE.md' || p === 'AGENTS.md') return 'hub';
-    if (p === 'log.md') return 'session';
     if (p === '.mcp.json') return 'tool';
     const top = p.split('/')[0];
     if (top === 'bin' || /\.(mjs|css)$/.test(p)) return 'code';
@@ -87,7 +86,6 @@
     let title = bare(base(path));
     if (layer === 'skill') title = fm.name || title;
     if (layer === 'self') title = 'self.md';
-    if (layer === 'session' && path === 'log.md') title = 'log.md';
     if (path === '.mcp.json') title = '.mcp.json';
     const links = [];
     if (isMd) {
@@ -1269,8 +1267,8 @@
 
   // ---------- roles, sessions, commits, history: more kinds of documents in the same side panel ----------
   const ROLE_TASKS = {
-    digest: 'Прочитай AGENTS.md. По скиллу call-digest разбери последнюю расшифровку в raw/, у которой ещё нет встречи в meetings/: встреча, решения, люди по ontology/{ontology} links.md. Письма – только черновиками в drafts/. Строка в log.md.',
-    reviewer: 'Прочитай AGENTS.md. По скиллу weekly-review собери обзор этой недели одной страницей в notes/ с сегодняшней датой. Первая строка – главное числом. Строка в log.md.',
+    digest: 'Прочитай AGENTS.md. По скиллу call-digest разбери последнюю расшифровку в raw/, у которой ещё нет встречи в meetings/: встреча, решения, люди по ontology/{ontology} links.md. Письма – только черновиками в drafts/.',
+    reviewer: 'Прочитай AGENTS.md. По скиллу weekly-review собери обзор этой недели одной страницей в notes/ с сегодняшней датой. Первая строка – главное числом.',
     critic: 'Прочитай AGENTS.md и evals/{eval} who am i.md. Ответь на восемь вопросов по папке, у каждого ответа – файл. Запиши прогон в evals/ с сегодняшней датой и счётом. self.md не меняй, правки – предложениями.',
     keeper: 'Прочитай AGENTS.md. По скиллу file-it пройди по raw/ и предложи список «сырьё → сущность» с типом, именем по rules/{rule} naming.md и связями. Ничего не создавай и не удаляй: только список.',
   };

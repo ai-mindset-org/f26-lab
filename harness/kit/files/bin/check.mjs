@@ -8,7 +8,7 @@ const files = walk(root).map((f) => path.relative(root, f)).filter((f) => f.ends
 const out = [];
 const self = fs.existsSync('self.md') ? fs.readFileSync('self.md', 'utf8') : '';
 for (const h of ['кто я', 'чем занят', 'как я решаю', 'как со мной работать', 'чего не трогать']) if (!self.includes(`## ${h}`)) out.push(`self.md: нет раздела «${h}»`);
-const HUB = new Set(['self.md', 'AGENTS.md', 'CLAUDE.md', 'README.md', 'log.md']);
+const HUB = new Set(['self.md', 'AGENTS.md', 'CLAUDE.md', 'README.md']);
 for (const f of files) {
   const name = path.basename(f);
   if (HUB.has(name) || name === 'README.md') continue;
