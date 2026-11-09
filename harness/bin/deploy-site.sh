@@ -55,5 +55,5 @@ gitleaks dir "$D" --redact --no-banner --log-level error || echo "gitleaks: пр
 git add "$D"
 git diff --cached --quiet -- "$D" && { echo "сайт уже совпадает с харнессом $(git -C "$ROOT" rev-parse --short HEAD)"; exit 0; }
 git commit -q -m "f26-harness: выкладка харнесса $(git -C "$ROOT" rev-parse --short HEAD)" -- "$D"
-git push -q
+git pull -q --rebase origin main && git push -q origin HEAD:main
 echo "отправлено: https://f26-harness.lab.aimindset.org/ – сервер проверяет контракт около 5 минут"
