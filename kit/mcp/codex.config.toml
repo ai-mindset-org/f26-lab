@@ -1,0 +1,6 @@
+# пример для ~/.codex/config.toml · одно подключение
+# Notion через удалённый MCP, вход откроется в браузере
+
+[mcp_servers.notion]
+command = "npx"
+args = ["-y", "mcp-remote", "https://mcp.notion.com/mcp"]
