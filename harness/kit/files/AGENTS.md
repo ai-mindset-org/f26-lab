@@ -15,10 +15,17 @@
 | когда | скилл |
 |---|---|
 | заполнить или поправить self | [[{skill} self-interview]] |
+| тройка читает мой self | [[{skill} self-read]] |
+| вопрос о себе, людях или решениях | [[{skill} ask-my-context]] |
 | после звонка | [[{skill} call-digest]] |
 | сырьё лежит неразобранным | [[{skill} file-it]] |
 | пятница | [[{skill} weekly-review]] |
-| тройка читает мой self | [[{skill} self-read]] |
+| два источника рядом дают новое | [[{skill} context-alchemy]] |
+| что я запускал и бросил | [[{skill} museum-of-systems]] |
+| сюжет года и письма себе | [[{skill} year-timeline]] |
+
+## доступ
+У файла поле `access`: T0 публичное … T4 уязвимое, [[{ontology} access levels]]. Файлы T3 и `private: true` не читаешь без моей просьбы в этой сессии.
 
 ## рутины · неделя 3
 Всё, что работает без меня, записано в [[{routine} registry]]. У каждой рутины один запуск, бюджет и проверка из `evals/`.

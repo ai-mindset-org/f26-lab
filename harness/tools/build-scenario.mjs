@@ -26,8 +26,8 @@ for (const e of tl.events) { if (e.type === 'file') paths.add(e.path); if (e.typ
 // documents for guide.html and access.html: kit markdown rendered with the default answers
 const { renderTemplate } = await import('./timeline.mjs');
 const answers = JSON.parse(fs.readFileSync(path.join(kit, 'answers.json'), 'utf8'));
-const DOC_DIRS = ['tools', 'rules', 'ontology', 'skills', 'routines', 'evals'];
-const DOC_FILES = ['README.md', 'AGENTS.md', 'self.md', 'log.md'];
+const DOC_DIRS = ['tools', 'rules', 'ontology', 'skills', 'routines', 'evals', 'context', 'projects', 'people'];
+const DOC_FILES = ['README.md', 'AGENTS.md', 'self.md', 'notes/{index} F26 people – 2026-11-09.md'];
 const docs = {};
 for (const d of DOC_DIRS) for (const f of fs.readdirSync(path.join(files, d)).filter((x) => x.endsWith('.md'))) DOC_FILES.push(`${d}/${f}`);
 for (const rel of DOC_FILES) { const p = path.join(files, rel); if (fs.existsSync(p)) docs[rel] = renderTemplate(fs.readFileSync(p, 'utf8'), answers); }

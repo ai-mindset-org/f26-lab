@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploy the template into a new folder instantly and open it live.
-#   bin/new.sh ~/harness/my-product [small-firm-owner|own-product|personal-os] [--answers my.json]
+#   bin/new.sh ~/self [small-firm-owner|own-product|personal-os|alex] [--answers my.json]
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIR="${1:?укажи новую папку}"

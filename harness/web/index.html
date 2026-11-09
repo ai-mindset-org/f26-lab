@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="AI Mindset · F26 self-harness · папка, в которой агент знает тебя">
 <meta property="og:description" content="Self-harness лабы F26 AI Mindset: как из пустой папки за четыре недели вырастает папка, в которой агент знает тебя – self.md, правила, имена файлов, онтология личного контекста, скиллы, рутины, проверки и одна точка входа.">
-<meta property="og:image" content="https://f26-harness.lab.aimindset.org/og.png?v=1">
+<meta property="og:image" content="https://f26-harness.lab.aimindset.org/og.png?v=2">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -16,7 +16,7 @@
 <link rel="canonical" href="https://f26-harness.lab.aimindset.org/">
 <meta property="og:url" content="https://f26-harness.lab.aimindset.org/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://f26-harness.lab.aimindset.org/og.png?v=1">
+<meta name="twitter:image" content="https://f26-harness.lab.aimindset.org/og.png?v=2">
 <link rel="icon" href="assets/aim-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -31,7 +31,7 @@
   </div>
   <div class="navs">
     <button id="searchBtn" class="search" title="поиск по файлам и фазам · ⌘K">⌕ поиск <kbd>⌘K</kbd></button>
-    <nav class="modes" aria-label="режим"><button data-mode="replay" title="Demo: рост папки по неделям лабы, 11 фаз">Demo</button><button data-mode="live" title="Local – локальное хранение: папка на этом компьютере, в браузере или через bin/open.sh">Local</button></nav>
+    <nav class="modes" aria-label="режим"><button data-mode="replay" title="Demo: рост папки по неделям лабы, 12 фаз">Demo</button><button data-mode="live" title="Local – локальное хранение: папка на этом компьютере, в браузере или через bin/open.sh">Local</button></nav>
     <a class="pagelink" href="https://f26.aimindset.org/" target="_blank" rel="noopener">F26 ↗</a><nav class="pages" aria-label="страницы"><a class="pagelink" href="guide.html" title="Guide: как развернуть свою папку и как она растёт по неделям">Guide</a><a class="pagelink" href="access.html" title="About: что это, абстракции, онтология, имена">About</a></nav>
   </div>
   <div class="clock"><b id="phaseLabel">00 · пустая папка</b><span id="clock">00:00</span></div>
@@ -56,23 +56,52 @@
       <div id="empty">пустая папка<br><small>git init · 0 файлов</small></div>
       <div id="liveHint" hidden></div>
       <div id="connect" hidden>
-        <div class="cn-hd"><span>Local · подключить папку</span><span class="cap" id="cnWhy">локальное хранение: папка на твоём компьютере, на сайте её нет</span></div>
+        <div class="cn-hd"><span>Local · как развернуть у себя</span><span class="cap" id="cnWhy">папка живёт на твоём компьютере, на сайте её нет</span></div>
         <div class="cn-opt">
-          <b>01 · папка в браузере</b>
-          <p>выбери свою папку контекста на компьютере или перетащи её сюда из Finder. граф строится из файлов, правки сохраняются прямо в них. без установки; агенты, сессии, откат и коммиты – в полном режиме. на телефоне папку не выбрать: подключай с компьютера.</p>
-          <div class="cn-row"><button id="pickFolder" class="go" type="button">выбрать папку</button><button id="resumeFolder" type="button" hidden>продолжить с прошлой папкой</button><span class="cap" id="fsaNote">Chrome, Arc, Edge</span></div>
+          <b>что получится</b>
+          <p>обычная папка с markdown-файлами. её одновременно видят Obsidian, Claude Code, Codex и этот граф на localhost; git помнит каждую правку. внутри – пример Марии на контексте лабы F26: замени его своим через self-интервью.</p>
+<pre class="cn-tree">~/self
+├── self.md        кто я – агент читает первым
+├── AGENTS.md      правила агента · CLAUDE.md → @AGENTS.md
+├── context/       срезы self и about me
+├── raw/           сырьё как есть: CV, чаты, расшифровки
+├── notes/         разобранное, опись, обзоры недели
+├── people/ projects/ decisions/ meetings/   онтология
+├── ontology/      типы, связи, источники, доступ
+├── drafts/        исходящее черновиком, чистилище
+├── skills/        девять практик
+├── routines/ evals/ bin/   что работает без тебя и проверки
+├── sessions/      след агента: запрос, итог, файлы
+└── dashboards/    одна точка входа</pre>
         </div>
         <div class="cn-opt">
-          <b>02 · полный режим: агенты, сессии, откат, форк, Obsidian</b>
-          <p>в терминале: скачать движок в новую папку (нужны git и Node.js 18+):</p>
+          <b>01 · скачать движок</b>
+          <p>репозиторий лабы открыт: <a href="https://github.com/ai-mindset-org/f26-lab" target="_blank" rel="noopener">github.com/ai-mindset-org/f26-lab ↗</a>. нужны git и Node.js 18+ (<code>brew install git node</code>). без git – <a href="f26-self-harness-kit.zip" download>архив набора ↓</a>, движок в папке <code>harness/</code>.</p>
           <div class="cmd"><code id="cmdClone">git clone https://github.com/ai-mindset-org/f26-lab.git ~/f26-lab</code><button type="button" data-copy="cmdClone">копировать</button></div>
-          <p>создать свою папку и открыть граф. Для следующего запуска: bin/open.sh ~/self. Существующую папку new.sh не перезаписывает:</p>
+        </div>
+        <div class="cn-opt">
+          <b>02 · развернуть свою папку</b>
+          <p>new.sh собирает папку по 12 фазам – 12 коммитов за пару секунд – и открывает граф на localhost:4747. существующую папку не перезаписывает. следующий запуск – <code>bin/open.sh ~/self</code>.</p>
           <div class="cmd"><code id="cmdOpen">~/f26-lab/harness/bin/new.sh ~/self</code><button type="button" data-copy="cmdOpen">копировать</button></div>
           <div class="cn-row"><a class="btnlink" href="http://localhost:4747/?mode=live&amp;intro=0" target="_blank" rel="noopener">открыть localhost:4747 ↗</a><span class="cap">если граф уже запущен; при занятом 4747 open.sh берёт следующий порт и пишет адрес в терминале</span></div>
-          <p class="cap">своя папка с нуля: <code>~/f26-lab/harness/bin/new.sh ~/self</code> · копия с историей: <code>~/f26-lab/harness/bin/fork.sh ~/self ~/self-try</code> · остановить: <code>~/f26-lab/harness/bin/stop.sh [порт]</code> · нет gh: <code>brew install gh &amp;&amp; gh auth login</code></p>
+          <p class="cap">другой пример вместо Марии: <code>new.sh ~/self personal-os</code> · <code>small-firm-owner</code> · <code>own-product</code> · <code>alex</code> (ведущий лабы) · свои ответы: <code>new.sh ~/self --answers my.json</code></p>
+        </div>
+        <div class="cn-opt">
+          <b>03 · открыть папку в Finder и Obsidian</b>
+          <p>Finder: <code>open ~/self</code>. Obsidian: «Open folder as vault» → <code>~/self</code>, один раз; дальше кнопка Obsidian в карточке файла открывает файл сразу. ссылки <code>[[…]]</code> кликаются, граф Obsidian показывает ту же онтологию.</p>
+        </div>
+        <div class="cn-opt">
+          <b>04 · первый разговор с агентом</b>
+          <div class="cmd"><code id="cmdAgent">cd ~/self &amp;&amp; claude</code><button type="button" data-copy="cmdAgent">копировать</button></div>
+          <p>спроси: «кто я и что делаю на этой неделе?» – ответ по файлам, с названиями файлов. потом «проведи self-интервью по skills/» – и пример Марии становится твоим. Codex читает тот же AGENTS.md: <code>cd ~/self &amp;&amp; codex</code>.</p>
+        </div>
+        <div class="cn-opt">
+          <b>без терминала · папка в браузере</b>
+          <p>выбери свою папку контекста или перетащи её сюда из Finder: граф строится из файлов, правки сохраняются прямо в них. агенты, сессии и коммиты – в полном режиме выше. на телефоне папку не выбрать.</p>
+          <div class="cn-row"><button id="pickFolder" class="go" type="button">выбрать папку</button><button id="resumeFolder" type="button" hidden>продолжить с прошлой папкой</button><span class="cap" id="fsaNote">Chrome, Arc, Edge</span></div>
+          <p class="cap">копия с историей: <code>~/f26-lab/harness/bin/fork.sh ~/self ~/self-try</code> · остановить граф: <code>~/f26-lab/harness/bin/stop.sh [порт]</code> · свой GitHub: <code>gh repo create self --private --source ~/self --push</code></p>
         </div>
       </div>
-    </div>
     <div id="narr"><span id="narrTag">сейчас</span><span id="narrText">–</span></div>
   </section>
 
@@ -92,10 +121,11 @@
             <textarea id="cPrompt" rows="3" placeholder="задача агенту внутри этой папки"></textarea>
             <div id="cPresets">
               <button type="button" data-p="Прочитай все файлы в этой папке. Опиши меня в пяти строках: кто я, чем занят, как решаю, как со мной работать, чего не трогать. Отметь, где тебе пришлось угадывать.">кто я</button>
-              <button type="button" data-p="Прочитай AGENTS.md. По скиллу self-interview задай мне семь вопросов по одному и после каждого покажи строку для self.md.">интервью</button>
+              <button type="button" data-p="Прочитай AGENTS.md. Проведи со мной self-интервью по skills/{skill} self-interview.md: три круга, по одному вопросу, после каждого ответа – строка для self.md. Ничего не записывай до моего «да».">интервью</button>
+              <button type="button" data-p="По скиллу ask-my-context: к кому из кураторов лабы идти с вопросом про правила агента? Ответь по people/ и notes/, назови файлы.">к кому идти</button>
               <button type="button" data-p="Прочитай папку и предложи список переименований «было → стало» по rules/{rule} naming.md. Ничего не меняй, пока я не подтвержу список целиком.">имена</button>
               <button type="button" data-p="Прочитай AGENTS.md. По скиллу call-digest разбери последнюю расшифровку в raw/: встреча, решения, люди по ontology/{ontology} links.md. Письма только черновиками.">звонок</button>
-              <button type="button" data-p="Прочитай AGENTS.md и evals/{eval} who am i.md. Ответь на восемь вопросов по папке с файлом у каждого ответа и запиши прогон в evals/ с сегодняшней датой.">проверка</button>
+              <button type="button" data-p="Прочитай AGENTS.md и evals/{eval} who am i.md. Ответь на девять вопросов по папке с файлом у каждого ответа и запиши прогон в evals/ с сегодняшней датой.">проверка</button>
             </div>
             <div class="crow"><button type="submit">запустить</button><span id="cStatus" class="cap">запуск отправляет задачу выбранному AI-провайдеру; используются ваши доступы<b id="consoleHost" hidden>–</b></span></div>
             <div id="cMsg" class="cap"></div>
@@ -151,12 +181,12 @@
   <div class="card">
     <div class="st-hd"><span>AI Mindset · Fall ’26 Lab · n24 · 09.11–07.12.2026</span><span>fig. 0</span></div>
     <h3 id="inTitle">self-harness: папка, в которой агент знает тебя</h3>
-    <p>в центре – один файл, <code>self.md</code>: кто ты, чем занят, как решаешь, как с тобой работать, чего не трогать. вокруг за четыре недели лабы вырастает остальное: правила агента, сырьё и опись, имена файлов, онтология личного контекста (люди, проекты, решения, встречи), скиллы твоей рутины, рутины с проверками и одна точка входа.</p>
+    <p>в центре – один файл, <code>self.md</code>: кто ты, чем занят, как решаешь, как с тобой работать, чего не трогать. вокруг за четыре недели лабы вырастает остальное: правила агента, сырьё и опись, имена файлов, онтология личного контекста (люди, проекты, решения, встречи), люди лабы F26, практики, рутины с проверками и одна точка входа. пример собран на контексте самой лабы и дорабатывается вместе с ней.</p>
     <div class="weeks4"><b>1 · собрать</b><b>2 · научить</b><b>3 · отпустить</b><b>4 · пользоваться</b></div>
     <div class="resource-links"><a href="guide.html" target="_blank" rel="noopener">как развернуть у себя →</a><a href="access.html" target="_blank" rel="noopener">абстракции и онтология →</a><a href="https://github.com/ai-mindset-org/f26-lab" target="_blank" rel="noopener">GitHub ↗</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div><ul id="inPoints">
       <li>каждая фигура на графе – файл; стрелки – ссылки между файлами; оранжевое – self и то, что появилось только что</li>
       <li>после каждой фазы – карточка с объяснением; клик по фазе внизу возвращает к её карточке</li>
-      <li>сегодня, на воркшопе 1, – фазы 00–06: self.md, правила, сырьё, имена, онтология, уборка</li>
+      <li>воркшоп 1 – фазы 00–07: self.md, правила, сырьё, имена, онтология, люди лабы, уборка</li>
       <li>клик по узлу открывает файл; <kbd>⌘K</kbd> – поиск; пробел – пауза; ← → – фазы</li>
     </ul>
     <div class="st-ft"><button id="inEnd" type="button">сразу финал</button><a class="pagelink2" href="guide.html">Guide</a><span class="sp"></span><button id="inGo" type="button" class="go">смотреть сборку →</button></div>

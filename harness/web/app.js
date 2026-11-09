@@ -284,6 +284,24 @@
       .attr('fill', (d) => { const f = LAYERS[d.layer].fill; return f === true ? '#141210' : f === 'accent' ? (d.layer === 'agent' && !d.running ? '#141210' : '#f28c1c') : f === 'hair' ? '#efe6d6' : '#fcfaf6'; })
       .attr('stroke', (d) => (d.layer === 'agent' ? (d.running ? '#f28c1c' : '#141210') : null));
     nodeSel.select('text').text((d) => d.title).attr('dy', (d) => Math.sqrt(LAYERS[d.layer].size) / 1.5 + 11);
+    // people of the lab: a photo from the lab site or initials on top of the hexagon
+    nodeSel.each(function (d) {
+      const fm = (d.file && d.file.fm) || {};
+      const g = d3.select(this); const had = g.select('g.av');
+      if (d.layer !== 'person' || !(fm.avatar || fm.initials)) { had.remove(); return; }
+      if (!had.empty()) return;
+      const r = 10; const a = g.append('g').attr('class', 'av');
+      if (fm.avatar) {
+        const id = `av-${fm.avatar.replace(/[^a-z0-9-]/g, '')}`;
+        a.append('clipPath').attr('id', id).append('circle').attr('r', r);
+        a.append('image').attr('href', `assets/people/${fm.avatar}.jpg`).attr('x', -r).attr('y', -r).attr('width', 2 * r).attr('height', 2 * r)
+          .attr('preserveAspectRatio', 'xMidYMid slice').attr('clip-path', `url(#${id})`);
+        a.append('circle').attr('r', r).attr('class', 'av-ring');
+      } else {
+        a.append('circle').attr('r', r).attr('class', 'av-ini');
+        a.append('text').attr('class', 'av-t').attr('text-anchor', 'middle').attr('dy', '0.36em').text(fm.initials);
+      }
+    });
     nodeSel.selectAll('circle.pulse').remove();
     nodeSel.filter((d) => d.running).insert('circle', 'path').attr('class', 'pulse').attr('r', 14);
 
@@ -525,6 +543,8 @@
         const hit = idx && idx.get(norm(unesc(t)));
         return hit ? `<a class="wl" data-p="${esc(hit)}">${label || esc(bare(unesc(t)))}</a>` : `<a class="wl miss" title="файла ещё нет">${label || t}</a>`;
       })
+      // a photo from the lab site is served next to the page (the page allows only its own images)
+      .replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/g, (m, alt, url) => { const k = /\/people\/bank\/([a-z0-9-]+)(?:\/[a-z0-9-]+)?\.jpg$/.exec(url); return k ? `<img class="av-big" src="assets/people/${k[1]}.jpg" alt="${alt}">` : ''; })
       .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')).replace(/(<a [^>]*>)<a [^>]*>([^<]*)<\/a>/g, '$1$2');
   }
   const BLOCK = /^(#{1,4}\s|```|\s*[-*]\s|\s*\d+[.)]\s|\s*\||>|---+\s*$)/;
@@ -751,7 +771,7 @@
     $('stLead').innerHTML = mdInline(ph.stop.lead, idx);
     $('stPoints').innerHTML = (ph.stop.points || []).map((x) => `<li>${mdInline(x, idx)}</li>`).join('');
     const shown = files.filter((p) => S.files.has(p));
-    $('stFiles').innerHTML = shown.length ? `<b>${id === 'p03' ? 'переименовано' : 'появилось'} · ${shown.length} файлов</b><div class="chips">${shown.map((p) => `<a data-p="${esc(p)}" title="${esc(p)}">${LAYERS[layerOf(p)].glyph} ${esc(bare(base(p)))}</a>`).join('')}</div>` : '';
+    $('stFiles').innerHTML = shown.length ? `<b>${/нейминг/.test(ph.title) ? 'переименовано' : 'появилось'} · ${shown.length} файлов</b><div class="chips">${shown.map((p) => `<a data-p="${esc(p)}" title="${esc(p)}">${LAYERS[layerOf(p)].glyph} ${esc(bare(base(p)))}</a>`).join('')}</div>` : '';
     const nxt = META.phases[i + 1];
     $('stGo').textContent = nxt ? `дальше: ${nxt.title} →` : 'к финалу →';
     stopOpen = id; onStopGo = go;
@@ -949,7 +969,7 @@
         renderAll(progress);
       } catch (err) {
         if (++fails >= 2) {
-          if (TEAM) { hint.hidden = false; hint.innerHTML = 'Team ещё не опубликован.<br>кто держит рабочую папку: <code>bin/publish-team.sh ~/harness/marketing-sprint</code><br>или открой <a href="?mode=replay">Demo</a>.'; }
+          if (TEAM) { hint.hidden = false; hint.innerHTML = 'Team ещё не опубликован.<br>кто держит рабочую папку: <code>bin/publish-team.sh ~/self</code><br>или открой <a href="?mode=replay">Demo</a>.'; }
           else if (FSA) { hint.hidden = false; hint.textContent = 'папка недоступна: браузер отозвал доступ. нажми «другая папка» и выбери её снова.'; }
           else { SERVERLESS = true; connectCard(); }
         }
@@ -1062,7 +1082,7 @@
     consolePane();
   }
   async function pickFolder() {
-    if (!window.showDirectoryPicker) { $('fsaNote').textContent = 'этот браузер не открывает папки: Chrome, Arc или Edge, либо полный режим ниже'; return; }
+    if (!window.showDirectoryPicker) { $('fsaNote').textContent = 'этот браузер не открывает папки: Chrome, Arc или Edge, либо полный режим выше'; return; }
     try { await setFolder(await window.showDirectoryPicker({ mode: 'readwrite', id: 'harness' })); } catch { /* cancelled */ }
   }
   async function connectCard() {
@@ -1130,7 +1150,7 @@
         <tr><td>codex · локально</td><td>подписка ChatGPT Plus, Pro или Business; модели terra · sol · luna; <code>codex exec</code> с записью только внутри папки</td></tr>
         ${!PUBLIC_COPY ? '<tr><td>сотник</td><td>необязательный серверный исполнитель; нужен свой SSH-доступ и настройка HARNESS_SERVER_HOST</td></tr>' : ''}
       </table>`;
-    const local = `<div class="cmd"><code id="cmdOpen2">./bin/open.sh ~/harness/my-product</code><button type="button" data-copy="cmdOpen2">копировать</button></div>
+    const local = `<div class="cmd"><code id="cmdOpen2">~/f26-lab/harness/bin/open.sh ~/self</code><button type="button" data-copy="cmdOpen2">копировать</button></div>
       <p class="cap">откроется граф на localhost (4747 или следующий свободный порт, адрес в терминале) – эта же вкладка с выбором исполнителя и модели, ролями агентов и сессиями.</p>`;
     $('consoleOff').innerHTML = TEAM ? `<b>запуск из Team готовится</b>
       <p>здесь агенты пока не запускаются: у страницы нет входа и нет исполнителя. схема согласована с Сашей Васильевым 30.09:</p>

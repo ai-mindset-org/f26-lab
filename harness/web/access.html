@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="AI Mindset · F26 self-harness · About">
 <meta property="og:description" content="Из каких абстракций собрана папка личного контекста, как устроена онтология, правило имён и как папка растёт четыре недели лабы F26.">
-<meta property="og:image" content="https://f26-harness.lab.aimindset.org/og.png?v=1">
+<meta property="og:image" content="https://f26-harness.lab.aimindset.org/og.png?v=2">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -19,11 +19,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="doc.css">
-<style>.wk{display:inline-block; padding:1px 6px; border:1px solid var(--ink); font-size:11px} .wk.w1{background:var(--accent)} .g{font-size:15px; width:22px; display:inline-block; text-align:center}</style>
+<style>.wk{display:inline-block; padding:1px 6px; border:1px solid var(--ink); font-size:11px} .wk.w1{background:var(--accent)} .g{font-size:15px; width:22px; display:inline-block; text-align:center}
+.people{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); border-top:1px solid var(--ink); border-left:1px solid var(--ink)}
+.pc{display:flex; gap:10px; padding:10px; border-right:1px solid var(--ink); border-bottom:1px solid var(--ink)} .pc p{margin:2px 0; font-size:12px} .pc .cap{color:var(--muted)}
+.pc img,.pc .ini{flex:none; width:48px; height:48px; border-radius:50%; border:1px solid var(--ink); object-fit:cover} .pc .ini{display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; background:var(--bg)}</style>
 </head>
 <body><header id="hd"><img class="logo" src="assets/aim-logo.png" alt="AI Mindset"><div><h1>self harness · About</h1><p>AI Mindset · Fall ’26 Lab · n24 · 09.11–07.12.2026</p></div><nav class="pages"><a href="index.html">Demo</a><a href="index.html?mode=live">Local</a><a href="guide.html">Guide</a></nav></header><main class="wrap">
 
-<p class="lead">Папка, в которой агент знает тебя. В центре <b>self.md</b> – кто ты, чем занят, как решаешь, как с тобой работать, чего не трогать. Вокруг за четыре недели лабы вырастают правила агента, сырьё, имена файлов, онтология личного контекста, скиллы, рутины с проверками и одна точка входа.</p>
+<p class="lead">Папка, в которой агент знает тебя. В центре <b>self.md</b> – кто ты, чем занят, как решаешь, как с тобой работать, чего не трогать. Вокруг за четыре недели лабы вырастают правила агента, сырьё, имена файлов, онтология личного контекста, люди лабы, практики, рутины с проверками и одна точка входа.</p>
+<p>Пример собран на контексте самой лабы F26: расписание, ведущие, кураторы и гости пятниц – в папке участницы. Это версия на 09.11, слой дорабатывается вместе с лабой.</p>
 <div class="resource-links"><a href="index.html">смотреть сборку →</a><a href="guide.html">развернуть у себя →</a><a href="https://github.com/ai-mindset-org/f26-lab" target="_blank" rel="noopener">GitHub ↗</a><a href="https://f26.aimindset.org/" target="_blank" rel="noopener">F26 ↗</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div>
 
 <section class="panel"><h2>01 · откуда инструмент</h2>
@@ -32,73 +36,130 @@
 
 <section class="panel"><h2>02 · четыре недели – четыре слоя</h2>
 <table class="t"><tr><th>неделя</th><th>слой папки</th><th>фазы Demo</th><th>что появляется</th></tr>
-<tr><td><span class="wk w1">1 · собрать</span></td><td>центр и онтология</td><td>00–06</td><td><code>self.md</code>, <code>AGENTS.md</code>, сырьё и опись, правило имён, типы сущностей и связи, уборка с чистилищем</td></tr>
-<tr><td><span class="wk">2 · научить</span></td><td>скиллы</td><td>07</td><td>повторяемая работа твоего дня записана шагами: интервью для self, разбор звонка, обзор недели, self чужими глазами</td></tr>
-<tr><td><span class="wk">3 · отпустить</span></td><td>рутины и проверки</td><td>08–09</td><td>реестр рутин с бюджетом, проверка «кто я», проверки кодом, агенты в своих полосах, сбой становится правилом</td></tr>
-<tr><td><span class="wk">4 · пользоваться</span></td><td>точка входа и петля</td><td>10</td><td>одна страница на утро, self.md учится по обзорам недели, сетап на зиму</td></tr></table>
-<p>Сегодня, на воркшопе 1, нужны фазы 00–06. Остальное видно на графе пунктиром: план папки виден раньше самих файлов.</p></section>
+<tr><td><span class="wk w1">1 · собрать</span></td><td>центр, онтология, люди лабы</td><td>00–07</td><td><code>self.md</code>, <code>AGENTS.md</code>, сырьё и опись, правило имён, типы, связи, источники и уровни доступа, about me, лаба F26 и её люди, уборка с чистилищем</td></tr>
+<tr><td><span class="wk">2 · научить</span></td><td>практики-скиллы</td><td>08</td><td>девять практик шагами: self-интервью, self-read, вопрос к своей папке, разбор звонка, раскладка сырья, обзор недели, алхимия контекста, музей систем, сюжет года</td></tr>
+<tr><td><span class="wk">3 · отпустить</span></td><td>рутины и проверки</td><td>09–10</td><td>реестр рутин с бюджетом, проверка «кто я», проверки кодом, агенты в своих полосах, сбой становится правилом</td></tr>
+<tr><td><span class="wk">4 · пользоваться</span></td><td>точка входа и петля</td><td>11</td><td>одна страница на утро, self.md учится по обзорам недели, сетап на зиму</td></tr></table>
+<p>На воркшопе 1 нужны фазы 00–07. Остальное видно на графе пунктиром: план папки виден раньше самих файлов. Стрелки ← → на клавиатуре листают фазы, клик по фазе внизу открывает её карточку.</p></section>
 
 <section class="panel"><h2>03 · абстракции, из которых собрана папка</h2>
 <table class="t"><tr><th></th><th>абстракция</th><th>где живёт</th><th>что делает</th><th>фаза</th></tr>
 <tr><td class="g">●</td><td>self</td><td><code>self.md</code></td><td>центр: пять разделов о тебе; агент читает первым</td><td>01</td></tr>
 <tr><td class="g">■</td><td>срез контекста</td><td><code>context/</code></td><td>длинное из self: как решаю на примерах, ритм, фокус месяца снимком с датой</td><td>01</td></tr>
 <tr><td class="g">◆</td><td>роутер</td><td><code>AGENTS.md</code> + <code>CLAUDE.md</code></td><td>пять правил агента; Claude Code читает <code>CLAUDE.md</code> с одной строкой <code>@AGENTS.md</code>, Codex и Cursor – <code>AGENTS.md</code></td><td>02</td></tr>
-<tr><td class="g">⊓</td><td>сессия</td><td><code>sessions/</code></td><td>запрос агенту, итог и тронутые файлы одним файлом</td><td>08</td></tr>
+<tr><td class="g">⊓</td><td>сессия</td><td><code>sessions/</code></td><td>запрос агенту, итог и тронутые файлы одним файлом; так выглядит журнал папки</td><td>09</td></tr>
 <tr><td class="g">◇</td><td>границы</td><td><code>{rule} boundaries</code></td><td>никогда · только чтение · спросить меня</td><td>02</td></tr>
 <tr><td class="g">Y</td><td>подключение</td><td><code>tools/</code></td><td>где открыть папку и один источник на чтение: календарь, LMS</td><td>02–03</td></tr>
 <tr><td class="g">□</td><td>сырьё</td><td><code>raw/</code></td><td>CV, экспорт чатов, расшифровки как есть; никто не правит</td><td>03</td></tr>
 <tr><td class="g">•</td><td>опись</td><td><code>{note} inventory</code></td><td>где о тебе уже лежат данные, ценность, что делаем</td><td>03</td></tr>
 <tr><td class="g">◇</td><td>правило имён</td><td><code>{rule} naming</code></td><td>тип, описание, дата в конце; переименование списком «было → стало»</td><td>04</td></tr>
 <tr><td class="g">✳</td><td>онтология</td><td><code>ontology/</code></td><td>какие вещи живут в папке и как связаны; граф рисует именно её</td><td>05</td></tr>
+<tr><td class="g">✳</td><td>источники и доступ</td><td><code>{ontology} context sources</code>, <code>access levels</code></td><td>двенадцать мест, откуда берётся контекст; уровни T0–T4 решают, что агент читает</td><td>05</td></tr>
+<tr><td class="g">■</td><td>identity</td><td><code>{identity} about me</code></td><td>публичная половина self, уровень T0: что можно показать незнакомому человеку</td><td>05</td></tr>
 <tr><td class="g">⬡ △ ★ ▷</td><td>сущности</td><td><code>people/ projects/ decisions/ meetings/</code></td><td>люди, проекты, решения, встречи с <code>id</code>, <code>type</code> и связями в полях</td><td>05</td></tr>
-<tr><td class="g">▢</td><td>черновик и чистилище</td><td><code>drafts/</code></td><td>всё с датой; спорное – одним списком с датой разбора через 30 дней</td><td>06</td></tr>
-<tr><td class="g">◇</td><td>исходящее черновиком</td><td><code>{rule} drafts before sending</code></td><td>агент пишет письмо, отправляет человек</td><td>06</td></tr>
-<tr><td class="g">○</td><td>скилл</td><td><code>skills/</code></td><td>шаги, вход, выход и ссылки на правила; агент берёт его, когда задача совпала</td><td>07</td></tr>
-<tr><td class="g">⧗</td><td>рутина и реестр</td><td><code>routines/</code></td><td>что работает без тебя: когда, чем, бюджет, проверка</td><td>08</td></tr>
-<tr><td class="g">▲</td><td>проверка</td><td><code>evals/</code>, <code>bin/check.mjs</code></td><td>восемь вопросов «кто я» моделью; имена и поля кодом</td><td>08</td></tr>
-<tr><td class="g">●</td><td>агенты в полосах</td><td>скиллы + папки</td><td>разбор звонков, обзор недели, критик, хранитель пишут в одну онтологию</td><td>09</td></tr>
-<tr><td class="g">◇</td><td>память</td><td><code>{rule} memory</code></td><td>что выучено о тебе – строкой в self после твоего «да»; сбой – запись в <code>decisions/</code></td><td>09</td></tr>
-<tr><td class="g">✚</td><td>точка входа</td><td><code>{dashboard} home</code></td><td>одна страница на утро; бот или дашборд показывают её же</td><td>10</td></tr></table></section>
+<tr><td class="g">• ⬡</td><td>лаба как контекст</td><td><code>{project} F26 lab</code>, <code>{index} F26 people</code></td><td>расписание, ведущие, кураторы, гости пятниц; к кому с чем идти</td><td>06</td></tr>
+<tr><td class="g">▢</td><td>черновик и чистилище</td><td><code>drafts/</code></td><td>всё с датой; спорное – одним списком с датой разбора через 30 дней</td><td>07</td></tr>
+<tr><td class="g">◇</td><td>исходящее черновиком</td><td><code>{rule} drafts before sending</code></td><td>агент пишет письмо, отправляет человек</td><td>07</td></tr>
+<tr><td class="g">○</td><td>скилл</td><td><code>skills/</code></td><td>практика: когда, вход, шаги, выход, проверка, промпт; агент берёт её, когда задача совпала</td><td>08</td></tr>
+<tr><td class="g">⧗</td><td>рутина и реестр</td><td><code>routines/</code></td><td>что работает без тебя: когда, чем, бюджет, проверка</td><td>09</td></tr>
+<tr><td class="g">▲</td><td>проверка</td><td><code>evals/</code>, <code>bin/check.mjs</code></td><td>девять вопросов «кто я» моделью; имена и поля кодом</td><td>09</td></tr>
+<tr><td class="g">●</td><td>агенты в полосах</td><td>скиллы + папки</td><td>разбор звонков, обзор недели, критик, хранитель пишут в одну онтологию</td><td>10</td></tr>
+<tr><td class="g">◇</td><td>память</td><td><code>{rule} memory</code></td><td>что выучено о тебе – строкой в self после твоего «да»; сбой – запись в <code>decisions/</code></td><td>10</td></tr>
+<tr><td class="g">✚</td><td>точка входа</td><td><code>{dashboard} home</code></td><td>одна страница на утро; бот или дашборд показывают её же</td><td>11</td></tr></table></section>
 
 <section class="panel"><h2>04 · онтология личного контекста</h2>
-<p>Онтология – договор о том, какие вещи живут в папке и как они связаны. Три правила: тип в имени файла, <code>id</code> и <code>type</code> во frontmatter, связь – ссылка <code>[[...]]</code> в поле.</p>
-<div class="cols"><div><h3>типы недели 1</h3><table class="t"><tr><th>тип</th><th>папка</th><th>поля</th></tr>
-<tr><td>person</td><td>people/</td><td>role, project, last_seen</td></tr>
-<tr><td>project</td><td>projects/</td><td>status, owner, until</td></tr>
-<tr><td>decision</td><td>decisions/</td><td>date, project, from_meeting, status</td></tr>
-<tr><td>meeting</td><td>meetings/</td><td>date, with, project, source</td></tr>
-<tr><td>note · raw · context</td><td>notes/ raw/ context/</td><td>about · source · parent</td></tr></table></div>
-<div><h3>пример встречи</h3><pre>---
-id: meeting-nina-2026-11-06
-type: meeting
-date: 2026-11-06
-with: "[[{person} Nina]]"
-project: "[[{project} procurement migration]]"
-source: "[[{raw} call transcript supplier – 2026-11-06]]"
-generated_by: agent
-human_verified: true
----</pre><p>Одна встреча тянет за собой человека, проект и расшифровку. На графе это видно сразу: узлы стягиваются.</p></div>
-<div><h3>как растёт</h3><p>Неделя 1 – люди, проекты, решения, встречи руками и одним агентом. Неделя 2 – скиллы пишут сущности сами. Неделя 3 – рутины читают их по расписанию. Неделя 4 – точка входа показывает их срезом.</p><p>Новый тип появляется, когда файлов такого рода больше пяти: сначала строка в <code>{ontology} types</code>, потом файлы. Происхождение у каждого файла агента: <code>created_by</code>, <code>generated_by</code>, <code>human_verified</code>.</p></div></div></section>
+<p>Онтология – договор о том, какие вещи живут в папке и как они связаны. Три правила: тип в имени файла, <code>id</code> и <code>type</code> во frontmatter, связь – ссылка <code>[[...]]</code> в поле. Четвёртое поле – <code>access</code>: кому файл виден и что агент с ним делает.</p>
+<div class="cols"><div><h3>типы</h3><table class="t"><tr><th>тип</th><th>папка</th><th>доступ</th></tr>
+<tr><td>self</td><td>корень</td><td>T1</td></tr>
+<tr><td>identity – about me</td><td>context/</td><td>T0</td></tr>
+<tr><td>context</td><td>context/</td><td>T1</td></tr>
+<tr><td>person</td><td>people/</td><td>T0–T3</td></tr>
+<tr><td>project · decision</td><td>projects/ decisions/</td><td>T1</td></tr>
+<tr><td>meeting</td><td>meetings/</td><td>T1–T2</td></tr>
+<tr><td>note · index</td><td>notes/</td><td>T1</td></tr>
+<tr><td>raw</td><td>raw/</td><td>T1–T3</td></tr>
+<tr><td>session</td><td>sessions/</td><td>T1</td></tr>
+<tr><td>corpus</td><td>вне папки</td><td>T3–T4</td></tr></table></div>
+<div><h3>пример человека лабы</h3><pre>---
+id: person-dasha-voronkina
+type: person
+aliases:
+  - "Даша Воронкина"
+role: "куратор"
+project: "[[{project} F26 lab]]"
+avatar: dasha-voronkina
+access: T0
+source: f26.aimindset.org
+---</pre><p>Встреча эфира кураторов тянет пятерых людей и проект лабы. Вопрос «к кому идти с вопросом про правила агента?» агент решает по <code>{index} F26 people</code> и называет файл.</p></div>
+<div><h3>уровни доступа</h3><table class="t"><tr><th></th><th>что</th><th>агент</th></tr>
+<tr><td>T0</td><td>публичное: about me, люди лабы с сайта</td><td>читает, цитирует</td></tr>
+<tr><td>T1</td><td>рабочее: self, контекст, проекты</td><td>читает на старте</td></tr>
+<tr><td>T2</td><td>адресное: self для тройки, отчёт</td><td>только адресату</td></tr>
+<tr><td>T3</td><td>личное: дневник, письма себе</td><td>по просьбе в сессии</td></tr>
+<tr><td>T4</td><td>уязвимое: здоровье, терапия</td><td>в папку не кладётся</td></tr></table></div></div>
 
-<section class="panel"><h2>05 · имена файлов</h2>
+<h3>из чего сохраняется контекст</h3>
+<table class="t"><tr><th>место</th><th>что агент берёт</th><th>тип в папке</th><th>доступ</th></tr>
+<tr><td>календарь</td><td>ритм, с кем встречаюсь, на что уходит неделя</td><td>meeting, context rhythm</td><td>T1</td></tr>
+<tr><td>расшифровки звонков · LMS лабы</td><td>решения, договорённости, люди</td><td>raw → meeting, decision</td><td>T1–T2</td></tr>
+<tr><td>AI-чаты</td><td>что прошу каждую неделю – кандидаты в скиллы</td><td>raw → skill</td><td>T2</td></tr>
+<tr><td>мессенджеры</td><td>люди, темы, идеи</td><td>raw → person, note</td><td>T2–T3</td></tr>
+<tr><td>голосовые заметки</td><td>мысль в момент, как я рассуждаю вслух</td><td>raw → note, context</td><td>T2</td></tr>
+<tr><td>заметки и PKM</td><td>принципы, проекты, мой словарь</td><td>context, project</td><td>T1</td></tr>
+<tr><td>документы и таблицы</td><td>проекты и цифры</td><td>ссылка в project</td><td>T1–T2</td></tr>
+<tr><td>почта</td><td>люди и договорённости</td><td>person, project</td><td>T2</td></tr>
+<tr><td>CV и публичные профили</td><td>кто я для мира</td><td>identity</td><td>T0</td></tr>
+<tr><td>фото</td><td>где был, сюжет года</td><td>year-timeline</td><td>T3</td></tr>
+<tr><td>цифровые привычки, итоги года</td><td>что на деле занимает время</td><td>context rhythm</td><td>T2</td></tr>
+<tr><td>здоровье и биометрия</td><td>сон и энергия</td><td>corpus, вне папки</td><td>T4</td></tr></table>
+<p>Петля: захват в <code>raw/</code> → дистилляция в <code>notes/ meetings/ decisions/</code> → хранение в своём типе со связями → применение скиллом или рутиной, правка возвращается в self.</p>
+
+<h3>как устроено у ведущего лабы</h3>
+<div class="cols"><div><h3>about me Алекса</h3><p>Публичный профиль в личном волте, главный вход для тех, кто ищет «кто такой Алекс». Разделы: за 60 секунд · фото · навигация · контакты · коротко обо мне · работа и проекты · метод · год в цифрах и фазы года · артефакты. Набор F26 повторяет эту форму в <code>{identity} about me</code>.</p></div>
+<div><h3>шесть типов личного контекста</h3><p><code>{identity}</code> публичное «кто я» · <code>{context}</code> карточка для агента: источник, сигнал, запрос, уровень доступа · <code>{source}</code> указатель на сырьё · <code>{corpus}</code> плотный личный пакет · <code>{index}</code> карта: где что лежит · <code>{trace}</code> след изменений. Пять уровней T0–T4 – оттуда же.</p></div>
+<div><h3>метод</h3><p>Контекст важнее промпта. Рабочий цикл: захват → дистилляция → хранение → применение. Расшифровка звонка – главный способ захвата. «Музей систем»: видеть, что запускал и бросил. Ограниченное по времени работает лучше бесконечной настройки.</p></div></div></section>
+
+<section class="panel"><h2>05 · люди лабы · пример на 09.11</h2>
+<p>Публичный слой: роль, слот, тема, фото с сайта <a href="https://f26.aimindset.org/" target="_blank" rel="noopener">f26.aimindset.org</a>. В папке участницы каждый – файл <code>people/{person} Имя.md</code>, на графе – фото или инициалы. Новый гость приходит файлом.</p>
+<!-- people:start -->
+<div class="people"><div class="pc"><img src="assets/people/alexander-povaliaev.jpg" alt="Александр Поваляев" loading="lazy"><div><b>Александр Поваляев</b> <span class="cap">ведущий</span><p>ведёт понедельники: воркшоп 19:00–21:00 CET и office hours по субботам 10:00</p><p class="cap">с чем идти: папка контекста, self.md, правила агента, рутины</p></div></div>
+<div class="pc"><img src="assets/people/kirill-oleinichenko.jpg" alt="Кирилл Олейниченко" loading="lazy"><div><b>Кирилл Олейниченко</b> <span class="cap">ведущий</span><p>ведёт среды: свой проект от идеи до релиза и первых людей, 19:00 CET</p><p class="cap">с чем идти: идея проекта, носитель (сайт, бот, мини-апп), выкладка людям</p></div></div>
+<div class="pc"><img src="assets/people/dasha-voronkina.jpg" alt="Даша Воронкина" loading="lazy"><div><b>Даша Воронкина</b> <span class="cap">куратор</span><p>куратор F26, ведёт коворкинги по вторникам 10:00–12:00 CET</p><p class="cap">с чем идти: агенты, которые находят лиды и ведут контент; продукт от «сделали» до «его покупают»</p></div></div>
+<div class="pc"><img src="assets/people/stanislav-glazov.jpg" alt="Стас Глазов" loading="lazy"><div><b>Стас Глазов</b> <span class="cap">куратор</span><p>куратор F26; гость пятницы 20.11 вместе с Анкой Ставенски</p><p class="cap">с чем идти: Claude Code с нуля, Personal OS на Claude и Google, AI в реальном времени в TouchDesigner</p></div></div>
+<div class="pc"><span class="ini">ДД</span><div><b>Денис Дьяков</b> <span class="cap">куратор</span><p>куратор F26: правила, инструкции и скиллы для AI на разных уровнях</p><p class="cap">с чем идти: где задавать поведение AI и почему он делает не то, что ждёшь</p></div></div>
+<div class="pc"><span class="ini">АЗ</span><div><b>Алёна Захарова</b> <span class="cap">куратор</span><p>куратор F26: как ставить агентам понятные задачи</p><p class="cap">с чем идти: задача агенту, у которой результат качественный и измеримый</p></div></div>
+<div class="pc"><span class="ini">ВК</span><div><b>Валерия Куликова</b> <span class="cap">куратор</span><p>куратор F26: личные системы и контекст</p><p class="cap">с чем идти: личная система продуктивности; свой сервер и автоматизации без бэкграунда разработчика</p></div></div>
+<div class="pc"><span class="ini">КР</span><div><b>Катя Резникова</b> <span class="cap">гость</span><p>гость пятницы 13.11, 19:00 CET</p><p class="cap">с чем идти: свой контекст и личный AI-помощник</p></div></div>
+<div class="pc"><img src="assets/people/anca-stavenski.jpg" alt="Анка Ставенски" loading="lazy"><div><b>Анка Ставенски</b> <span class="cap">гость</span><p>гость пятницы 20.11 вместе со Стасом Глазовым</p><p class="cap">с чем идти: процедурная практика, форма результата, вкус и визуал вещи, которую показываешь людям</p></div></div>
+<div class="pc"><img src="assets/people/andrei-luch.jpg" alt="Андрей Луч" loading="lazy"><div><b>Андрей Луч</b> <span class="cap">гость</span><p>гость пятницы 27.11 вместе с Даниэлем Роблесом Кравцовым</p><p class="cap">с чем идти: сеть из 10+ AI-сервисов вокруг команды</p></div></div>
+<div class="pc"><img src="assets/people/daniel-robles-kravtsov.jpg" alt="Даниэль Роблес Кравцов" loading="lazy"><div><b>Даниэль Роблес Кравцов</b> <span class="cap">гость</span><p>гость пятницы 27.11 вместе с Андреем Лучом</p><p class="cap">с чем идти: разложить свой процесс по шагам и собрать первую версию своей CRM</p></div></div>
+<div class="pc"><img src="assets/people/pavel-hegai.jpg" alt="Павел Хегай" loading="lazy"><div><b>Павел Хегай</b> <span class="cap">гость</span><p>гость последней пятницы 04.12</p><p class="cap">с чем идти: довести проект до продукта и первых людей: пайплайны, шаблоны, папка с контекстом</p></div></div>
+<div class="pc"><img src="assets/people/alexander-vasiliev.jpg" alt="Александр Васильев" loading="lazy"><div><b>Александр Васильев</b> <span class="cap">спикер</span><p>спикер лабы</p><p class="cap">с чем идти: агенты на своём сервере, доступы, что ломается в инфраструктуре</p></div></div></div>
+<!-- people:end -->
+</section>
+
+<section class="panel"><h2>06 · имена файлов</h2>
 <pre>{тип} Описание – ГГГГ-ММ-ДД.md</pre>
 <table class="t"><tr><th>было</th><th>стало</th><th>почему</th></tr>
 <tr><td><code>Новый документ (3).docx</code></td><td><code>{draft} закупки на декабрь – 2026-11-09.md</code></td><td>черновик со смыслом и датой</td></tr>
 <tr><td><code>звонок.txt</code></td><td><code>{raw} call transcript supplier – 2026-11-06.md</code></td><td>сырьё отдельно от разобранного</td></tr>
 <tr><td><code>Нина.md</code></td><td><code>{person} Nina.md</code></td><td>живая сущность без даты</td></tr>
+<tr><td><code>Даша куратор.md</code></td><td><code>{person} Dasha Voronkina.md</code></td><td>имя латиницей, русское – в <code>aliases</code></td></tr>
+<tr><td><code>воркшоп 1 заметки.md</code></td><td><code>{meeting} F26 workshop 1 – 2026-11-09.md</code></td><td>встреча – снимок с датой</td></tr>
 <tr><td><code>how-i-decide.md</code></td><td><code>{context} how-i-decide.md</code></td><td>срез self</td></tr></table>
-<p>Снимки (встреча, решение, черновик, обзор) несут дату в конце, живые файлы (человек, проект, правило) – без даты. Центр папки без типа: <code>self.md</code>, <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>. Старое руками не переименовываем: агент составляет список, человек подтверждает его целиком.</p></section>
+<p>Снимки (встреча, решение, черновик, обзор) несут дату в конце, живые файлы (человек, проект, правило) – без даты. Центр папки без типа: <code>self.md</code>, <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>. Старое руками не переименовываем: агент составляет список, человек подтверждает его целиком.</p>
+<p>Журнала-файла нет: историю держат git (правка – коммит), <code>sessions/</code> (сессия агента – файл) и обзоры недели в <code>notes/</code>. Когда папок несколько, вторая скобка – область: <code>{self} {context} …</code>, <code>{AIM} {guide} …</code>.</p></section>
 
-<section class="panel"><h2>06 · подстроить под себя</h2>
+<section class="panel"><h2>07 · подстроить под себя</h2>
 <div class="cols"><div><h3>анкета</h3><p>Восемь вопросов: кто ты, чем занят, проект на лабу, как решаешь, как с тобой работать, ритм, где материалы, чего не трогать. Ответы заполняют <code>self.md</code> и срезы <code>context/</code>. Свой файл ответов – <code>harness/bin/new.sh ~/self --answers my.json</code>.</p></div>
-<div><h3>четыре примера</h3><p>По умолчанию – операционный директор сети клиник. Ещё три: <code>small-firm-owner</code> (мастерская на заказ), <code>own-product</code> (соло-основательница сервиса), <code>personal-os</code> (личная система знаний и задач). Все персонажи вымышлены.</p></div>
+<div><h3>пять примеров</h3><p>По умолчанию – Мария, операционный директор сети клиник. Ещё три вымышленных: <code>small-firm-owner</code> (мастерская на заказ), <code>own-product</code> (соло-основательница сервиса), <code>personal-os</code> (личная система знаний и задач). И <code>alex</code> – ведущий лабы, по его публичному профилю.</p></div>
 <div><h3>свои правила</h3><p>Правило рождается из правки, которую ты сделал дважды: строка в <code>AGENTS.md</code> или файл в <code>rules/</code>. Новая папка – только вместе с новым типом в онтологии.</p></div></div></section>
 
-<section class="panel"><h2>07 · что видит сайт</h2>
+<section class="panel"><h2>08 · что видит сайт</h2>
 <table class="t"><tr><th>режим</th><th>данные</th><th>что происходит</th></tr>
 <tr><td>Demo</td><td>учебный сценарий с вымышленным человеком</td><td>воспроизведение сборки; модель не запускается</td></tr>
 <tr><td>Local · браузер</td><td>папка, которую ты выбрал</td><td>граф, чтение и правка; содержимое на сервер не уходит</td></tr>
 <tr><td>Local · сервер</td><td>папка на твоём компьютере</td><td>редактор, git, запуск агента с твоими доступами</td></tr></table></section>
 
 <div class="resource-links"><a href="guide.html">развернуть у себя →</a><a href="https://github.com/ai-mindset-org/f26-lab" target="_blank" rel="noopener">GitHub ↗</a><a href="https://aimindset.org/" target="_blank" rel="noopener">AI Mindset ↗</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div>
-<footer>AI Mindset · F26 self-harness · 09.11.2026 · форк marketing-harness</footer></main></body></html>
+<footer>AI Mindset · F26 self-harness v2 · 09.11.2026 · пример на контексте лабы, дорабатывается вместе с ней · форк marketing-harness</footer></main></body></html>

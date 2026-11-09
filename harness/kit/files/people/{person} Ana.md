@@ -4,6 +4,7 @@ type: person
 role: кандидатка, администратор
 project: "[[{project} hiring admins]]"
 private: true
+access: T3
 created_by: "[[self]]"
 generated_by: agent
 human_verified: false

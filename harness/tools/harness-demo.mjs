@@ -30,7 +30,7 @@ if (fs.existsSync(dir) && fs.readdirSync(dir).filter((f) => f !== '.DS_Store').l
 const PRESETS = fs.readdirSync(path.join(root, 'kit', 'answers')).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
 if (opt('preset') && !PRESETS.includes(opt('preset'))) { console.error(`нет пресета «${opt('preset')}». есть: ${PRESETS.join(' · ')}`); process.exit(2); }
 const pace = Number(opt('pace', '1'));
-const agents = false; // live agents of the marketing lanes are not wired in the F26 kit: phase 09 replays
+const agents = false; // live agents of the marketing lanes are not wired in the F26 kit: phase 10 replays
 if (flag('agents')) console.log('--agents: в наборе F26 фаза 09 воспроизводится по сценарию');
 const model = opt('model', process.env.HARNESS_CLAUDE_MODEL || 'opus');
 const stops = flag('stops');

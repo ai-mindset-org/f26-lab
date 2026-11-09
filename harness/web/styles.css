@@ -566,3 +566,10 @@ body.fold-tabBody #colR{grid-template-rows:auto auto auto}
 .weeks4 b:last-child{border-right:none}
 .weeks4 b:first-child{background:var(--accent); color:var(--ink)}
 .node.L-self text{font-weight:700; font-size:13px}
+
+/* people of the lab: photo or initials on the graph, photo on top of the card */
+.av-ring { fill: none; stroke: var(--ink, #141210); stroke-width: 1; }
+.av-ini { fill: #fcfaf6; stroke: var(--ink, #141210); stroke-width: 1; }
+.av-t { font: 600 7px/1 'JetBrains Mono', ui-monospace, monospace; fill: var(--ink, #141210); pointer-events: none; }
+.av-big { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid var(--ink, #141210); display: block; }
+.cn-tree{margin:4px 0 2px; padding:8px 10px; border:1px dashed var(--soft); font:11px/1.5 'JetBrains Mono', ui-monospace, monospace; white-space:pre; overflow:auto; color:var(--ink)}

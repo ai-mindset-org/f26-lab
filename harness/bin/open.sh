@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Open a harness folder in the live instrument: graph, file editor, agent console.
-#   ~/harness-engine/bin/open.sh ~/self
+#   ~/f26-lab/harness/bin/open.sh ~/self
 # Already running for this folder → just opens the browser. Port busy with another
 # folder → takes the next free port. Stop: <engine>/bin/stop.sh [port]
 set -euo pipefail
