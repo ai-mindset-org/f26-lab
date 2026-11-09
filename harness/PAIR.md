@@ -14,7 +14,7 @@
 | | 03 | сырьё и карта мест | `raw/` (CV, экспорт чатов, расшифровки), `{note} inventory` – где живёт контекст, одно подключение на чтение |
 | | 04 | имена | `{rule} naming`, переименование списком «было → стало», имена людей латиницей + `aliases` |
 | | 05 | онтология личного контекста | типы и связи, `{ontology} context sources` (12 мест), `{ontology} access levels` (T0–T4), `{identity} about me`; люди, проекты, решения, встречи |
-| | 06 | люди лабы | `{project} F26 lab`, `{index} F26 people`, 13 человек в `people/` с фото с сайта или инициалами, воркшоп 1 и эфир кураторов |
+| | 06 | люди лабы | `{project} F26 lab` с планом 22 встреч из публичной программы, `{index} F26 people`, 16 человек в `people/` с фото с сайта или инициалами, воркшоп 1 и первый коворкинг 10.11 |
 | | 07 | уборка | `{rule} cleanup` (живой · архив · снести), чистилище с датой +30, `{rule} drafts before sending` |
 | 2 · научить | 08 | практики-скиллы | self-interview, self-read, ask-my-context, call-digest, file-it, weekly-review, context-alchemy, museum-of-systems, year-timeline |
 | 3 · отпустить | 09 | рутины и проверки | `{routine} registry` с бюджетом, `{eval} who am i` (9 вопросов), `bin/check.mjs`, `sessions/` |

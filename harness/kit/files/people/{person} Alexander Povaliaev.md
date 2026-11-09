@@ -7,7 +7,7 @@ role: "ведущий"
 project: "[[{project} F26 lab]]"
 avatar: alexander-povaliaev
 access: T0
-source: f26.aimindset.org
+source: f26.aimindset.org · f26-program.lab.aimindset.org
 created_by: "[[self]]"
 generated_by: agent
 human_verified: false
@@ -17,7 +17,7 @@ human_verified: false
 ![Александр Поваляев](https://f26.aimindset.org/lab/assets/people/bank/alexander-povaliaev/black-white-glasses.jpg)
 
 - **кто:** основатель AI Mindset, проектирует образовательные продукты и агентные системы
-- **в лабе:** ведёт понедельники: воркшоп 19:00–21:00 CET и office hours по субботам 10:00
+- **в лабе:** ведёт понедельники: воркшопы 09, 16, 23 и 30.11, 19:00–21:00 CET; office hours по субботам 10:00–12:00, интроколл 07.11 и показ 07.12
 - **с чем идти:** папка контекста, self.md, правила агента, рутины
 - **встречи:** [[{meeting} F26 workshop 1 – 2026-11-09]]
 
