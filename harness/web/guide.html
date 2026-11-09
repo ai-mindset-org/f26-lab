@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F26 Self Harness · Guide</title>
+<meta name="description" content="Как развернуть свою папку self-harness лабы F26: без терминала, в браузере или командой, что сдать по ступеням недели 1, запросы агенту и как папка растёт до 7 декабря.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AI Mindset · F26 self-harness · Guide">
+<meta property="og:description" content="Как развернуть свою папку self-harness лабы F26: без терминала, в браузере или командой, запросы агенту и рост папки по неделям.">
+<meta property="og:image" content="https://f26-harness.lab.aimindset.org/og.png?v=1">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://f26-harness.lab.aimindset.org/guide.html">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://f26-harness.lab.aimindset.org/guide.html">
+<link rel="icon" href="assets/aim-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="doc.css">
+<style>.wk{display:inline-block; padding:1px 6px; border:1px solid var(--ink); font-size:11px} .wk.w1{background:var(--accent)} ol.steps li{margin:4px 0}</style>
+</head>
+<body><header id="hd"><img class="logo" src="assets/aim-logo.png" alt="AI Mindset"><div><h1>self harness · Guide</h1><p>как развернуть свою папку · F26 · неделя 1</p></div><nav class="pages"><a href="index.html">Demo</a><a href="index.html?mode=live">Local</a><a href="access.html">About</a></nav></header><main class="wrap">
+
+<p class="lead">Цель вечера – папка, на которую агент опирается в работе: <b>self.md</b>, пять правил агента, журнал и правило имён. Проверка одна: агент описал тебя так, что ты узнал себя.</p>
+<div class="resource-links"><a href="#paths">три пути →</a><a href="#prompts">запросы агенту →</a><a href="#weeks">как растёт →</a><a href="#agent">передать агенту →</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div>
+
+<section class="panel" id="paths"><h2>01 · три пути</h2><div class="cols">
+<div><h3>A · без терминала</h3><ol class="steps"><li><a href="f26-self-harness-kit.zip">скачай набор</a>, открой папку <code>kit/context</code></li><li>заполни <code>self.md</code>: пять строк хватит, можно надиктовать агенту в чате</li><li>в проекте Claude или ChatGPT: <code>self.md</code> и <code>AGENTS.md</code> – в файлы проекта, текст правил – в инструкции</li><li>спроси: «кто я и что делаю на этой неделе?»</li></ol></div>
+<div><h3>B · в браузере</h3><ol class="steps"><li>Chrome, Arc или Edge на компьютере</li><li>открой <a href="index.html?mode=live">Local</a> и выбери свою папку</li><li>граф строится из твоих файлов, правки сохраняются прямо в них</li><li>агента запускаешь отдельно: Claude Code, Codex или Cursor в той же папке</li></ol></div>
+<div><h3>C · терминал</h3><p>Нужны git и Node.js 18+.</p><pre>git clone https://github.com/ai-mindset-org/f26-lab.git ~/f26-lab
+~/f26-lab/harness/bin/new.sh ~/self</pre><p>Папка <code>~/self</code> вырастет по фазам, граф откроется в браузере. Пример под себя: <code>~/f26-lab/harness/bin/new.sh ~/self personal-os</code> (ещё <code>small-firm-owner</code>, <code>own-product</code>). Потом <code>cd ~/self && claude</code> или <code>codex</code>.</p></div>
+</div></section>
+
+<section class="panel"><h2>02 · ступени недели 1 · что сдать на office hours сб 14.11</h2>
+<table class="t"><tr><th>ступень</th><th>кто</th><th>что в папке</th></tr>
+<tr><td>1</td><td>только чат или первые шаги</td><td><code>context/self.md</code> с разделом «как я решаю», правка после тройки</td></tr>
+<tr><td>2</td><td>агент уже открывает папку</td><td>+ <code>AGENTS.md</code> в пять правил, ответ агента «кто я», строка в <code>log.md</code></td></tr>
+<tr><td>3</td><td>агенты в работе</td><td>+ одно подключение только на чтение, онтология: два человека, проект, встреча со связями</td></tr></table>
+<p>Суббота, второй час – субботник: опись через вердикты живой · архив · снести, спорное в чистилище с датой через 30 дней.</p></section>
+
+<section class="panel" id="prompts"><h2>03 · запросы агенту</h2>
+<table class="t"><tr><th>когда</th><th>запрос</th></tr>
+<tr><td>первый запуск</td><td>Прочитай все файлы в этой папке. Опиши меня в пяти строках: кто я, чем занят, как решаю, как со мной работать, чего не трогать. Отметь, где тебе пришлось угадывать.</td></tr>
+<tr><td>self.md интервью</td><td>Задай мне семь вопросов по одному, чтобы заполнить self.md. После каждого ответа покажи строку, которую записал. Ответы короче трёх слов уточняй.</td></tr>
+<tr><td>из сырья</td><td>В raw лежат мой CV и экспорт чата. Собери черновик self.md по шаблону, каждую строку пометь источником.</td></tr>
+<tr><td>опись</td><td>Пройди по папке и по моему списку мест, запиши notes/{note} inventory с сегодняшней датой: место · что там · ценность · что делаем. Ничего не удаляй.</td></tr>
+<tr><td>имена</td><td>Составь список переименований «было → стало» по rules/{rule} naming.md. Ничего не меняй, пока я не подтвержу список целиком.</td></tr>
+<tr><td>онтология</td><td>Прочитай ontology/. Из последней расшифровки в raw/ создай встречу, людей и решение со связями в полях frontmatter. Покажи список до записи.</td></tr>
+<tr><td>граф</td><td>Нарисуй mermaid-граф моей папки: в центре я, узлы – файлы и сущности. Чего не хватает – пунктиром, под графом три узла, которые добавить первыми.</td></tr>
+<tr><td>тройка</td><td>Прочитай self.md соседа по тройке. Перескажи в трёх фразах, кто он и как с ним работать. Назови три места, где агент понял бы его не так, и вопрос на каждое.</td></tr>
+<tr><td>проверка</td><td>Кто я и что делаю на этой неделе? Ответь по папке и назови файлы, откуда взял.</td></tr></table></section>
+
+<section class="panel" id="weeks"><h2>04 · как папка растёт до 7 декабря</h2>
+<table class="t"><tr><th>неделя</th><th>понедельник · Алекс</th><th>что добавить в папку</th><th>признак готовности</th></tr>
+<tr><td><span class="wk w1">1 · собрать</span></td><td>09.11 · собрать себя в одну папку</td><td>self.md, AGENTS.md, log.md, raw/ и опись, naming, онтология, чистилище</td><td>агент отвечает «кто я» с названиями файлов</td></tr>
+<tr><td><span class="wk">2 · научить</span></td><td>16.11 · повторяемая работа своего дня</td><td>один-три скилла из того, что ты каждую неделю просишь в чате</td><td>скилл сработал на второй неделе без пересказа</td></tr>
+<tr><td><span class="wk">3 · отпустить</span></td><td>23.11 · работа идёт без тебя</td><td>реестр рутин, одна рутина с бюджетом, проверка «кто я», журнал каждого прогона</td><td>рутина неделю работает сама, сбой виден в журнале</td></tr>
+<tr><td><span class="wk">4 · пользоваться</span></td><td>30.11 · одна точка входа</td><td>home – одна страница на утро; раздел «что выучено» в self.md</td><td>утро начинается с одной страницы</td></tr></table>
+<p>Среды Кирилла опираются на эту папку: «кто ты» для идеи проекта берётся из готового self.md.</p></section>
+
+<section class="panel" id="agent"><h2>05 · передать агенту</h2>
+<p>Скопируй агенту в папке целиком:</p>
+<pre>Прочитай https://github.com/ai-mindset-org/f26-lab – README, harness.md и harness/kit/files.
+Это self-harness лабы F26. Моя папка – текущая рабочая.
+1. сравни мою папку с harness/kit/files: чего нет из фаз 01–06
+2. предложи список файлов к созданию с именами по {rule} naming
+3. ничего не создавай и не переименовывай до моего «да» на весь список
+4. в конце строка в log.md</pre>
+<p>Обновить свою папку новыми файлами набора, не трогая правленое: <code>node ~/f26-lab/harness/tools/update-folder.mjs --dir ~/self --dry</code>, без <code>--dry</code> – запись.</p></section>
+
+<section class="panel"><h2>06 · команды</h2>
+<table class="t"><tr><th>что</th><th>команда</th></tr>
+<tr><td>новая папка + граф</td><td><code>harness/bin/new.sh ~/self [пресет]</code></td></tr>
+<tr><td>открыть свою папку</td><td><code>harness/bin/open.sh ~/self</code></td></tr>
+<tr><td>сборка с остановками</td><td><code>harness/bin/demo.sh ~/Demos/self-try --pace 1 --stops</code></td></tr>
+<tr><td>копия с историей</td><td><code>harness/bin/fork.sh ~/self ~/self-try</code></td></tr>
+<tr><td>проверка папки кодом</td><td><code>cd ~/self && node bin/check.mjs</code></td></tr>
+<tr><td>остановить граф</td><td><code>harness/bin/stop.sh [порт]</code></td></tr></table></section>
+
+<div class="resource-links"><a href="index.html">смотреть сборку →</a><a href="access.html">абстракции и онтология →</a><a href="https://github.com/ai-mindset-org/f26-lab" target="_blank" rel="noopener">GitHub ↗</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div>
+<footer>AI Mindset · F26 self-harness · Guide · 09.11.2026</footer></main></body></html>
