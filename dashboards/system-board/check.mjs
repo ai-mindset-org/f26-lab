@@ -24,7 +24,8 @@ const errs = []; let shots = 0;
 for (const [w, h, dev] of [[1440, 900, 'desk'], [390, 844, 'phone']]) {
   for (const theme of ['beet', 'dark']) {
     const p = await b.newPage({ viewport: { width: w, height: h } });
-    p.on('console', m => m.type() === 'error' && errs.push(`${dev}/${theme}: ${m.text()}`));
+    // 404 на data-show.json ожидаем: без своих данных страница переходит на демо
+    p.on('console', m => m.type() === 'error' && !/status of 404/.test(m.text()) && errs.push(`${dev}/${theme}: ${m.text()}`));
     p.on('pageerror', e => errs.push(`${dev}/${theme}: ${e.message}`));
     await p.addInitScript(t => { try { localStorage.setItem('sb-theme', t); } catch (e) {} }, theme);
     for (const tab of tabs) {
