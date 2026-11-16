@@ -250,7 +250,9 @@
     var box = h('div');
     return head(['на старте ' + act.cards.join(', ')], 'Все в сборе – закройте круг. Круг идёт по алфавиту ников, опоздавший ждёт следующего раунда.').concat([
       canWrite() ? null : readonlyNote(),
-      h('div', { class: 'row' }, h('button', { class: 'go', disabled: !canWrite() || act.cards.length < 2, onclick: function () { post('ring', {}).then(function (r) { toast('круг закрыт · ' + r.sync); load(); }, out(box)); } }, 'закрыть круг')),
+      h('div', { class: 'row' },
+        h('button', { class: 'go', disabled: !canWrite() || act.cards.length < 2, onclick: function () { post('ring', {}).then(function (r) { toast('круг закрыт · ' + r.sync); load(); }, out(box)); } }, 'закрыть круг'),
+        h('button', { disabled: !canWrite() || act.cards.length < 2, onclick: function () { post('ring', { legs: 1 }).then(function (r) { toast('короткий круг закрыт · ' + r.sync); load(); }, out(box)); } }, 'короткий круг: один этап')),
       box]);
   }
   function viewLeg(act) {

@@ -4,7 +4,7 @@
   python3 table.py next   <стол> <ник>                      что делать сейчас
   python3 table.py lint   <SKILL.md>                        факты о тексте: стоп и глянь
   python3 table.py start  <стол> <ник> --skill F --card F   поставить skill на старт
-  python3 table.py ring   <стол>                            закрыть круг
+  python3 table.py ring   <стол> [--legs 1]                 закрыть круг; --legs 1 – короткий круг в один этап
   python3 table.py take   <стол> <ник>                      палочка этого этапа и записка
   python3 table.py pass   <стол> <ник> --skill F --leg F    передать палочку дальше
   python3 table.py skip   <стол> <ник дорожки>              не ждать бегуна: этап без правки
@@ -489,14 +489,17 @@ def do_start(table, rnd, nick, skill_text, card_text, source="свой skill"):
             "paths": [f"{rnd}/{nick}", "TRAIL.md"], "message": f"{rnd} · {nick} · старт · {name}"}
 
 
-def do_ring(table, rnd, who="стол"):
+def do_ring(table, rnd, legs=None):
     st = load(table, rnd)
     if st["ringClosed"]:
         raise Refuse("круг уже закрыт: " + " → ".join(st["ring"]))
     order = sorted(st["lanes"])
     if len(order) < 2:
         raise Refuse("для круга нужны хотя бы две дорожки на старте")
-    legs = min(DEFAULT_LEGS, len(order) - 1)
+    try:
+        legs = max(1, min(int(legs or DEFAULT_LEGS), len(order) - 1))
+    except (TypeError, ValueError):
+        raise Refuse("число этапов: 1 для короткого круга, 2 для полного")
     safe(table, rnd, "RING.md").write_text(
         f"# круг · {rnd}\n\nкруг: {' → '.join(order)}\nэтапов: {legs}\nзакрыт: {today()}\n", encoding="utf-8")
     return {"ring": order, "legs": legs, "paths": [f"{rnd}/RING.md"], "message": f"{rnd} · круг закрыт · {' → '.join(order)}"}
@@ -814,7 +817,7 @@ def serve(table, rnd, port, lan, use_git, share=False):
 
         def same_origin(self):
             origin = self.headers.get("Origin")
-            return not origin or origin == "http://" + (self.headers.get("Host") or "")
+            return not origin or origin in ("http://" + (self.headers.get("Host") or ""), "https://" + (self.headers.get("Host") or ""))
 
         def send(self, code, body, ctype="application/json; charset=utf-8"):
             data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8")
@@ -897,7 +900,7 @@ def serve(table, rnd, port, lan, use_git, share=False):
                             skill, source = KIT[d["kit"]].read_text(encoding="utf-8"), f"кит {d['kit']}"
                         r = do_start(table, rnd, need_nick(nick), skill, card_from(nick, d.get("card") or {}), source)
                     elif path == "/api/ring":
-                        r = do_ring(table, rnd)
+                        r = do_ring(table, rnd, d.get("legs"))
                     elif path == "/api/pass":
                         r = do_pass(table, rnd, nick, str(d.get("skill", "")), d.get("fields") or {})
                     elif path == "/api/unpack":
@@ -960,6 +963,7 @@ def main(argv=None):
     ap.add_argument("--card")
     ap.add_argument("--kit")
     ap.add_argument("--leg")
+    ap.add_argument("--legs", type=int)
     ap.add_argument("--verdict")
     ap.add_argument("--out")
     ap.add_argument("--bundle")
@@ -1008,7 +1012,7 @@ def main(argv=None):
                   f"принято правок {s['accepted']} из {s['decided']}")
             return 0
         if a.cmd == "ring":
-            r = do_ring(table, rnd)
+            r = do_ring(table, rnd, a.legs)
             print(f"круг закрыт: {' → '.join(r['ring'])} · этапов {r['legs']}")
         elif a.cmd == "unpack":
             r = do_unpack(table, rnd, read(a.bundle or a.nick))
