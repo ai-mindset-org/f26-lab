@@ -13,6 +13,8 @@
   const veiledKey = (t) => !!L2 && (veilKeys.has(t) || /(^|\/)\{person\}\s|^people\//.test(t));
   let veilRe = null; // names taken from the people files: masked wherever a file name or a file text is shown
   const veilText = (s) => (L2 && veilRe ? String(s || '').replace(veilRe, '$1⬡ человек') : s);
+  // hover hints in layer 2: for people/ and meetings/ only the folder and the type, the file name stays out
+  const tip = (p) => (L2 && /^(people|meetings)\//.test(p) ? `${p.split('/')[0]}/ · ${LAYERS[layerOf(p)].label}` : veilText(p));
   // replay: scenario.json · live: this computer's folder via the local server · team: the sprint folder from git, static state.json
   // the open copy (*.lab.aimindset.org) has no team state: Team lives on the team's internal show
   const TEAM_URL = 'access.html';
@@ -391,7 +393,7 @@
       return `<div class="fold"><b>${g ? `${esc(g)}/` : './'}</b> ${files.length}</div>` + files.map((f) => {
         const isNew = S.fresh.has(f.path) && t - S.fresh.get(f.path) < 1800;
         const name = g ? f.path.slice(g.length + 1) : f.path;
-        return `<div class="file${isNew ? ' new' : ''}${f.path === SEL ? ' sel' : ''}" data-p="${esc(f.path)}" title="${esc(f.path)}"><span class="g">${LAYERS[f.layer].glyph}</span><span>${esc(veilText(name))}</span></div>`;
+        return `<div class="file${isNew ? ' new' : ''}${f.path === SEL ? ' sel' : ''}" data-p="${esc(f.path)}" title="${esc(tip(f.path))}"><span class="g">${LAYERS[f.layer].glyph}</span><span>${esc(veilText(name))}</span></div>`;
       }).join('');
     }).join('');
     document.getElementById('fileCount').textContent = L2 ? [...S.files.keys()].filter((x) => !veiled(x)).length : S.files.size;
@@ -1572,7 +1574,7 @@
   function linkGroups(paths) {
     const g = new Map();
     for (const p of paths) { const L = layerOf(p); if (!g.has(L)) g.set(L, []); g.get(L).push(p); }
-    return [...g].map(([L, ps]) => `<span class="lg"><i>${LAYERS[L].glyph} ${LAYERS[L].label} ${ps.length}</i>${ps.slice(0, 12).map((x) => `<a data-p="${esc(x)}" title="${esc(x)}">${esc(veilText(base(x).replace(/^\{[a-z-]+\}\s+/, '')))}</a>`).join('')}${ps.length > 12 ? `<em>…ещё ${ps.length - 12}</em>` : ''}</span>`).join('');
+    return [...g].map(([L, ps]) => `<span class="lg"><i>${LAYERS[L].glyph} ${LAYERS[L].label} ${ps.length}</i>${ps.slice(0, 12).map((x) => `<a data-p="${esc(x)}" title="${esc(tip(x))}">${esc(veilText(base(x).replace(/^\{[a-z-]+\}\s+/, '')))}</a>`).join('')}${ps.length > 12 ? `<em>…ещё ${ps.length - 12}</em>` : ''}</span>`).join('');
   }
 
   resize();

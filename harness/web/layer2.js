@@ -1,8 +1,8 @@
 /* F26 self-harness · layer 2: a skill on the harness (?layer=2, synonym ?layer=skills)
  * loads before app.js. without the parameter this file does nothing and app.js runs as before.
  * with it: the finished build without the people layer, and a panel with three tabs –
- * сборка (replay the build), блоки (seven switches that dim their nodes on the graph), онтология (two word lists).
- * state lives in the address: &tab=build|blocks|onto · &off=skills,desc,mirror,reviewer,routes · &on=log,eval
+ * сборка (replay the build), блоки (eight switches that dim their nodes on the graph), онтология (three word lists).
+ * state lives in the address: &tab=build|blocks|onto · &off=skills,desc,mirror,reviewer,routes · &on=log,eval,mcp
  */
 (() => {
   'use strict';
@@ -18,6 +18,19 @@
     { k: 'eval', name: 'карточка проверки', map: 'evals/{eval} call-digest.md · заготовка', out: 'два результата сравнивают на глаз', def: false },
     { k: 'reviewer', name: 'проверяющий агент', map: 'дорожка «обзор недели» и её узел-агент', out: 'автор сам принимает свою работу', def: true },
     { k: 'routes', name: 'маршруты', map: 'три маршрута под графом: чат, файл, папка', out: 'skill работает только там, где его написали', def: true },
+    { k: 'mcp', name: 'внешние сервисы', map: 'MCP: транскрибатор, браузер, telegram · заготовка', out: 'skill работает только с тем, что уже лежит в папке', def: false },
+  ];
+  // three services outside the folder: label · the skill it feeds or serves · where it stands on the left edge (share of the stage height)
+  const MCP = [
+    ['l2:mcp-stt', 'mcp · транскрибатор', ['call-digest'], 0.15],
+    ['l2:mcp-web', 'mcp · браузер', ['ask-my-context', 'context'], 0.25],
+    ['l2:mcp-tg', 'mcp · telegram', ['weekly-review'], 0.35],
+  ];
+  const MECHANICS = [
+    ['rule', 'файл, который агент читает всегда'],
+    ['skill', 'файл, который агент берёт по описанию'],
+    ['hub', 'файл, который ведёт к другим файлам'],
+    ['свой слой', 'тот же принцип: файл, условие чтения, ссылки дальше'],
   ];
   const ALL_ON = 'все блоки на месте: skill находится, запускается и проверяется';
   const ROUTES = [['чат', 'текст skill вставлен в сообщение'], ['файл', 'SKILL.md приложен к запросу'], ['папка', 'агент находит skill сам']];
@@ -77,13 +90,15 @@
       <div class="l2-pane" data-l2pane="blocks">
         <div class="l2-list">${BLOCKS.map((b) => `<button type="button" class="l2-b" data-b="${b.k}" aria-pressed="true"><i></i><span><b>${esc(b.name)}</b><small>${esc(b.map)}</small></span><em></em></button>`).join('')}</div>
         <div class="l2-out" aria-live="polite"><span id="l2Tag"></span><p id="l2Out"></p></div>
-        <p class="cap">пунктир на карте – блок выключен. журнал запусков и карточка проверки – заготовки: их файлов в наборе пока нет</p>
+        <p class="cap">пунктир на карте – блок выключен. три заготовки: в наборе их пока нет</p>
       </div>
       <div class="l2-pane" data-l2pane="onto">
         <h3>восемь сущностей</h3>
-        <dl class="l2-dl">${ENTITIES.map(([w, d]) => `<dt>${esc(w)}</dt><dd>${esc(d)}</dd>`).join('')}</dl>
+        <dl class="l2-dl l2-short">${ENTITIES.map(([w, d]) => `<dt>${esc(w)}</dt><dd>${esc(d)}</dd>`).join('')}</dl>
+        <h3>одна механика</h3>
+        <dl class="l2-dl l2-short">${MECHANICS.map(([w, d]) => `<dt>${esc(w)}</dt><dd>${esc(d)}</dd>`).join('')}</dl>
         <h3>семь абстракций</h3>
-        <dl class="l2-dl">${ABSTRACTIONS.map(([w, d, u]) => `<dt>${esc(w)}</dt><dd>${esc(d)} <a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">источник ↗</a></dd>`).join('')}</dl>
+        <dl class="l2-dl">${ABSTRACTIONS.map(([w, d, u]) => `<dt><a href="${esc(u)}" target="_blank" rel="noopener" title="источник: ${esc(u)}">${esc(w)}&nbsp;↗</a></dt><dd>${esc(d)}</dd>`).join('')}</dl>
       </div>
     </div>`;
   const colR = document.getElementById('colR');
@@ -99,6 +114,12 @@
   const G = { nodeSel: null, linkSel: null };
   const blockOf = (d) => d.block || (d.file && d.file.path.startsWith('skills/') ? 'skills' : d.id === 'agent:reviewer' ? 'reviewer' : null);
   const isOff = (d) => { const k = d && blockOf(d); return !!k && !on[k]; };
+  // the services stand pinned on the left edge under the caption strip, clear of the labels of the folder
+  function pin(d) {
+    const r = document.getElementById('stage').getBoundingClientRect();
+    d.fx = Math.max(62, Math.max(320, r.width) * 0.085); d.fy = Math.max(300, r.height) * d.at;
+  }
+  window.addEventListener('resize', () => { if (G.nodeSel) G.nodeSel.each((d) => { if (d.block === 'mcp') pin(d); }); });
   function repaint() {
     if (!G.nodeSel) return;
     const byId = new Map(G.nodeSel.data().map((d) => [d.id, d]));
@@ -154,6 +175,7 @@
       l2mirror: { label: 'зеркало', sym: 'square', fill: false, size: 120, glyph: '□', ax: 0.2, ay: -0.2 },
       l2log: { label: 'журнал', sym: 'gate', fill: false, size: 130, glyph: '⊓', ax: 0.6, ay: -0.24 },
       l2eval: { label: 'проверка', sym: 'triangle', fill: true, size: 150, glyph: '▲', ax: 0.64, ay: -0.4 },
+      l2mcp: { label: 'внешний сервис', sym: 'wye', fill: false, size: 140, glyph: 'Y', ax: -0.92, ay: -0.6 },
     },
     veilNarr: 'people/ · карточка человека, в слое 2 скрыта',
     // extra nodes once skills/ exists: description, two mirrors, and two stubs the kit has no files for yet
@@ -172,6 +194,11 @@
       links.push({ source: 'l2:log', target: digest, kind: 'wiki' }, { source: 'l2:eval', target: digest, kind: 'wiki' }, { source: 'l2:log', target: 'l2:eval', kind: 'wiki' });
       const checks = [...files.keys()].find((p) => p.startsWith('evals/') && p.includes('checks'));
       if (checks) links.push({ source: 'l2:eval', target: checks, kind: 'wiki' });
+      for (const [id, title, wants, at] of MCP) {
+        const n = { id, layer: 'l2mcp', title, block: 'mcp', pad: 62, at }; pin(n); nodes.push(n);
+        const to = wants.map((w) => skills.find((p) => p.includes(w))).find(Boolean);
+        if (to) links.push({ source: id, target: to, kind: 'wiki' });
+      }
     },
     paint(nodeSel, linkSel) { G.nodeSel = nodeSel; G.linkSel = linkSel; repaint(); },
     mount(a) { api = a; },

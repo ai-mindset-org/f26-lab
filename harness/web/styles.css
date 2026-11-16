@@ -589,7 +589,7 @@ body.l2-tab-onto #colR{grid-template-rows:minmax(0,1fr)}
 .l2-body{overflow:auto; min-height:0; flex:1}
 .l2-go{background:var(--ink); color:var(--bg); padding:7px 16px; width:100%}
 .l2-go:hover{background:var(--accent); border-color:var(--accent)}
-.l2-b{display:grid; grid-template-columns:14px minmax(0,1fr) auto; gap:6px; align-items:center; width:100%; text-align:left; border:none; border-bottom:1px dotted var(--hair); padding:4px 0; letter-spacing:.02em}
+.l2-b{display:grid; grid-template-columns:14px minmax(0,1fr) auto; gap:6px; align-items:center; width:100%; text-align:left; border:none; border-bottom:1px dotted var(--hair); padding:2px 0; letter-spacing:.02em}
 .l2-b:hover{background:var(--hair); color:var(--ink)}
 .l2-b i{width:10px; height:10px; border:1.3px solid var(--ink); border-radius:50%; background:var(--ink)}
 .l2-b b{display:block; font-weight:500}
@@ -603,10 +603,11 @@ body.l2-tab-onto #colR{grid-template-rows:minmax(0,1fr)}
 .l2-out:not(.all) span{background:var(--accent-ink)}
 .l2-pane h3{font-size:10.5px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin:8px 0 4px}
 .l2-pane h3:first-child{margin-top:0}
-.l2-dl{margin:0; display:grid; grid-template-columns:96px minmax(0,1fr); gap:0 8px; font-size:11px; line-height:1.38}
+.l2-dl{margin:0; display:grid; grid-template-columns:96px minmax(0,1fr); gap:0 8px; font-size:10.5px; line-height:1.38}
+.l2-dl.l2-short{grid-template-columns:64px minmax(0,1fr)}
 .l2-dl dt,.l2-dl dd{margin:0; padding:2px 0; border-bottom:1px dotted var(--hair)}
 .l2-dl dt{font-weight:500; overflow-wrap:anywhere}
-.l2-dl a{color:var(--ink); text-decoration:none; border-bottom:1px solid var(--accent); white-space:nowrap}
+.l2-dl a{color:var(--ink); text-decoration:none; border-bottom:1px solid var(--accent)}
 #l2Routes{display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; border-top:1px solid var(--ink); margin:0 -10px; padding:6px 10px; font-size:10.5px}
 #l2Routes i{font-style:normal; color:var(--muted); letter-spacing:.16em; text-transform:uppercase; margin-right:4px}
 #l2Routes span{border:1px solid var(--ink); padding:1px 6px}
