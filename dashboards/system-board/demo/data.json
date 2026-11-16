@@ -1,0 +1,1126 @@
+{
+ "owner": "Маша · демо",
+ "generated": "2026-11-16 18:30",
+ "now": "18:30",
+ "mode": "demo",
+ "compact_window": 200000,
+ "always": [
+  {
+   "label": "правила агента",
+   "path": "~/notes/AGENTS.md",
+   "when": "каждая сессия",
+   "lines": 84,
+   "tokens": 2100
+  },
+  {
+   "label": "о себе",
+   "path": "~/notes/context/self.md",
+   "when": "каждая сессия",
+   "lines": 41,
+   "tokens": 900
+  },
+  {
+   "label": "индекс памяти",
+   "path": "~/.claude/memory/MEMORY.md",
+   "when": "строка на память",
+   "lines": 22,
+   "tokens": 640
+  }
+ ],
+ "sections": [
+  {
+   "title": "кто я и чем занимаюсь",
+   "critical": false,
+   "lines": 9,
+   "tokens": 260
+  },
+  {
+   "title": "как со мной говорить",
+   "critical": true,
+   "lines": 7,
+   "tokens": 190
+  },
+  {
+   "title": "где что лежит",
+   "critical": true,
+   "lines": 12,
+   "tokens": 330
+  },
+  {
+   "title": "имена файлов",
+   "critical": true,
+   "lines": 6,
+   "tokens": 150
+  },
+  {
+   "title": "что агент не делает без спроса",
+   "critical": true,
+   "lines": 8,
+   "tokens": 210
+  },
+  {
+   "title": "skills: когда какой",
+   "critical": false,
+   "lines": 14,
+   "tokens": 380
+  },
+  {
+   "title": "проекты сейчас",
+   "critical": false,
+   "lines": 10,
+   "tokens": 270
+  },
+  {
+   "title": "черновики и отправка",
+   "critical": false,
+   "lines": 5,
+   "tokens": 120
+  },
+  {
+   "title": "проверка результата",
+   "critical": false,
+   "lines": 6,
+   "tokens": 160
+  }
+ ],
+ "hooks": [
+  {
+   "event": "SessionStart",
+   "count": 2,
+   "scripts": [
+    "load-today.sh",
+    "inline"
+   ]
+  },
+  {
+   "event": "UserPromptSubmit",
+   "count": 1,
+   "scripts": [
+    "inline"
+   ]
+  },
+  {
+   "event": "PreToolUse",
+   "count": 0,
+   "scripts": []
+  },
+  {
+   "event": "PostToolUse",
+   "count": 1,
+   "scripts": [
+    "log-skill-run.sh"
+   ]
+  },
+  {
+   "event": "Stop",
+   "count": 1,
+   "scripts": [
+    "inline"
+   ]
+  },
+  {
+   "event": "PreCompact",
+   "count": 0,
+   "scripts": []
+  },
+  {
+   "event": "PostCompact",
+   "count": 0,
+   "scripts": []
+  },
+  {
+   "event": "SessionEnd",
+   "count": 1,
+   "scripts": [
+    "handoff.sh"
+   ]
+  }
+ ],
+ "skills": {
+  "counts": {
+   "команда": 12,
+   "личные": 27
+  },
+  "total": 39,
+  "header_tokens": 885,
+  "all": [
+   {
+    "n": "grill-me",
+    "s": "личные",
+    "l": 9,
+    "f": 1,
+    "d": "демо: что делает grill-me и когда его брать"
+   },
+   {
+    "n": "budget",
+    "s": "личные",
+    "l": 11,
+    "f": 2,
+    "d": "демо: что делает budget и когда его брать"
+   },
+   {
+    "n": "retro",
+    "s": "команда",
+    "l": 12,
+    "f": 2,
+    "d": "демо: что делает retro и когда его брать"
+   },
+   {
+    "n": "recipe",
+    "s": "личные",
+    "l": 12,
+    "f": 1,
+    "d": "демо: что делает recipe и когда его брать"
+   },
+   {
+    "n": "drafts",
+    "s": "личные",
+    "l": 12,
+    "f": 1,
+    "d": "демо: что делает drafts и когда его брать"
+   },
+   {
+    "n": "shopping",
+    "s": "личные",
+    "l": 13,
+    "f": 1,
+    "d": "демо: что делает shopping и когда его брать"
+   },
+   {
+    "n": "rewrite",
+    "s": "личные",
+    "l": 16,
+    "f": 1,
+    "d": "демо: что делает rewrite и когда его брать"
+   },
+   {
+    "n": "week-ahead",
+    "s": "личные",
+    "l": 18,
+    "f": 2,
+    "d": "демо: что делает week-ahead и когда его брать"
+   },
+   {
+    "n": "reading-notes",
+    "s": "личные",
+    "l": 20,
+    "f": 1,
+    "d": "демо: что делает reading-notes и когда его брать"
+   },
+   {
+    "n": "proposal",
+    "s": "команда",
+    "l": 22,
+    "f": 1,
+    "d": "демо: что делает proposal и когда его брать"
+   },
+   {
+    "n": "people-notes",
+    "s": "личные",
+    "l": 25,
+    "f": 2,
+    "d": "демо: что делает people-notes и когда его брать"
+   },
+   {
+    "n": "idea-capture",
+    "s": "личные",
+    "l": 26,
+    "f": 1,
+    "d": "демо: что делает idea-capture и когда его брать"
+   },
+   {
+    "n": "call-digest",
+    "s": "команда",
+    "l": 38,
+    "f": 2,
+    "d": "демо: что делает call-digest и когда его брать"
+   },
+   {
+    "n": "gift-ideas",
+    "s": "личные",
+    "l": 41,
+    "f": 2,
+    "d": "демо: что делает gift-ideas и когда его брать"
+   },
+   {
+    "n": "trip-plan",
+    "s": "личные",
+    "l": 58,
+    "f": 2,
+    "d": "демо: что делает trip-plan и когда его брать"
+   },
+   {
+    "n": "summarize-link",
+    "s": "личные",
+    "l": 59,
+    "f": 1,
+    "d": "демо: что делает summarize-link и когда его брать"
+   },
+   {
+    "n": "daily-plan",
+    "s": "личные",
+    "l": 64,
+    "f": 2,
+    "d": "демо: что делает daily-plan и когда его брать"
+   },
+   {
+    "n": "learning-log",
+    "s": "личные",
+    "l": 64,
+    "f": 1,
+    "d": "демо: что делает learning-log и когда его брать"
+   },
+   {
+    "n": "okr-check",
+    "s": "команда",
+    "l": 72,
+    "f": 1,
+    "d": "демо: что делает okr-check и когда его брать"
+   },
+   {
+    "n": "evening-review",
+    "s": "личные",
+    "l": 80,
+    "f": 2,
+    "d": "демо: что делает evening-review и когда его брать"
+   },
+   {
+    "n": "mindmap",
+    "s": "личные",
+    "l": 91,
+    "f": 1,
+    "d": "демо: что делает mindmap и когда его брать"
+   },
+   {
+    "n": "inbox-zero",
+    "s": "личные",
+    "l": 94,
+    "f": 2,
+    "d": "демо: что делает inbox-zero и когда его брать"
+   },
+   {
+    "n": "workout",
+    "s": "личные",
+    "l": 133,
+    "f": 2,
+    "d": "демо: что делает workout и когда его брать"
+   },
+   {
+    "n": "focus-block",
+    "s": "личные",
+    "l": 150,
+    "f": 1,
+    "d": "демо: что делает focus-block и когда его брать"
+   },
+   {
+    "n": "habit-log",
+    "s": "личные",
+    "l": 179,
+    "f": 1,
+    "d": "демо: что делает habit-log и когда его брать"
+   },
+   {
+    "n": "inbox-triage",
+    "s": "команда",
+    "l": 182,
+    "f": 1,
+    "d": "демо: что делает inbox-triage и когда его брать"
+   },
+   {
+    "n": "decision-log",
+    "s": "личные",
+    "l": 188,
+    "f": 1,
+    "d": "демо: что делает decision-log и когда его брать"
+   },
+   {
+    "n": "weekly-review",
+    "s": "команда",
+    "l": 212,
+    "f": 1,
+    "d": "демо: что делает weekly-review и когда его брать"
+   },
+   {
+    "n": "meeting-notes",
+    "s": "команда",
+    "l": 242,
+    "f": 2,
+    "d": "демо: что делает meeting-notes и когда его брать"
+   },
+   {
+    "n": "journal",
+    "s": "личные",
+    "l": 251,
+    "f": 1,
+    "d": "демо: что делает journal и когда его брать"
+   },
+   {
+    "n": "deep-work",
+    "s": "личные",
+    "l": 315,
+    "f": 1,
+    "d": "демо: что делает deep-work и когда его брать"
+   },
+   {
+    "n": "release-notes",
+    "s": "команда",
+    "l": 426,
+    "f": 3,
+    "d": "демо: что делает release-notes и когда его брать"
+   },
+   {
+    "n": "voice-memo",
+    "s": "личные",
+    "l": 612,
+    "f": 4,
+    "d": "демо: что делает voice-memo и когда его брать"
+   },
+   {
+    "n": "translate",
+    "s": "личные",
+    "l": 622,
+    "f": 4,
+    "d": "демо: что делает translate и когда его брать"
+   },
+   {
+    "n": "client-brief",
+    "s": "команда",
+    "l": 640,
+    "f": 3,
+    "d": "демо: что делает client-brief и когда его брать"
+   },
+   {
+    "n": "slide-outline",
+    "s": "личные",
+    "l": 952,
+    "f": 7,
+    "d": "демо: что делает slide-outline и когда его брать"
+   },
+   {
+    "n": "onboarding",
+    "s": "команда",
+    "l": 1006,
+    "f": 7,
+    "d": "демо: что делает onboarding и когда его брать"
+   },
+   {
+    "n": "content-plan",
+    "s": "команда",
+    "l": 1480,
+    "f": 10,
+    "d": "демо: что делает content-plan и когда его брать"
+   },
+   {
+    "n": "lead-research",
+    "s": "команда",
+    "l": 2900,
+    "f": 18,
+    "d": "демо: что делает lead-research и когда его брать"
+   }
+  ],
+  "ladder": [
+   {
+    "name": "grill-me",
+    "lines": 9
+   },
+   {
+    "name": "call-digest",
+    "lines": 38
+   },
+   {
+    "name": "weekly-review",
+    "lines": 212
+   },
+   {
+    "name": "lead-research",
+    "lines": 2900
+   }
+  ],
+  "updates": [
+   {
+    "day": "2026-11-03",
+    "by": {
+     "личные": 1
+    }
+   },
+   {
+    "day": "2026-11-04",
+    "by": {}
+   },
+   {
+    "day": "2026-11-05",
+    "by": {
+     "команда": 2
+    }
+   },
+   {
+    "day": "2026-11-06",
+    "by": {
+     "личные": 2
+    }
+   },
+   {
+    "day": "2026-11-07",
+    "by": {}
+   },
+   {
+    "day": "2026-11-08",
+    "by": {
+     "личные": 1
+    }
+   },
+   {
+    "day": "2026-11-09",
+    "by": {}
+   },
+   {
+    "day": "2026-11-10",
+    "by": {}
+   },
+   {
+    "day": "2026-11-11",
+    "by": {
+     "личные": 3,
+     "команда": 1
+    }
+   },
+   {
+    "day": "2026-11-12",
+    "by": {
+     "команда": 2
+    }
+   },
+   {
+    "day": "2026-11-13",
+    "by": {
+     "личные": 2,
+     "команда": 1
+    }
+   },
+   {
+    "day": "2026-11-14",
+    "by": {
+     "личные": 1
+    }
+   },
+   {
+    "day": "2026-11-15",
+    "by": {}
+   },
+   {
+    "day": "2026-11-16",
+    "by": {
+     "личные": 2,
+     "команда": 1
+    }
+   }
+  ],
+  "recent": [
+   {
+    "n": "daily-plan",
+    "s": "личные",
+    "when": "16.11 09:12",
+    "t": "09:12"
+   },
+   {
+    "n": "call-digest",
+    "s": "команда",
+    "when": "16.11 13:40",
+    "t": "13:40"
+   },
+   {
+    "n": "evening-review",
+    "s": "личные",
+    "when": "16.11 18:05",
+    "t": "18:05"
+   },
+   {
+    "n": "content-plan",
+    "s": "команда",
+    "when": "15.11 17:20",
+    "t": null
+   },
+   {
+    "n": "journal",
+    "s": "личные",
+    "when": "14.11 22:10",
+    "t": null
+   },
+   {
+    "n": "weekly-review",
+    "s": "команда",
+    "when": "13.11 19:02",
+    "t": null
+   },
+   {
+    "n": "grill-me",
+    "s": "личные",
+    "when": "12.11 11:45",
+    "t": null
+   },
+   {
+    "n": "reading-notes",
+    "s": "личные",
+    "when": "10.11 21:30",
+    "t": null
+   }
+  ]
+ },
+ "sessions": [
+  {
+   "tool": "claude",
+   "project": "~/notes",
+   "title": "план дня по календарю и задачам",
+   "segs": [
+    [
+     "08:40",
+     "09:15"
+    ]
+   ],
+   "start": "08:40",
+   "prompts": 4,
+   "tools": 31,
+   "skills": [
+    "daily-plan"
+   ]
+  },
+  {
+   "tool": "claude",
+   "project": "~/notes",
+   "title": "разбор звонка с клиентом",
+   "segs": [
+    [
+     "11:05",
+     "11:50"
+    ],
+    [
+     "13:30",
+     "13:55"
+    ]
+   ],
+   "start": "11:05",
+   "prompts": 7,
+   "tools": 64,
+   "skills": [
+    "call-digest"
+   ]
+  },
+  {
+   "tool": "claude",
+   "project": "~/work/site",
+   "title": "лендинг: блок цен",
+   "segs": [
+    [
+     "12:10",
+     "12:58"
+    ]
+   ],
+   "start": "12:10",
+   "prompts": 5,
+   "tools": 88,
+   "skills": []
+  },
+  {
+   "tool": "claude",
+   "project": "~/notes",
+   "title": "первый skill: обещания после звонка",
+   "segs": [
+    [
+     "14:20",
+     "15:40"
+    ]
+   ],
+   "start": "14:20",
+   "prompts": 11,
+   "tools": 120,
+   "skills": [
+    "grill-me",
+    "call-digest"
+   ]
+  },
+  {
+   "tool": "claude",
+   "project": "~/notes",
+   "title": "тест skill в чистом чате",
+   "segs": [
+    [
+     "15:50",
+     "16:05"
+    ]
+   ],
+   "start": "15:50",
+   "prompts": 2,
+   "tools": 14,
+   "skills": [
+    "call-digest"
+   ]
+  },
+  {
+   "tool": "claude",
+   "project": "~/notes",
+   "title": "дашборд своей системы",
+   "segs": [
+    [
+     "16:30",
+     "17:45"
+    ]
+   ],
+   "start": "16:30",
+   "prompts": 9,
+   "tools": 140,
+   "skills": []
+  },
+  {
+   "tool": "claude",
+   "project": "~/notes",
+   "title": "вечерний разбор дня",
+   "segs": [
+    [
+     "18:00",
+     "18:12"
+    ]
+   ],
+   "start": "18:00",
+   "prompts": 3,
+   "tools": 18,
+   "skills": [
+    "evening-review"
+   ]
+  },
+  {
+   "tool": "codex",
+   "project": "~/work/site",
+   "title": "site",
+   "segs": [
+    [
+     "10:00",
+     "10:40"
+    ],
+    [
+     "13:00",
+     "13:20"
+    ]
+   ],
+   "start": "10:00",
+   "prompts": 0,
+   "tools": 52,
+   "skills": []
+  },
+  {
+   "tool": "codex",
+   "project": "~/notes",
+   "title": "notes",
+   "segs": [
+    [
+     "15:00",
+     "15:18"
+    ]
+   ],
+   "start": "15:00",
+   "prompts": 0,
+   "tools": 22,
+   "skills": [
+    "call-digest"
+   ]
+  },
+  {
+   "tool": "codex",
+   "project": "~/work/bot",
+   "title": "bot",
+   "segs": [
+    [
+     "16:40",
+     "17:30"
+    ]
+   ],
+   "start": "16:40",
+   "prompts": 0,
+   "tools": 47,
+   "skills": []
+  }
+ ],
+ "runs": {
+  "claude": [
+   [
+    "call-digest",
+    4
+   ],
+   [
+    "daily-plan",
+    1
+   ],
+   [
+    "grill-me",
+    1
+   ],
+   [
+    "evening-review",
+    1
+   ]
+  ],
+  "codex": [
+   [
+    "call-digest",
+    2
+   ],
+   [
+    "release-notes",
+    1
+   ]
+  ]
+ },
+ "routes": {
+  "claude_auto": 5,
+  "claude_slash": 2,
+  "codex_read": 3
+ },
+ "hum": [
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  4,
+  0,
+  0,
+  7,
+  5,
+  0,
+  11,
+  2,
+  9,
+  0,
+  3,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "agt": [
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  31,
+  0,
+  52,
+  64,
+  88,
+  0,
+  120,
+  36,
+  187,
+  0,
+  18,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "telegram": [
+  {
+   "t": "09:20",
+   "chat": "чат лабы",
+   "me": true,
+   "text": "сделала папку контекста, self.md на 40 строк"
+  },
+  {
+   "t": "09:31",
+   "chat": "чат лабы",
+   "me": false,
+   "text": ""
+  },
+  {
+   "t": "09:44",
+   "chat": "чат лабы",
+   "me": false,
+   "text": ""
+  },
+  {
+   "t": "12:02",
+   "chat": "тройка",
+   "me": false,
+   "text": ""
+  },
+  {
+   "t": "12:15",
+   "chat": "тройка",
+   "me": true,
+   "text": "кто тестирует skill друг у друга вечером?"
+  },
+  {
+   "t": "15:45",
+   "chat": "чат лабы",
+   "me": true,
+   "text": "call-digest нашёл 3 обещания из 4, четвёртое без срока – ушло в «уточнить»"
+  },
+  {
+   "t": "16:10",
+   "chat": "чат лабы",
+   "me": false,
+   "text": ""
+  },
+  {
+   "t": "16:12",
+   "chat": "чат лабы",
+   "me": false,
+   "text": ""
+  },
+  {
+   "t": "18:20",
+   "chat": "тройка",
+   "me": false,
+   "text": ""
+  }
+ ],
+ "vault": {
+  "files": [
+   {
+    "vault": "~/notes",
+    "name": "{review} вечер – 2026-11-16",
+    "type": "review",
+    "created": true,
+    "t": "18:10"
+   },
+   {
+    "vault": "~/notes",
+    "name": "{guide} мой дашборд – 2026-11-16",
+    "type": "guide",
+    "created": true,
+    "t": "17:40"
+   },
+   {
+    "vault": "~/notes",
+    "name": "{log} skill runs",
+    "type": "log",
+    "created": false,
+    "t": "15:59"
+   },
+   {
+    "vault": "~/notes",
+    "name": "{eval} call-digest",
+    "type": "eval",
+    "created": true,
+    "t": "15:41"
+   },
+   {
+    "vault": "~/notes",
+    "name": "SKILL",
+    "type": "skill",
+    "created": true,
+    "t": "14:40"
+   },
+   {
+    "vault": "~/notes",
+    "name": "{draft} письмо клиенту – 2026-11-16",
+    "type": "draft",
+    "created": true,
+    "t": "13:50"
+   },
+   {
+    "vault": "~/notes",
+    "name": "{log} skill runs",
+    "type": "log",
+    "created": false,
+    "t": "11:58"
+   },
+   {
+    "vault": "~/notes",
+    "name": "{meeting} звонок с клиентом – 2026-11-16",
+    "type": "meeting",
+    "created": true,
+    "t": "11:52"
+   },
+   {
+    "vault": "~/notes",
+    "name": "{plan} день – 2026-11-16",
+    "type": "plan",
+    "created": true,
+    "t": "08:55"
+   }
+  ],
+  "created": 7,
+  "modified": 2,
+  "by_type": [
+   [
+    "review",
+    1
+   ],
+   [
+    "guide",
+    1
+   ],
+   [
+    "eval",
+    1
+   ],
+   [
+    "skill",
+    1
+   ],
+   [
+    "draft",
+    1
+   ],
+   [
+    "meeting",
+    1
+   ],
+   [
+    "plan",
+    1
+   ]
+  ]
+ },
+ "commits": [
+  {
+   "t": "09:00",
+   "repo": "notes",
+   "subject": "",
+   "auto": true
+  },
+  {
+   "t": "11:00",
+   "repo": "notes",
+   "subject": "",
+   "auto": true
+  },
+  {
+   "t": "12:58",
+   "repo": "notes",
+   "subject": "",
+   "auto": false
+  },
+  {
+   "t": "13:00",
+   "repo": "notes",
+   "subject": "",
+   "auto": true
+  },
+  {
+   "t": "15:00",
+   "repo": "notes",
+   "subject": "",
+   "auto": true
+  },
+  {
+   "t": "15:42",
+   "repo": "notes",
+   "subject": "",
+   "auto": false
+  },
+  {
+   "t": "17:00",
+   "repo": "notes",
+   "subject": "",
+   "auto": true
+  },
+  {
+   "t": "17:46",
+   "repo": "notes",
+   "subject": "",
+   "auto": false
+  }
+ ],
+ "memory": {
+  "feedback": 9,
+  "project": 6,
+  "user": 3,
+  "reference": 4
+ },
+ "roots": [
+  {
+   "root": "~/notes",
+   "role": "волт Obsidian: контекст, заметки, журнал",
+   "parts": [
+    [
+     "meetings/",
+     "86 md"
+    ],
+    [
+     "context/",
+     "12 md"
+    ],
+    [
+     "projects/",
+     "40 md"
+    ],
+    [
+     "logs/",
+     "9 md"
+    ],
+    [
+     "drafts/",
+     "17 md"
+    ]
+   ]
+  },
+  {
+   "root": "~/.claude",
+   "role": "харнесс агента: правила, skills, память",
+   "parts": [
+    [
+     "skills/",
+     "39 папок"
+    ],
+    [
+     "memory/",
+     "22 md"
+    ],
+    [
+     "CLAUDE.md",
+     "84 строки"
+    ]
+   ]
+  },
+  {
+   "root": "~/work",
+   "role": "код и сайты",
+   "parts": [
+    [
+     "site/",
+     "проект"
+    ],
+    [
+     "bot/",
+     "проект"
+    ]
+   ]
+  }
+ ],
+ "places": [],
+ "lanes": [
+  {
+   "name": "cron",
+   "where": "мак",
+   "use": "план дня в 8:30"
+  },
+  {
+   "name": "Codex automations",
+   "where": "приложение Codex",
+   "use": "вечерний разбор"
+  }
+ ],
+ "servers": [],
+ "mcp": [
+  "calendar",
+  "telegram"
+ ],
+ "links": {
+  "kit": "https://github.com/ai-mindset-org/f26-lab/tree/main/dashboards/system-board"
+ },
+ "budget": {
+  "always": 3640,
+  "skill_headers": 885,
+  "window": 200000
+ }
+}

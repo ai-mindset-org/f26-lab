@@ -31,11 +31,16 @@ kit/            стартер-кит: папка context/ с self.md, AGENTS.md
 program/        программа встреч, начиная с воркшопа 1
 harness.md      как растёт личная система от папки до рутин
 harness/        граф и демо: как папка растёт по неделям – 12 фаз, 85 файлов, онтология, план и люди лабы, 9 практик
+dashboards/     system board: дашборд своей системы агентов – демо, сборщик, гайд, 15 шаблонов
 ```
 
 Граф роста папки: https://f26-harness.lab.aimindset.org/ · свой запуск – [`harness/README.md`](harness/README.md).
 
 [![self-harness F26: граф папки личного контекста, self.md в центре, люди лабы вокруг](harness/web/og.png)](https://f26-harness.lab.aimindset.org/)
+
+Дашборд своей системы: [`dashboards/system-board/`](dashboards/system-board/README.md) – таймлайн дня из сессий агентов, заметок и чатов, правила и skills. Демо открывается без установки, свои данные собирает `collect.py` и оставляет на твоей машине.
+
+[![system board: таймлайн дня, сессии агентов, заметки, skills](dashboards/system-board/assets/preview.png)](dashboards/system-board/README.md)
 
 Начать: скачай репозиторий (зелёная кнопка **Code → Download ZIP**) или `git clone https://github.com/ai-mindset-org/f26-lab`, открой `kit/README.md`.
 
