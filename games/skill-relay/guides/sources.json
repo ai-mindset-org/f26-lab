@@ -1,0 +1,26 @@
+{
+  "fetched": "2026-11-16",
+  "note": "Оригиналы в репозиторий не кладутся: у страниц документации свои права. Команда `python3 relay.py guides` скачивает их в guides/raw/ для чтения агентом.",
+  "guides": [
+    {"key": "A-BP", "title": "Anthropic · Skill authoring best practices", "url": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices", "raw": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices.md", "file": "anthropic-best-practices.md"},
+    {"key": "A-OV", "title": "Anthropic · Agent Skills overview", "url": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview", "raw": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview.md", "file": "anthropic-overview.md"},
+    {"key": "CC", "title": "Claude Code · Extend Claude with skills", "url": "https://code.claude.com/docs/en/skills", "raw": "https://code.claude.com/docs/en/skills.md", "file": "claude-code-skills.md"},
+    {"key": "AS-SPEC", "title": "agentskills.io · Specification", "url": "https://agentskills.io/specification", "raw": "https://agentskills.io/specification.md", "file": "agentskills-specification.md"},
+    {"key": "AS-BP", "title": "agentskills.io · Best practices for skill creators", "url": "https://agentskills.io/skill-creation/best-practices", "raw": "https://agentskills.io/skill-creation/best-practices.md", "file": "agentskills-best-practices.md"},
+    {"key": "AS-DESC", "title": "agentskills.io · Optimizing skill descriptions", "url": "https://agentskills.io/skill-creation/optimizing-descriptions", "raw": "https://agentskills.io/skill-creation/optimizing-descriptions.md", "file": "agentskills-optimizing-descriptions.md"},
+    {"key": "AS-EVAL", "title": "agentskills.io · Evaluating skill output quality", "url": "https://agentskills.io/skill-creation/evaluating-skills", "raw": "https://agentskills.io/skill-creation/evaluating-skills.md", "file": "agentskills-evaluating-skills.md"},
+    {"key": "AS-SCR", "title": "agentskills.io · Using scripts in skills", "url": "https://agentskills.io/skill-creation/using-scripts", "raw": "https://agentskills.io/skill-creation/using-scripts.md", "file": "agentskills-using-scripts.md"},
+    {"key": "CX", "title": "OpenAI Codex · Build skills", "url": "https://developers.openai.com/codex/skills", "raw": "https://developers.openai.com/codex/skills.md", "file": "openai-codex-skills.md"},
+    {"key": "SC", "title": "anthropics/skills · skill-creator (Apache-2.0)", "url": "https://github.com/anthropics/skills/tree/main/skills/skill-creator", "raw": "https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md", "file": "skill-creator-SKILL.md"},
+    {"key": "SP", "title": "obra/superpowers · writing-skills (MIT)", "url": "https://github.com/obra/superpowers/tree/main/skills/writing-skills", "raw": "https://raw.githubusercontent.com/obra/superpowers/main/skills/writing-skills/SKILL.md", "file": "superpowers-writing-skills.md"}
+  ],
+  "libraries": [
+    {"title": "anthropics/skills", "url": "https://github.com/anthropics/skills", "note": "эталонные skills: документы, skill-creator"},
+    {"title": "anthropics/knowledge-work-plugins", "url": "https://github.com/anthropics/knowledge-work-plugins", "note": "skills для нетехнической работы"},
+    {"title": "openai/skills", "url": "https://github.com/openai/skills", "note": "каталог Codex, папка .curated"},
+    {"title": "obra/superpowers", "url": "https://github.com/obra/superpowers", "note": "методика: планы, отладка, проверка перед сдачей"},
+    {"title": "K-Dense-AI/scientific-agent-skills", "url": "https://github.com/K-Dense-AI/scientific-agent-skills", "note": "исследования и анализ данных с проверками"},
+    {"title": "mvanhorn/last30days-skill", "url": "https://github.com/mvanhorn/last30days-skill", "note": "исследование темы по свежим источникам"},
+    {"title": "skills.sh", "url": "https://www.skills.sh/", "note": "каталог с числом установок"}
+  ]
+}
