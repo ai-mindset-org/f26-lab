@@ -1,0 +1,68 @@
+{
+ "owner": "твоё имя",
+ "claude_dir": "~/.claude",
+ "codex_dir": "~/.codex",
+ "memory_dir": "",
+ "compact_window": 200000,
+ "always": [
+  {
+   "label": "правила агента",
+   "path": "~/.claude/CLAUDE.md",
+   "when": "каждая сессия"
+  },
+  {
+   "label": "правила папки",
+   "path": "~/notes/AGENTS.md",
+   "when": "сессии из ~/notes"
+  },
+  {
+   "label": "о себе",
+   "path": "~/notes/context/self.md",
+   "when": "каждая сессия"
+  }
+ ],
+ "skill_dirs": [
+  {
+   "label": "в папке",
+   "path": "~/notes/.claude/skills"
+  },
+  {
+   "label": "личные",
+   "path": "~/.claude/skills"
+  }
+ ],
+ "public_skill_sources": [
+  "в папке"
+ ],
+ "ladder": [],
+ "vaults": [
+  {
+   "name": "волт",
+   "path": "~/notes"
+  }
+ ],
+ "repos": [],
+ "telegram": "telegram-export/result.json",
+ "telegram_me": "",
+ "roots": [
+  {
+   "path": "~/notes",
+   "role": "волт: контекст, заметки, журнал"
+  },
+  {
+   "path": "~/.claude",
+   "role": "харнесс агента: правила, skills, память"
+  }
+ ],
+ "places": [],
+ "lanes": [],
+ "servers": [],
+ "links": {
+  "kit": "https://github.com/ai-mindset-org/f26-lab/tree/main/dashboards/system-board"
+ },
+ "not_types": [],
+ "auto_commits": [
+  "vault backup",
+  "vault sync"
+ ]
+}

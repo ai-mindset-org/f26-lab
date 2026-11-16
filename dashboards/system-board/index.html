@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="ru" data-theme="beet">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>System Board · система агентов</title>
+<meta name="description" content="System Board: дашборд личной системы агентов. Таймлайн дня из сессий Claude Code и Codex, сообщений Telegram и файлов Obsidian; правила и хуки, которые грузятся до первого слова; skills по размеру и обновлениям; папки и места. Данные собирает collect.py, страница их рисует.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+<style>
+/* токены деки F26 W2 (f26-w2-frame/deck.css): beet и dark.
+   роли цвета: --hum человек, --agt Claude, --c3 Codex и команда. палитра проверена validate_palette.js */
+:root, html[data-theme="beet"]{
+  --bg:#eeeeee; --paper:#f8f8f7; --ink:#1d2125; --dim:#3a3f44; --soft:#62686d; --line:#d7d9da; --line2:#b8bcbf;
+  --acc:#f39a1e; --acc-ink:#a85700; --on-acc:#1d2125;
+  --hum:#c26f00; --agt:#7d55cc; --c3:#00909a;
+}
+html[data-theme="dark"]{
+  --bg:#0f0f0e; --paper:#191917; --ink:#f2efe6; --dim:#d2cec2; --soft:#a29e93; --line:#33322e; --line2:#4a4843;
+  --acc:#f28c1c; --acc-ink:#ffab55; --on-acc:#111111;
+  --hum:#cc720f; --agt:#9073d8; --c3:#14a2a8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="beet"]){
+    --bg:#0f0f0e; --paper:#191917; --ink:#f2efe6; --dim:#d2cec2; --soft:#a29e93; --line:#33322e; --line2:#4a4843;
+    --acc:#f28c1c; --acc-ink:#ffab55; --on-acc:#111111; --hum:#cc720f; --agt:#9073d8; --c3:#14a2a8;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+a{color:inherit}
+code,.mono{background:var(--bg);padding:0 4px;font-size:.88em;font-family:inherit}
+.wrap{max-width:1380px;margin:0 auto;padding:0 32px 80px}
+
+/* шапка и вкладки */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line2)}
+.bar1{display:flex;align-items:center;gap:16px;padding:12px 32px 0;font-size:13px;color:var(--soft);max-width:1444px;margin:0 auto}
+.bar1 .logo{height:24px;mix-blend-mode:multiply}
+html[data-theme="dark"] .bar1 .logo{filter:invert(1);mix-blend-mode:screen}
+.bar1 b{color:var(--ink)}
+.bar1 .sp{flex:1}
+.btn{border:1px solid var(--line2);background:var(--paper);color:var(--ink);font:inherit;font-size:12px;padding:5px 10px;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.chip{display:inline-block;border:1px solid var(--line2);padding:2px 8px;font-size:12px;background:var(--paper)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:700}
+.tabs{display:flex;gap:2px;padding:10px 32px 0;max-width:1444px;margin:0 auto;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font:inherit;font-size:14px;background:none;border:0;border-bottom:3px solid transparent;color:var(--soft);padding:8px 14px 9px;cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);font-weight:700;border-bottom-color:var(--acc)}
+.tab i{font-style:normal;font-size:11px;color:var(--soft);margin-right:6px}
+.pane{display:none}
+.pane.on{display:block}
+
+.hero{padding:40px 0 8px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:end}
+.tag{display:inline-block;background:var(--acc);color:var(--on-acc);font-weight:700;font-size:12px;letter-spacing:.08em;padding:5px 10px;text-transform:uppercase;margin-bottom:16px}
+h1{font-size:48px;line-height:1.05;font-weight:800;letter-spacing:-.01em}
+.lead{font-size:17px;line-height:1.5;color:var(--dim);margin-top:14px;max-width:760px}
+.mk{background:linear-gradient(transparent 58%,color-mix(in srgb,var(--acc) 45%,transparent) 58%)}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:28px}
+.kpi{background:var(--paper);border:1px solid var(--line2);padding:14px 16px}
+.kpi .k{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+.kpi .v{font-size:34px;font-weight:800;line-height:1.1;margin-top:6px;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:14px;font-weight:500;color:var(--soft)}
+.kpi .d{font-size:12px;color:var(--dim);margin-top:4px}
+
+section{margin-top:44px}
+.fh{display:flex;align-items:baseline;gap:16px;border-top:2px solid var(--ink);padding-top:12px;margin-bottom:20px;flex-wrap:wrap}
+.fh .fig{font-size:13px;color:var(--soft);letter-spacing:.04em}
+.fh h2{font-size:28px;line-height:1.15;font-weight:800}
+.fh .q{margin-left:auto;font-size:13px;color:var(--soft);max-width:560px;text-align:right}
+.note{font-size:13px;color:var(--soft)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--dim);margin-top:14px;align-items:center}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.legend i.sq{border-radius:2px}
+.card{background:var(--paper);border:1px solid var(--line2);padding:16px 18px}
+.card .k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+.card .t{font-size:19px;font-weight:700;margin-top:4px;line-height:1.25}
+.card .d{font-size:13px;color:var(--dim);margin-top:6px;line-height:1.5}
+
+/* таймлайн дня */
+.tl{background:var(--paper);border:1px solid var(--line2);padding:16px 16px 10px;overflow-x:auto}
+.tl svg{display:block;width:100%;min-width:880px;height:auto}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.feed{background:var(--paper);border:1px solid var(--line2);padding:14px 16px}
+.feed h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);font-weight:500;margin-bottom:10px}
+.feed .it{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;font-size:13px;padding:5px 0;border-top:1px dashed var(--line)}
+.feed .it:first-of-type{border-top:0}
+.feed .it .tm{color:var(--soft);font-variant-numeric:tabular-nums}
+.feed .it .tx{overflow:hidden;text-overflow:ellipsis}
+.feed .it .tx small{display:block;color:var(--soft);font-size:11.5px}
+.ty{display:inline-block;font-size:11px;border:1px solid var(--line2);padding:0 5px;margin-right:6px;color:var(--dim)}
+.ty.new{border-color:var(--acc);color:var(--acc-ink)}
+
+/* старт */
+.life{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:relative}
+.life::before{content:"";position:absolute;left:0;right:0;top:27px;height:2px;background:var(--ink)}
+.st{position:relative;padding:0 10px 0 0}
+.st .dot{width:16px;height:16px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);position:relative;top:20px;z-index:1}
+.st.hum .dot{background:var(--hum);border-color:var(--hum)}
+.st.load .dot{background:var(--acc);border-color:var(--ink);width:20px;height:20px;top:18px}
+.st .when{font-size:12px;color:var(--soft);margin-top:30px;text-transform:uppercase;letter-spacing:.05em}
+.st .name{font-size:17px;font-weight:700;margin-top:4px;line-height:1.2}
+.st .cnt{font-size:13px;color:var(--dim);margin-top:2px}
+.st ul{list-style:none;margin-top:10px;font-size:12px;line-height:1.55;color:var(--dim);border-left:1px dashed var(--line2);padding-left:9px}
+.st ul li.hk::before{content:"↳ ";color:var(--soft)}
+.st ul li b{color:var(--ink);font-weight:500}
+.budget{background:var(--paper);border:1px solid var(--line2);padding:22px 22px 18px}
+.bbar{display:flex;height:34px;gap:2px;background:var(--bg)}
+.bbar .seg{height:100%}
+.bbar .seg:first-child{border-radius:4px 0 0 4px}
+.scale{position:relative;height:40px;margin-top:6px;font-size:12px;color:var(--soft)}
+.scale .t{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.scale .t::before{content:"";position:absolute;left:50%;top:-44px;height:40px;border-left:1px dashed var(--line2)}
+.scale .t.z{color:var(--ink)}
+.blist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+.blist div{font-size:13px;color:var(--dim)}
+.blist div b{display:block;font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}
+.sw{display:inline-block;width:10px;height:10px;margin-right:6px}
+
+/* правила */
+.rules{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px}
+.rl{columns:2;column-gap:26px}
+.rr{display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:8px;align-items:center;font-size:12.5px;padding:3px 0;break-inside:avoid}
+.rr .rt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.rr.crit .rt{color:var(--ink);font-weight:500}
+.rr.crit .rt::before{content:"■ ";color:var(--acc)}
+.rr .rb{height:8px;background:var(--line);position:relative}
+.rr .rb i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);border-radius:0 4px 4px 0}
+.rr.crit .rb i{background:var(--acc-ink)}
+.side{display:flex;flex-direction:column;gap:12px}
+.ladder{display:flex;flex-direction:column;gap:6px;margin-top:10px;font-size:13px}
+.ladder span{display:flex;gap:10px;align-items:baseline}
+.ladder span b{min-width:20px;color:var(--acc-ink)}
+
+/* skills */
+.sk{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px}
+.panel{background:var(--paper);border:1px solid var(--line2);padding:18px 18px 10px}
+.panel svg{width:100%;height:auto;display:block;overflow:visible}
+.runs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.rb2{display:grid;grid-template-columns:minmax(0,1fr) 100px 22px;gap:8px;align-items:center;font-size:12.5px;padding:2px 0}
+.rb2 .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb2 .b{height:10px;position:relative}
+.rb2 .b i{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0}
+.rb2 .v{text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
+.routes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.route{background:var(--paper);border:1px solid var(--line2);padding:14px 16px}
+.route .cmd{font-size:20px;font-weight:800;color:var(--acc-ink)}
+.route .w{font-size:12px;color:var(--soft);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.route .d{font-size:13px;color:var(--dim);margin-top:8px}
+.route .c{font-size:12px;margin-top:8px;border-top:1px dashed var(--line2);padding-top:6px}
+.upd{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:start}
+
+/* папки */
+.roots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.root{background:var(--paper);border:1px solid var(--line2);padding:16px 16px 14px}
+.root .rn{font-size:17px;font-weight:800}
+.root .rd{font-size:12.5px;color:var(--soft);margin-top:4px;min-height:36px}
+.root ul{list-style:none;margin-top:10px;font-size:13px;line-height:1.75;border-top:1px dashed var(--line2);padding-top:8px}
+.root{min-width:0}
+.root ul li{display:flex;justify-content:space-between;gap:10px;min-width:0}
+.root ul li span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.root ul li span:last-child{color:var(--soft);white-space:nowrap}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.dash{border:1px dashed var(--line2);padding:12px 16px;font-size:13px;color:var(--dim)}
+.dash{min-width:0;overflow-wrap:anywhere}
+.dash b{color:var(--ink);display:block}
+.places{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.pl{background:var(--paper);border:1px solid var(--line2);padding:12px 14px}
+.pl .pn{font-size:15px;font-weight:800}
+.pl .pp{font-size:11.5px;color:var(--soft);margin-top:2px;word-break:break-all}
+.pl .pr{font-size:12.5px;color:var(--dim);margin-top:8px}
+.pl .lv{font-size:12px;margin-top:8px}
+.pl .lv i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line2);margin-right:5px}
+.pl .lv.on i{background:var(--acc)}
+.lanes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:12px}
+
+/* как сделать */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow .fb{background:var(--paper);border:1px solid var(--line2);padding:12px 14px;flex:1;min-width:150px}
+.flow .fb b{display:block;font-size:15px}
+.flow .fb span{font-size:12.5px;color:var(--dim)}
+.flow .fb.acc{border:2px solid var(--acc)}
+.flow .ar{display:flex;align-items:center;padding:0 8px;color:var(--soft);font-size:18px}
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.step{background:var(--paper);border:1px solid var(--line2);padding:16px 18px;position:relative}
+.step::before{counter-increment:s;content:counter(s);position:absolute;top:12px;right:16px;font-size:36px;font-weight:800;color:var(--line2);line-height:1}
+.step h3{font-size:17px;margin-bottom:6px;padding-right:40px}
+.step p{font-size:13px;color:var(--dim)}
+.prompt{margin-top:10px;background:var(--bg);border-left:3px solid var(--acc);padding:10px 12px;font-size:12.5px;line-height:1.55;position:relative;white-space:pre-wrap}
+.prompt .cp{position:absolute;top:6px;right:6px}
+.rulesl{counter-reset:r;columns:2;column-gap:28px}
+.rulesl div{break-inside:avoid;padding:8px 0 8px 40px;position:relative;font-size:13.5px;border-top:1px dashed var(--line)}
+.rulesl div::before{counter-increment:r;content:counter(r,decimal-leading-zero);position:absolute;left:0;top:8px;color:var(--acc-ink);font-weight:800}
+.rulesl div b{display:block;font-size:14.5px}
+.rulesl div span{color:var(--dim)}
+.pats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.pat{background:var(--paper);border:1px solid var(--line2);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.pat .pk{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);display:flex;justify-content:space-between}
+.pat .pk em{font-style:normal;color:var(--acc-ink)}
+.pat .pt{font-size:16px;font-weight:700;line-height:1.25}
+.pat .pq{font-size:13px;color:var(--dim)}
+.pat .ps{font-size:12px;color:var(--soft);border-top:1px dashed var(--line2);padding-top:6px;margin-top:auto}
+.pat svg{width:100%;height:46px;display:block}
+.kit{display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:var(--ink);color:var(--bg);padding:20px 22px}
+.kit b{font-size:20px}
+.kit a{color:var(--bg);font-weight:700}
+.kit .btn{background:var(--acc);color:var(--on-acc);border-color:var(--acc);font-weight:700;text-decoration:none;font-size:13px;padding:8px 14px}
+
+.foot{margin-top:56px;border-top:1px solid var(--line2);padding-top:16px;font-size:12.5px;color:var(--soft);display:flex;gap:24px;flex-wrap:wrap}
+#tip{position:fixed;pointer-events:none;z-index:20;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.45;padding:7px 10px;max-width:360px;opacity:0;transition:opacity .08s}
+
+@media (max-width:1100px){
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .life{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:26px}
+  .life::before{display:none}
+  .places,.lanes{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .roots,.pats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .wrap{padding:0 16px 60px}
+  .bar1{padding:10px 16px 0;flex-wrap:wrap;gap:10px}
+  .bar1 .who{display:none}
+  .tabs{padding:6px 10px 0}
+  .tab{padding:8px 10px 9px;font-size:13px}
+  .hero{grid-template-columns:1fr;padding-top:26px}
+  h1{font-size:32px}
+  .lead{font-size:15px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi .v{font-size:26px}
+  .fh h2{font-size:22px}
+  .fh .q{margin-left:0;text-align:left}
+  .life{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rules,.sk,.runs,.upd,.cols3,.steps{grid-template-columns:1fr}
+  .rl,.rulesl{columns:1}
+  .roots,.grid3,.routes,.blist,.pats{grid-template-columns:1fr 1fr}
+  .places,.lanes{grid-template-columns:1fr 1fr}
+  .flow{flex-direction:column}
+  .flow .ar{padding:4px 0;justify-content:center;transform:rotate(90deg)}
+}
+@media (max-width:440px){
+  .roots,.grid3,.routes,.pats{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="bar1">
+    <img class="logo" src="assets/aim-logo.png" alt="AI Mindset">
+    <span><b>system board</b> <span class="who" id="who"></span></span>
+    <span class="sp"></span>
+    <span id="gen"></span>
+    <span class="chip" id="mode"></span>
+    <button class="btn" id="theme" title="S">тема</button>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab" data-p="today"><i>1</i>сегодня</button>
+    <button class="tab" data-p="start"><i>2</i>старт сессии</button>
+    <button class="tab" data-p="rules"><i>3</i>правила</button>
+    <button class="tab" data-p="skills"><i>4</i>skills</button>
+    <button class="tab" data-p="folders"><i>5</i>папки и места</button>
+    <button class="tab" data-p="howto"><i>6</i>как сделать свой</button>
+  </nav>
+</div>
+
+<div class="wrap">
+
+<!-- 1 · сегодня -->
+<div class="pane" id="p-today">
+  <div class="hero">
+    <div>
+      <div class="tag">system board · день системы</div>
+      <h1>что происходило в системе сегодня</h1>
+      <p class="lead">Сессии агентов, сообщения в чатах, новые заметки, обновлённые skills и коммиты на одной оси времени. <span class="mk">Цифры собирает <code>collect.py</code></span>, страница их только рисует.</p>
+    </div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <div class="fh"><span class="fig">fig.1</span><h2>таймлайн дня</h2><span class="q">строка – сессия агента, полоса – отрезок работы без паузы дольше 20 минут. ниже – сообщения, заметки, skills, коммиты</span></div>
+    <div class="tl"><svg id="tl"></svg></div>
+    <div class="legend" id="tlleg"></div>
+  </section>
+
+  <section>
+    <div class="fh"><span class="fig">fig.2</span><h2>лента</h2><span class="q">что именно появилось: свои сообщения, новые заметки, обновлённые skills</span></div>
+    <div class="cols3">
+      <div class="feed" id="f-tg"><h3>мои сообщения · telegram</h3></div>
+      <div class="feed" id="f-files"><h3>новые заметки · obsidian</h3></div>
+      <div class="feed" id="f-skills"><h3>skills обновлены</h3></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="fh"><span class="fig">fig.3</span><h2>ритм: человек и агенты</h2><span class="q">по часам. шкалы разные, поэтому два ряда, а не одна ось</span></div>
+    <div class="panel"><svg id="rh"></svg></div>
+  </section>
+</div>
+
+<!-- 2 · старт -->
+<div class="pane" id="p-start">
+  <section>
+    <div class="fh"><span class="fig">fig.4</span><h2>жизнь одной сессии</h2><span class="q">хуки из settings.json по событиям. человек вступает один раз – просьбой, остальное делает харнесс</span></div>
+    <div class="life" id="life"></div>
+    <div class="legend">
+      <span><i style="background:var(--acc);border:2px solid var(--ink)"></i>грузится в окно до первого слова</span>
+      <span><i style="background:var(--hum)"></i>ход человека</span>
+      <span><i style="background:var(--paper);border:2px solid var(--ink)"></i>хуки харнесса</span>
+    </div>
+  </section>
+  <section>
+    <div class="fh"><span class="fig">fig.5</span><h2>бюджет контекста</h2><span class="q">окно компакта. оценка по символам: кириллица ≈2.6, латиница ≈3.8 на токен</span></div>
+    <div class="budget"><div class="bbar" id="bbar"></div><div class="scale" id="scale"></div><div class="blist" id="blist"></div></div>
+  </section>
+</div>
+
+<!-- 3 · правила -->
+<div class="pane" id="p-rules">
+  <section>
+    <div class="fh"><span class="fig">fig.6</span><h2>правила, которые читаются всегда</h2><span class="q">разделы главного файла правил по весу. ■ – помечены CRITICAL</span></div>
+    <div class="rules"><div class="rl" id="rl"></div><div class="side" id="rside"></div></div>
+  </section>
+</div>
+
+<!-- 4 · skills -->
+<div class="pane" id="p-skills">
+  <section>
+    <div class="fh"><span class="fig">fig.7</span><h2>skills по размеру</h2><span class="q">точка – один skill, по горизонтали строки во всех его файлах, шкала логарифмическая</span></div>
+    <div class="sk">
+      <div><div class="panel"><svg id="strip"></svg></div><div class="legend" id="skleg"></div></div>
+      <div class="runs" id="runs"></div>
+    </div>
+  </section>
+  <section>
+    <div class="fh"><span class="fig">fig.8</span><h2>обновления за 14 дней</h2><span class="q">день, когда в папке skill менялся хоть один файл</span></div>
+    <div class="upd"><div class="panel"><svg id="updsvg"></svg></div><div class="feed" id="f-recent"><h3>последние правки</h3></div></div>
+  </section>
+  <section>
+    <div class="fh"><span class="fig">fig.9</span><h2>четыре маршрута запуска</h2><span class="q">один SKILL.md, четыре способа позвать</span></div>
+    <div class="routes" id="routes"></div>
+  </section>
+</div>
+
+<!-- 5 · папки -->
+<div class="pane" id="p-folders">
+  <section>
+    <div class="fh"><span class="fig">fig.10</span><h2>где что лежит</h2><span class="q">корни на машине и самые тяжёлые папки в каждом</span></div>
+    <div class="roots" id="roots"></div>
+    <div class="grid3" id="servers"></div>
+  </section>
+  <section id="sec-places">
+    <div class="fh"><span class="fig">fig.11</span><h2>места и планировщики</h2><span class="q">места: живые вкладки агентов сейчас. планировщики: у каждой задачи ровно один</span></div>
+    <div class="places" id="places"></div>
+    <div class="lanes" id="lanes"></div>
+  </section>
+</div>
+
+<!-- 6 · как сделать -->
+<div class="pane" id="p-howto">
+  <div class="hero">
+    <div>
+      <div class="tag">F26 · W2 · инструкция</div>
+      <h1>как собрать такой дашборд своей системы</h1>
+      <p class="lead">Сборщик читает папки, json лежит рядом, страница рисует. Агент делает всё по четырём просьбам, ты проверяешь глазами. Кит без чужих данных лежит в хабе лабы.</p>
+    </div>
+  </div>
+  <section>
+    <div class="fh"><span class="fig">fig.12</span><h2>как устроено</h2><span class="q">пять файлов в одной папке</span></div>
+    <div class="flow">
+      <div class="fb"><b>система</b><span>~/.claude · ~/.codex · волт Obsidian · папки skills · экспорт Telegram</span></div><div class="ar">→</div>
+      <div class="fb acc"><b>collect.py</b><span>только читает, настраивается в config.json</span></div><div class="ar">→</div>
+      <div class="fb"><b>data.json · data-show.json</b><span>полный для себя, без личного для показа</span></div><div class="ar">→</div>
+      <div class="fb"><b>index.html</b><span>вкладки, графики, наведение</span></div><div class="ar">→</div>
+      <div class="fb"><b>check.mjs → runs.md</b><span>проверка и строка журнала</span></div>
+    </div>
+  </section>
+  <section>
+    <div class="fh"><span class="fig">fig.13</span><h2>четыре просьбы агенту</h2><span class="q">каждую – в новом чате в папке кита. копируй и подставляй своё</span></div>
+    <div class="steps" id="steps"></div>
+  </section>
+  <section>
+    <div class="fh"><span class="fig">fig.14</span><h2>правила дашборда</h2><span class="q">по ним проверяй любой дашборд, свой и чужой</span></div>
+    <div class="rulesl" id="drules"></div>
+  </section>
+  <section>
+    <div class="fh"><span class="fig">fig.15</span><h2>что ещё можно показать из волта</h2><span class="q">шаблоны: вопрос, источник, форма. ● – уже есть на этой доске</span></div>
+    <div class="pats" id="pats"></div>
+  </section>
+  <section>
+    <div class="kit" id="kit"><b>кит в хабе лабы</b><span>index.html, collect.py, config.example.json, демо-данные, SKILL.md, гайд и шаблоны</span><a class="btn" id="kitlink" href="https://github.com/ai-mindset-org/f26-lab/tree/main/dashboards/system-board" target="_blank" rel="noopener">открыть на GitHub ↗</a></div>
+  </section>
+</div>
+
+<div class="foot">
+  <span>обновить: <code>python3 collect.py</code> · для показа <code>python3 collect.py --show</code></span>
+  <span>клавиши: 1–6 вкладки · S тема</span>
+  <span id="src"></span>
+</div>
+</div>
+<div id="tip"></div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const fmt = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace('.0', '') + 'k' : String(n);
+const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const mins = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+const tip = document.getElementById('tip');
+function hover(node, html){
+  node.addEventListener('mousemove', e => { tip.innerHTML = html; tip.style.opacity = 1;
+    tip.style.left = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; });
+  node.addEventListener('mouseleave', () => tip.style.opacity = 0);
+}
+
+// вкладки: адрес #today … #howto, клавиши 1–6
+const PANES = ['today', 'start', 'rules', 'skills', 'folders', 'howto'];
+function show(p){
+  if (!PANES.includes(p)) p = 'today';
+  document.querySelectorAll('.pane').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.p === p));
+  if (location.hash !== '#' + p) history.replaceState(null, '', location.search + '#' + p);
+  if (window.__D) draw(window.__D);
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => show(t.dataset.p));
+addEventListener('hashchange', () => show(location.hash.slice(1)));
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea/i.test(e.target.tagName)) return;
+  if (/^[1-6]$/.test(e.key)) show(PANES[+e.key - 1]);
+  if ('sSыЫ'.includes(e.key)) toggleTheme();
+});
+(() => { try { const t = localStorage.getItem('sb-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {} })();
+function toggleTheme(){ const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'beet' : 'dark';
+  try { localStorage.setItem('sb-theme', r.dataset.theme); } catch (e) {} if (window.__D) draw(window.__D); }
+document.getElementById('theme').onclick = toggleTheme;
+
+// данные: ?full → data.json · ?demo → demo/data.json · иначе data-show.json, без него демо
+const SRC = Q.has('full') ? ['data.json'] : Q.has('demo') ? ['demo/data.json'] : ['data-show.json', 'demo/data.json'];
+(async () => {
+  for (const s of SRC) {
+    try { const r = await fetch(s, {cache: 'no-store'}); if (!r.ok) continue; const D = await r.json(); D.__src = s; render(D); return; } catch (e) {}
+  }
+  document.querySelector('.wrap').prepend(el('p', 'note', 'нет данных: запусти python3 collect.py --show'));
+})();
+
+function render(D){
+  window.__D = D;
+  document.getElementById('who').textContent = D.owner ? '· ' + D.owner : '';
+  document.getElementById('gen').textContent = 'собрано ' + D.generated;
+  const m = document.getElementById('mode');
+  m.textContent = D.mode === 'demo' ? 'демо' : D.mode === 'show' ? 'показ' : 'полный';
+  if (D.mode !== 'full') m.classList.add('on');
+  document.getElementById('src').textContent = 'источник: ' + D.__src;
+  if (D.links && D.links.kit) document.getElementById('kitlink').href = D.links.kit;
+  static_(D);
+  show(location.hash.slice(1) || 'today');
+}
+
+function static_(D){
+  // KPI
+  const S = D.sessions, cl = S.filter(s => s.tool === 'claude'), cx = S.filter(s => s.tool === 'codex');
+  const hum = D.hum.reduce((a, b) => a + b, 0), agt = D.agt.reduce((a, b) => a + b, 0);
+  const tgMe = D.telegram.filter(t => t.me).length;
+  const skToday = D.skills.recent.filter(r => r.t).length;
+  const runs = D.runs.claude.concat(D.runs.codex).reduce((a, r) => a + r[1], 0);
+  const K = [
+    ['сессии', S.length, '', 'Claude ' + cl.length + ' · Codex ' + cx.length],
+    ['просьбы', hum, '', 'человек написал агентам'],
+    ['инструменты', fmt(agt), '', 'вызовов у агентов'],
+    ['skills', runs, 'раз', 'сработали · ' + skToday + ' обновлены'],
+    ['заметки', D.vault.created, 'новых', D.vault.modified + ' правок старых'],
+    ['telegram', D.telegram.length, '', 'в чатах · мои ' + tgMe],
+  ];
+  const kp = document.getElementById('kpis'); kp.innerHTML = '';
+  K.forEach(([k, v, s, d]) => kp.append(el('div', 'kpi', `<div class="k">${k}</div><div class="v">${v}${s ? ' <small>' + s + '</small>' : ''}</div><div class="d">${d}</div>`)));
+
+  // лента
+  const tg = document.getElementById('f-tg');
+  const mine = D.telegram.filter(t => t.me);
+  if (!mine.length) tg.append(el('div', 'note', 'своих сообщений сегодня нет'));
+  mine.slice(-10).reverse().forEach(t => tg.append(el('div', 'it', `<span class="tm">${t.t}</span><span class="tx">${esc(t.text || '· текст скрыт в показе')}<small>${esc(t.chat)}</small></span>`)));
+  const others = D.telegram.length - mine.length;
+  if (others) tg.append(el('div', 'note', `ещё ${others} сообщений других людей: на таймлайне точками, текст не хранится`));
+  const ff = document.getElementById('f-files');
+  const created = D.vault.files.filter(f => f.created);
+  created.slice(0, 11).forEach(f => ff.append(el('div', 'it', `<span class="tm">${f.t}</span><span class="tx"><span class="ty new">${esc(f.type || 'заметка')}</span>${esc(f.name || '')}<small>${esc(f.vault)}</small></span>`)));
+  if (D.vault.by_type.length) ff.append(el('div', 'note', 'по типам: ' + D.vault.by_type.slice(0, 6).map(([t, n]) => t + ' ' + n).join(' · ')));
+  const fs = document.getElementById('f-skills');
+  D.skills.recent.slice(0, 10).forEach(r => fs.append(el('div', 'it', `<span class="tm">${r.t || r.when.slice(0, 5)}</span><span class="tx">${esc(r.n)}<small>${esc(r.s)}${r.t ? ' · сегодня' : ' · ' + r.when}</small></span>`)));
+
+  // старт
+  const B = D.budget, H = Object.fromEntries(D.hooks.map(h => [h.event, h]));
+  const hk = ev => (H[ev] ? H[ev].scripts.filter(s => s !== 'inline').map(s => `<li class="hk">${esc(s)}</li>`).join('') : '');
+  const cnt = ev => (H[ev] ? H[ev].count : 0);
+  const stages = [
+    ['', '0 · старт', 'SessionStart', cnt('SessionStart') + ' хуков', hk('SessionStart')],
+    ['load', '1 · в окно', 'правила и индекс', '≈' + fmt(B.always) + ' токенов',
+      D.always.map(a => `<li><b>${esc(a.path.split('/').slice(-2).join('/'))}</b><br>${a.lines} строк · ≈${fmt(a.tokens)}</li>`).join('') +
+      `<li><b>заголовки ${D.skills.total} skills</b><br>≈${fmt(B.skill_headers)} · тело по вызову</li>` + (D.mcp.length ? `<li><b>${D.mcp.length} MCP-серверов</b><br>схемы по запросу</li>` : '')],
+    ['hum', '2 · человек', 'просьба', cnt('UserPromptSubmit') + ' хуков на вход', hk('UserPromptSubmit')],
+    ['', '3 · работа', 'инструменты', (cnt('PreToolUse') + cnt('PostToolUse')) + ' хуков до и после', hk('PostToolUse')],
+    ['', '4 · ход', 'Stop', cnt('Stop') + ' хуков', hk('Stop')],
+    ['', '5 · компакт', fmt(B.window), (cnt('PreCompact') + cnt('PostCompact')) + ' хуков', hk('PreCompact') + '<li>хендофф и закреплённое переживают компакт</li>'],
+    ['', '6 · конец', 'SessionEnd', cnt('SessionEnd') + ' хуков', hk('SessionEnd')],
+  ];
+  const life = document.getElementById('life'); life.innerHTML = '';
+  stages.forEach(([c, w, n, k, l]) => life.append(el('div', 'st ' + c, `<div class="dot"></div><div class="when">${w}</div><div class="name">${n}</div><div class="cnt">${k}</div><ul>${l}</ul>`)));
+
+  // правила
+  const rl = document.getElementById('rl'); rl.innerHTML = '';
+  const maxT = Math.max(1, ...D.sections.map(s => s.tokens));
+  D.sections.forEach(s => { const r = el('div', 'rr' + (s.critical ? ' crit' : ''), `<span class="rt">${esc(s.title)}</span><span class="rb"><i style="width:${Math.max(3, s.tokens / maxT * 100)}%"></i></span>`);
+    hover(r, `<b>${esc(s.title)}</b><br>${s.lines} строк · ≈${fmt(s.tokens)} токенов${s.critical ? '<br>помечено CRITICAL' : ''}`); rl.append(r); });
+  const g = D.always[0] || {lines: 0}, crit = D.sections.filter(s => s.critical).length;
+  const memN = Object.values(D.memory).reduce((a, b) => a + b, 0);
+  document.getElementById('rside').innerHTML = `
+    <div class="card"><div class="k">всегда</div><div class="t">${D.sections.length} разделов · ${g.lines} строк</div>
+      <div class="d">${crit} помечены CRITICAL. Ориентир – до 200 строк: процедура для одной работы уезжает в skill, в правилах остаётся строка «когда → skill». ${g.lines > 200 ? 'Сейчас на ' + (g.lines - 200) + ' строк больше.' : 'Сейчас в норме.'}</div></div>
+    ${memN ? `<div class="card"><div class="k">память агента</div><div class="t">${memN} фактов</div><div class="d">${Object.entries(D.memory).map(([k, v]) => k + ' ' + v).join(' · ')}. В окно попадает только индекс, факт читается по ссылке.</div></div>` : ''}
+    <div class="card"><div class="k">лестница повторения</div>
+      <div class="ladder"><span><b>1</b>шорткат повторяет движение</span><span><b>2</b>шаблон повторяет текст</span><span><b>3</b>skill повторяет работу, зовётся словами</span><span><b>4</b>рутина запускает skill по расписанию</span><span><b>5</b>агент сам по событию, с проверкой</span></div></div>`;
+
+  // skills: запуски
+  const runsEl = document.getElementById('runs'); runsEl.innerHTML = '';
+  const runList = (title, arr, color, unit) => {
+    const box = el('div', '', `<div class="note" style="margin-bottom:8px">${title}</div>`);
+    if (!arr.length) box.append(el('div', 'note', 'сегодня не было'));
+    const mx = Math.max(1, ...arr.map(a => a[1]));
+    arr.slice(0, 12).forEach(([n, v]) => { const r = el('div', 'rb2', `<span class="n">${esc(n)}</span><span class="b"><i style="width:${v / mx * 100}%;background:${color}"></i></span><span class="v">${v}</span>`);
+      hover(r, `<b>${esc(n)}</b> · ${v} ${unit}`); box.append(r); });
+    return box;
+  };
+  runsEl.append(runList('Claude · вызвал skill сегодня', D.runs.claude, 'var(--agt)', 'вызовов сегодня'));
+  runsEl.append(runList('Codex · прочитал SKILL.md сегодня', D.runs.codex, 'var(--c3)', 'чтений SKILL.md сегодня'));
+  const rc = D.routes || {};
+  const RT = [
+    ['/имя', 'Claude Code', 'Слэш в начале просьбы. Агент и сам берёт skill, если описание совпало с просьбой.', `сегодня сам: ${rc.claude_auto || 0} · через /: ${rc.claude_slash || 0}`],
+    ['$имя', 'Codex', 'Знак доллара или /skills. Codex находит SKILL.md в папке и читает его.', `сегодня прочитал SKILL.md: ${rc.codex_read || 0}`],
+    ['@имя', 'ChatGPT', 'Тот же формат папки, явный вызов через @ или по описанию.', 'один файл на три модели'],
+    ['SKILL.md', 'любой чат', '«Вот SKILL.md, выполни по нему на этом входе». Тест – в новом чистом чате.', 'маршрут без установки'],
+  ];
+  const routes = document.getElementById('routes'); routes.innerHTML = '';
+  RT.forEach(([c, w, d, n]) => routes.append(el('div', 'route', `<div class="cmd">${c}</div><div class="w">${w}</div><div class="d">${d}</div><div class="c">${n}</div>`)));
+  const fr = document.getElementById('f-recent');
+  D.skills.recent.slice(0, 12).forEach(r => fr.append(el('div', 'it', `<span class="tm">${r.when.slice(0, 5)}</span><span class="tx">${esc(r.n)}<small>${esc(r.s)} · ${r.when.slice(6)}</small></span>`)));
+
+  // папки
+  const roots = document.getElementById('roots'); roots.innerHTML = '';
+  D.roots.forEach(s => roots.append(el('div', 'root', `<div class="rn">${esc(s.root)}</div><div class="rd">${esc(s.role)}</div><ul>${s.parts.map(p => `<li><span>${esc(p[0])}</span><span>${esc(p[1])}</span></li>`).join('')}</ul>`)));
+  const sv = document.getElementById('servers'); sv.innerHTML = '';
+  D.servers.forEach(s => sv.append(el('div', 'dash', `<b>${esc(s.name)}</b><br>${esc(s.role)}`)));
+  if (!D.places.length && !D.lanes.length) document.getElementById('sec-places').style.display = 'none';
+  const pl = document.getElementById('places'); pl.innerHTML = '';
+  D.places.forEach(p => pl.append(el('div', 'pl', `<div class="pn">${esc(p.name)}</div><div class="pp">${esc(p.path)}</div><div class="pr">${esc(p.role)}</div><div class="lv${p.live ? ' on' : ''}"><i></i>${p.live ? p.live + ' вкладок сейчас' : 'тихо'}</div>`)));
+  const ln = document.getElementById('lanes'); ln.innerHTML = '';
+  D.lanes.forEach(l => ln.append(el('div', 'dash', `<b>${esc(l.name)}</b>${esc(l.where)}<br><span class="note">${esc(l.use)}</span>`)));
+
+  howto();
+}
+
+function howto(){
+  const ST = [
+    ['опись системы', 'Агент смотрит твои папки и выписывает, что читается всегда, где skills, где журнал. Ничего не меняет.',
+     'Посмотри мои папки: ~/.claude, ~/.codex и волт <путь>. Выпиши таблицей: что агент читает всегда, где лежат skills и правила, где журнал, куда уходит результат. Ничего не меняй. В конце – черновик config.json для collect.py из этой папки.'],
+    ['свои данные', 'collect.py уже умеет Claude Code, Codex, Obsidian и экспорт Telegram. Агент заполняет config.json и запускает.',
+     'Заполни config.json по config.example.json: мои пути к правилам, skills, волту. Запусти python3 collect.py и python3 collect.py --show. Покажи, какие разделы data.json пустые и почему.'],
+    ['свой вид', 'Страница уже есть. Агент меняет стиль и добавляет одну фигуру под твой вопрос.',
+     'Открой index.html через python3 -m http.server 8981. Поменяй токены цвета в :root на <мой референс>. Добавь одну фигуру: <вопрос, на который хочу видеть ответ каждый день>. Проверь на 390 px и в тёмной теме, покажи снимок.'],
+    ['в skill', 'Удачный путь записывается в SKILL.md: дальше дашборд обновляется одной фразой.',
+     'Запиши то, что мы сделали, в .claude/skills/system-board/SKILL.md короче 40 строк: цель, вход, шаги, проверка, журнал, никогда. Потом в новом чистом чате: «обнови дашборд системы» – и строка в runs.md.'],
+  ];
+  const st = document.getElementById('steps'); st.innerHTML = '';
+  ST.forEach(([h, p, pr]) => { const s = el('div', 'step', `<h3>${h}</h3><p>${p}</p><div class="prompt"><button class="btn cp">копировать</button>${esc(pr)}</div>`);
+    s.querySelector('.cp').onclick = e => { navigator.clipboard && navigator.clipboard.writeText(pr); e.target.textContent = 'скопировано'; setTimeout(() => e.target.textContent = 'копировать', 1400); };
+    st.append(s); });
+  const R = [
+    ['страница без цифр', 'Все числа живут в json. Страница их рисует и не знает ничего сама.'],
+    ['сборщик только читает', 'collect.py ничего не пишет в систему. Ошибка сборки не ломает работу.'],
+    ['два файла данных', 'Полный остаётся на машине. Для показа – отдельный, личное вырезается при сборке, до страницы.'],
+    ['фигура = вопрос', 'У каждой фигуры номер fig.N и вопрос в шапке. Нет вопроса – нет фигуры.'],
+    ['одна ось', 'Две величины разной шкалы – два ряда. Двух осей на одном графике нет.'],
+    ['цвет по роли', 'Человек, агент, вторая модель – три цвета на всю доску. Палитру проверяет скрипт, а не глаз.'],
+    ['наведение везде', 'Каждая полоса и точка отвечает на наведение: что, когда, сколько.'],
+    ['источник подписан', 'Под фигурой видно, откуда цифра и как считана. Оценка помечена знаком ≈.'],
+    ['проверка снимком', '1440 и 390 px, светлая и тёмная тема, ошибки консоли. Снимок смотришь глазами.'],
+    ['журнал запусков', 'runs.md: дата, что собрано, что поправить. Три строки показывают, что менять.'],
+  ];
+  const dr = document.getElementById('drules'); dr.innerHTML = '';
+  R.forEach(([b, s]) => dr.append(el('div', '', `<b>${b}</b><span>${s}</span>`)));
+  const PAT = [
+    ['on', 'таймлайн дня', 'где ушёл день: сессии, сообщения, заметки на одной оси', 'транскрипты сессий · git · экспорт чатов', 'tl'],
+    ['on', 'бюджет контекста', 'сколько окна съедено до первого слова', 'файлы правил, описания skills', 'bar'],
+    ['on', 'размер skills', 'какие skills простые, какие стали программами', 'папки skills: строки и файлы', 'dots'],
+    ['on', 'ритм человек / агент', 'сколько пишешь ты и сколько делают агенты', 'транскрипты по часам', 'bars'],
+    ['on', 'обновления skills', 'что ты чинишь чаще всего', 'mtime файлов или git log', 'heat'],
+    ['next', 'журнал запусков', 'какой skill падает и на чём', 'runs.md: PASS/FAIL по строкам', 'ticks'],
+    ['next', 'обещания после звонков', 'кто кому что должен и к какому сроку', 'skill call-digest на заметках встреч', 'list'],
+    ['next', 'поток заметок по типам', 'что ты производишь: планы, разборы, черновики', 'теги {type} в именах файлов', 'stack'],
+    ['next', 'граф ссылок', 'какие заметки держат систему', '[[ссылки]] между файлами волта', 'graph'],
+    ['next', 'рутины по расписанию', 'что работает без тебя и когда', 'cron, launchd, автоматизации Codex', 'tl'],
+    ['next', 'дрейф правил', 'что поменялось в правилах за неделю', 'git diff --stat по файлам правил', 'bars'],
+    ['next', 'сессия → результат', 'какие сессии закончились файлом, какие ничем', 'транскрипты + новые файлы за то же время', 'dots'],
+  ];
+  const pats = document.getElementById('pats'); pats.innerHTML = '';
+  PAT.forEach(([s, t, q, src, f]) => pats.append(el('div', 'pat', `<div class="pk"><span>${s === 'on' ? '● на доске' : '○ следующий'}</span><em>${f}</em></div>${glyph(f)}<div class="pt">${t}</div><div class="pq">${q}</div><div class="ps">${src}</div>`)));
+}
+
+// маленькие эскизы форм для карточек шаблонов
+function glyph(f){
+  const i = 'var(--ink)', a = 'var(--agt)', h = 'var(--hum)', c = 'var(--c3)', s = 'var(--line2)';
+  const w = (x) => `<svg viewBox="0 0 200 46" preserveAspectRatio="none">${x}</svg>`;
+  if (f === 'tl') return w(`<rect x="10" y="6" width="60" height="7" rx="3" fill="${a}"/><rect x="90" y="6" width="40" height="7" rx="3" fill="${a}"/><rect x="40" y="19" width="90" height="7" rx="3" fill="${c}"/><circle cx="60" cy="38" r="3.5" fill="${h}"/><circle cx="120" cy="38" r="3.5" fill="${h}"/><circle cx="170" cy="38" r="3.5" fill="${s}"/><line x1="182" x2="182" y1="0" y2="46" stroke="var(--acc)" stroke-width="2"/>`);
+  if (f === 'bar') return w(`<rect x="0" y="14" width="200" height="18" fill="${s}" opacity=".35"/><rect x="0" y="14" width="22" height="18" fill="${i}"/><rect x="24" y="14" width="10" height="18" fill="${a}"/><rect x="36" y="14" width="18" height="18" fill="${h}"/><line x1="120" x2="120" y1="8" y2="38" stroke="${s}" stroke-dasharray="2 2"/>`);
+  if (f === 'dots') return w(Array.from({length: 26}, (_, k) => { const x = 14 + k * 7, hgt = Math.round(5 - Math.abs(k - 12) / 3); return Array.from({length: Math.max(1, hgt)}, (_, j) => `<circle cx="${x}" cy="${38 - j * 7}" r="2.8" fill="${k % 3 ? a : c}"/>`).join(''); }).join(''));
+  if (f === 'bars') return w(`${[4,9,6,14,11,18,7].map((v, k) => `<rect x="${12 + k * 26}" y="${20 - v}" width="18" height="${v}" rx="2" fill="${h}"/>`).join('')}${[8,16,12,22,14,20,10].map((v, k) => `<rect x="${12 + k * 26}" y="${46 - v * .9}" width="18" height="${v * .9}" rx="2" fill="${a}"/>`).join('')}`);
+  if (f === 'heat') return w(Array.from({length: 14}, (_, k) => `<rect x="${4 + k * 14}" y="14" width="11" height="18" rx="2" fill="${c}" opacity="${[.15,.3,.1,.6,.2,.9,.4,.15,.5,.25,.8,.35,.6,1][k]}"/>`).join(''));
+  if (f === 'ticks') return w(Array.from({length: 22}, (_, k) => `<rect x="${6 + k * 9}" y="12" width="5" height="22" rx="1" fill="${[3,8,15].includes(k) ? h : c}"/>`).join(''));
+  if (f === 'list') return w(`${[0,1,2].map(k => `<rect x="0" y="${4 + k * 14}" width="${[150,110,170][k]}" height="8" rx="2" fill="${s}"/><circle cx="${[162,122,182][k]}" cy="${8 + k * 14}" r="4" fill="${k === 1 ? h : i}"/>`).join('')}`);
+  if (f === 'stack') return w(`${[[30,20,10],[40,10,20],[20,30,15],[50,15,10]].map((v, k) => `<rect x="${10 + k * 48}" y="${46 - v[0] * .6}" width="36" height="${v[0] * .6}" fill="${a}"/><rect x="${10 + k * 48}" y="${46 - (v[0] + v[1]) * .6 - 2}" width="36" height="${v[1] * .6}" fill="${c}"/>`).join('')}`);
+  if (f === 'graph') return w(`<line x1="40" y1="23" x2="100" y2="10" stroke="${s}"/><line x1="100" y1="10" x2="160" y2="28" stroke="${s}"/><line x1="100" y1="10" x2="110" y2="38" stroke="${s}"/><line x1="40" y1="23" x2="110" y2="38" stroke="${s}"/><circle cx="40" cy="23" r="5" fill="${c}"/><circle cx="100" cy="10" r="8" fill="${h}"/><circle cx="160" cy="28" r="4" fill="${a}"/><circle cx="110" cy="38" r="4" fill="${a}"/>`);
+  return '';
+}
+
+function draw(D){
+  const p = (document.querySelector('.pane.on') || {}).id;
+  if (p === 'p-today') { timeline(D); rhythm(D); }
+  if (p === 'p-start') budget(D);
+  if (p === 'p-skills') { strip(D); updates(D); }
+}
+
+function timeline(D){
+  const svg = document.getElementById('tl');
+  const W = 1300, L = 210, R = 16;
+  const all = [];
+  D.sessions.forEach(s => s.segs.forEach(g => { all.push(mins(g[0]), mins(g[1])); }));
+  D.telegram.forEach(t => all.push(mins(t.t)));
+  D.vault.files.forEach(f => all.push(mins(f.t)));
+  D.commits.forEach(c => all.push(mins(c.t)));
+  all.push(mins(D.now));
+  const t0 = Math.floor(Math.max(0, Math.min(...all) - 20) / 60) * 60, t1 = Math.min(24 * 60, Math.ceil((Math.max(...all) + 20) / 60) * 60);
+  const x = m => L + (m - t0) / (t1 - t0) * (W - L - R);
+  const cl = D.sessions.filter(s => s.tool === 'claude');
+  const cxm = {};
+  D.sessions.filter(s => s.tool === 'codex').forEach(s => { const k = s.project || s.title || s.start;
+    const r = cxm[k] || (cxm[k] = {tool: 'codex', title: D.mode !== 'show' ? (s.project || '').split('/').pop() : '', project: s.project, start: s.start, segs: [], tools: 0, prompts: 0, skills: [], n: 0, _i: D.sessions.indexOf(s)});
+    r.segs.push(...s.segs); r.tools += s.tools; r.n++; s.skills.forEach(k2 => r.skills.includes(k2) || r.skills.push(k2)); });
+  const cx = Object.values(cxm).sort((a, b) => a.start.localeCompare(b.start));
+  const ink = css('--ink'), soft = css('--soft'), line = css('--line'), line2 = css('--line2');
+  let y = 26, g = '', hits = [];
+  const label = (txt, yy, bold, col) => `<text x="0" y="${yy}" font-size="${bold ? 12.5 : 11.5}" ${bold ? 'font-weight="700"' : ''} fill="${col || (bold ? ink : soft)}" font-family="JetBrains Mono">${esc(txt)}</text>`;
+  // часы
+  for (let m = t0; m <= t1; m += 60) g += `<line x1="${x(m)}" x2="${x(m)}" y1="14" y2="__H__" stroke="${line}" stroke-width="1"/><text x="${x(m)}" y="10" font-size="11" fill="${soft}" text-anchor="middle" font-family="JetBrains Mono">${String(m / 60).padStart(2, '0')}:00</text>`;
+  const group = (name, list, color, rowH) => {
+    g += label(name + ' · ' + (name === 'Codex' ? D.sessions.filter(s => s.tool === 'codex').length + ' в ' + list.length + ' папках' : list.length), y + 4, true);
+    y += 12;
+    list.forEach((s, i) => {
+      const t = (s.title || s.project || '').trim();
+      const nm = (D.mode === 'full' || D.mode === 'demo') && t ? (t.length > 26 ? t.slice(0, 25) + '…' : t) : '#' + (i + 1) + ' · ' + s.start;
+      g += label(nm, y + rowH - 2, false);
+      const idx = s.tool === 'codex' ? 'c' + cx.indexOf(s) : D.sessions.indexOf(s);
+      s.segs.forEach(sg => { const a = x(mins(sg[0])), b = Math.max(x(mins(sg[1])), a + 4);
+        g += `<rect class="hit" data-k="s" data-i="${idx}" x="${a}" y="${y}" width="${b - a}" height="${rowH - 2}" rx="${Math.min(4, (rowH - 2) / 2)}" fill="${color}"/>`; });
+      y += rowH;
+    });
+    y += 14;
+  };
+  group('Claude Code', cl, css('--agt'), cl.length > 14 ? 10 : 13);
+  group('Codex', cx, css('--c3'), 13);
+  // события: Telegram, заметки, skills, коммиты
+  const ev = (name, items, draw) => { g += label(name, y + 12, true); g += `<line x1="${L}" x2="${W - R}" y1="${y + 8}" y2="${y + 8}" stroke="${line2}" stroke-dasharray="1 3"/>`; items.forEach((it, i) => g += draw(it, i, y + 8)); y += 30; };
+  ev('Telegram · ' + D.telegram.length, D.telegram, (t, i, cy) => `<circle class="hit" data-k="t" data-i="${i}" cx="${x(mins(t.t))}" cy="${cy}" r="${t.me ? 6 : 3.5}" fill="${t.me ? css('--hum') : soft}" stroke="${css('--paper')}" stroke-width="2"/>`);
+  const vf = D.vault.files.slice().reverse();
+  ev('заметки · ' + D.vault.files.length, vf, (f, i, cy) => `<rect class="hit" data-k="f" data-i="${i}" x="${x(mins(f.t)) - 1.5}" y="${cy - (f.created ? 8 : 5)}" width="3" height="${f.created ? 16 : 10}" fill="${f.created ? ink : line2}"/>`);
+  const skT = D.skills.recent.filter(r => r.t);
+  ev('skills · ' + skT.length, skT, (r, i, cy) => { const cxp = x(mins(r.t)); return `<path class="hit" data-k="k" data-i="${i}" d="M${cxp},${cy - 7} L${cxp + 7},${cy} L${cxp},${cy + 7} L${cxp - 7},${cy} Z" fill="${css('--acc')}" stroke="${ink}" stroke-width="1"/>`; });
+  ev('коммиты · ' + D.commits.length, D.commits, (c, i, cy) => `<rect class="hit" data-k="c" data-i="${i}" x="${x(mins(c.t)) - 1}" y="${cy - (c.auto ? 4 : 8)}" width="2" height="${c.auto ? 8 : 16}" fill="${c.auto ? line2 : css('--acc-ink')}"/>`);
+  // сейчас
+  const nx = x(mins(D.now));
+  g += `<line x1="${nx}" x2="${nx}" y1="14" y2="${y - 6}" stroke="${css('--acc')}" stroke-width="2"/><text x="${nx - 4}" y="${y + 6}" font-size="11.5" font-weight="700" fill="${css('--acc-ink')}" text-anchor="end" font-family="JetBrains Mono">сейчас ${D.now}</text>`;
+  g = g.replaceAll('__H__', y - 6);
+  svg.setAttribute('viewBox', `0 0 ${W} ${y + 12}`);
+  svg.innerHTML = g;
+  const vfRev = vf;
+  svg.querySelectorAll('.hit').forEach(n => {
+    const k = n.dataset.k, i = +n.dataset.i; let h = '';
+    if (k === 's') { const s = String(n.dataset.i).startsWith('c') ? cx[+n.dataset.i.slice(1)] : D.sessions[i]; h = `<b>${s.tool === 'claude' ? 'Claude Code' : 'Codex' + (s.n > 1 ? ' · ' + s.n + ' сессий' : '')} · с ${s.start}</b>${s.title ? '<br>' + esc(s.title) : ''}${s.project ? '<br>' + esc(s.project) : ''}<br>${s.segs.map(g => g[0] + '–' + g[1]).join(' · ')}<br>${s.prompts ? s.prompts + ' просьб · ' : ''}${s.tools} инструментов${s.skills.length ? '<br>skills: ' + esc(s.skills.join(', ')) : ''}`; }
+    if (k === 't') { const t = D.telegram[i]; h = `<b>${t.t} · ${esc(t.chat)}</b><br>${t.me ? (esc(t.text) || 'моё сообщение') : 'сообщение участника, текст не хранится'}`; }
+    if (k === 'f') { const f = vfRev[i]; h = `<b>${f.t} · ${f.created ? 'новая заметка' : 'правка'}</b><br>${f.type ? '{' + esc(f.type) + '} ' : ''}${esc(f.name)}<br>${esc(f.vault)}`; }
+    if (k === 'k') { const r = skT[i]; h = `<b>${r.t} · skill обновлён</b><br>${esc(r.n)} · ${esc(r.s)}`; }
+    if (k === 'c') { const c = D.commits[i]; h = `<b>${c.t} · ${esc(c.repo)}</b><br>${c.auto ? 'автокоммит' : 'коммит руками или агентом'}${c.subject ? '<br>' + esc(c.subject) : ''}`; }
+    hover(n, h);
+  });
+  document.getElementById('tlleg').innerHTML =
+    `<span><i class="sq" style="background:var(--agt)"></i>Claude Code</span><span><i class="sq" style="background:var(--c3)"></i>Codex</span>` +
+    `<span><i style="background:var(--hum)"></i>моё сообщение</span><span><i style="background:var(--soft);width:8px;height:8px"></i>чужое</span>` +
+    `<span><i class="sq" style="background:var(--ink);width:3px"></i>новая заметка</span><span><i class="sq" style="background:var(--acc)"></i>skill обновлён</span>` +
+    `<span><i class="sq" style="background:var(--acc-ink);width:3px"></i>коммит</span><span class="note">${D.mode !== 'show' ? (D.mode === 'demo' ? 'демо: вымышленные данные' : 'полный режим: названия видны') : 'показ: названия скрыты, номера по времени старта'}</span>`;
+}
+
+function rhythm(D){
+  const rh = document.getElementById('rh');
+  const hours = []; for (let h = 0; h < 24; h++) if (D.hum[h] || D.agt[h]) hours.push(h);
+  if (!hours.length) { rh.innerHTML = ''; return; }
+  const h0 = Math.max(0, Math.min(...hours) - 1), h1 = Math.min(23, Math.max(...hours) + 1);
+  const span = []; for (let h = h0; h <= h1; h++) span.push(h);
+  const RW = 1000, rowH = 76, gap = 34, left = 160, bw = (RW - left) / span.length;
+  let s = '';
+  const row = (arr, y, color, label) => { const mx = Math.max(1, ...span.map(h => arr[h]));
+    s += `<text x="0" y="${y + 18}" font-size="13" font-weight="700" fill="${css('--ink')}" font-family="JetBrains Mono">${label}</text>`;
+    s += `<text x="0" y="${y + 36}" font-size="12" fill="${css('--soft')}" font-family="JetBrains Mono">всего ${arr.reduce((a, b) => a + b, 0)} · пик ${mx}</text>`;
+    s += `<line x1="${left}" x2="${RW}" y1="${y + rowH}" y2="${y + rowH}" stroke="${css('--line2')}"/>`;
+    span.forEach((h, i) => { const v = arr[h]; if (!v) return; const hh = Math.max(4, v / mx * (rowH - 8));
+      s += `<path data-t="${label}|${h}|${v}" d="M${left + i * bw + 2},${y + rowH} v${-(hh - 4)} q0,-4 4,-4 h${bw - 12} q4,0 4,4 v${hh - 4} z" fill="${color}"/>`; }); };
+  row(D.hum, 0, css('--hum'), 'человек пишет');
+  row(D.agt, rowH + gap, css('--agt'), 'агенты вызывают');
+  span.forEach((h, i) => { s += `<text x="${left + i * bw + bw / 2}" y="${2 * rowH + gap + 20}" font-size="12" fill="${css('--soft')}" text-anchor="middle" font-family="JetBrains Mono">${h}:00</text>`; });
+  rh.setAttribute('viewBox', `0 0 ${RW} ${2 * rowH + gap + 28}`);
+  rh.innerHTML = s;
+  rh.querySelectorAll('path').forEach(p => { const [l, h, v] = p.dataset.t.split('|'); hover(p, `<b>${h}:00–${h}:59</b><br>${l}: ${v}`); });
+}
+
+function budget(D){
+  const B = D.budget;
+  const segs = D.always.map((a, i) => [a.label, a.tokens, ['var(--ink)', 'var(--agt)', 'var(--c3)'][i % 3]]).concat([['заголовки skills', B.skill_headers, 'var(--hum)']]);
+  const bar = document.getElementById('bbar'); bar.innerHTML = '';
+  const used = segs.reduce((a, s) => a + s[1], 0);
+  segs.forEach(([n, v, c]) => { const s = el('div', 'seg'); s.style.width = (v / B.window * 100) + '%'; s.style.background = c;
+    hover(s, `<b>${esc(n)}</b><br>≈${fmt(v)} токенов · ${(v / B.window * 100).toFixed(1)}% окна`); bar.append(s); });
+  const rest = el('div', 'seg'); rest.style.flex = '1'; hover(rest, `<b>место для работы</b><br>≈${fmt(B.window - used)} токенов до компакта`); bar.append(rest);
+  const sc = document.getElementById('scale'); sc.innerHTML = '';
+  [[used, '≈' + fmt(used) + ' до первого слова', 'z'], [B.window * .6, '60% компакт на границе фазы'], [B.window * .8, '80% гейт'], [B.window, fmt(B.window)]].forEach(([v, t, z]) => {
+    const e = el('div', 't' + (z ? ' z' : ''), t); e.style.left = Math.min(v / B.window * 100, 100) + '%'; if (v === B.window) e.style.transform = 'translateX(-100%)'; sc.append(e); });
+  const bl = document.getElementById('blist'); bl.innerHTML = '';
+  segs.forEach(([n, v, c]) => bl.append(el('div', '', `<b>≈${fmt(v)}</b><span class="sw" style="background:${c}"></span>${esc(n)}`)));
+}
+
+function strip(D){
+  const svg = document.getElementById('strip');
+  const W = 820, padL = 10, padR = 10, base = 150, all = D.skills.all.filter(s => s.l > 0);
+  const lx = v => padL + (Math.log10(v) / Math.log10(20000)) * (W - padL - padR);
+  const srcs = [...new Set(all.map(s => s.s))];
+  const pal = [css('--c3'), css('--agt'), css('--soft')];
+  const col = Object.fromEntries(srcs.map((s, i) => [s, pal[i] || css('--soft')]));
+  let g = `<line x1="${padL}" x2="${W - padR}" y1="${base}" y2="${base}" stroke="${css('--line2')}"/>`;
+  [1, 10, 100, 1000, 10000].forEach(v => { g += `<line x1="${lx(v)}" x2="${lx(v)}" y1="${base}" y2="${base + 6}" stroke="${css('--soft')}"/><text x="${lx(v)}" y="${base + 22}" font-size="12" fill="${css('--soft')}" text-anchor="middle" font-family="JetBrains Mono">${v >= 1000 ? v / 1000 + 'k' : v} строк</text>`; });
+  const stacks = {};
+  all.forEach(s => { const b = Math.round(lx(s.l) / 11); stacks[b] = (stacks[b] || 0) + 1; s._y = Math.max(6, base - 8 - (stacks[b] - 1) * 11); s._x = b * 11; });
+  all.forEach((s, i) => { g += `<circle data-i="${i}" cx="${s._x}" cy="${s._y}" r="4.5" fill="${col[s.s]}" stroke="${css('--paper')}" stroke-width="2"/>`; });
+  const marks = D.skills.ladder;
+  marks.forEach((m, k) => { const xx = lx(Math.max(1, m.lines)); g += `<line x1="${xx}" x2="${xx}" y1="${base}" y2="${base + 34 + k * 15}" stroke="${css('--ink')}" stroke-dasharray="2 2"/><text x="${xx}" y="${base + 44 + k * 15}" font-size="12" font-weight="700" fill="${css('--ink')}" text-anchor="${xx > W * .7 ? 'end' : 'middle'}" font-family="JetBrains Mono">${esc(m.name)} · ${m.lines}</text>`; });
+  svg.setAttribute('viewBox', `0 0 ${W} ${base + 50 + marks.length * 15}`);
+  svg.innerHTML = g;
+  svg.querySelectorAll('circle').forEach(c => { const s = all[+c.dataset.i];
+    hover(c, `<b>${esc(s.n)}</b> · ${esc(s.s)}<br>${s.l} строк в ${s.f} файлах${s.d ? '<br>' + esc(s.d.slice(0, 160)) + (s.d.length > 160 ? '…' : '') : ''}`); });
+  const cnt = {}; all.forEach(s => cnt[s.s] = (cnt[s.s] || 0) + 1);
+  document.getElementById('skleg').innerHTML = srcs.map(k => `<span><i style="background:${col[k]}"></i>${esc(k)} · ${cnt[k]}</span>`).join('') + `<span class="note">дубли между папками схлопнуты, первая папка в config побеждает</span>`;
+}
+
+function updates(D){
+  const svg = document.getElementById('updsvg');
+  const U = D.skills.updates, srcs = [...new Set(U.flatMap(u => Object.keys(u.by)))];
+  const pal = [css('--c3'), css('--agt'), css('--soft')];
+  const W = 820, Hh = 170, L = 30, bw = (W - L) / U.length;
+  const mx = Math.max(1, ...U.map(u => Object.values(u.by).reduce((a, b) => a + b, 0)));
+  let g = `<line x1="${L}" x2="${W}" y1="${Hh}" y2="${Hh}" stroke="${css('--line2')}"/>`;
+  g += `<text x="0" y="12" font-size="11" fill="${css('--soft')}" font-family="JetBrains Mono">${mx}</text>`;
+  U.forEach((u, i) => {
+    let y0 = Hh;
+    srcs.forEach((s, j) => { const v = u.by[s] || 0; if (!v) return; const h = v / mx * (Hh - 20);
+      g += `<rect data-t="${u.day}|${s}|${v}" x="${L + i * bw + 4}" y="${y0 - h}" width="${bw - 8}" height="${Math.max(2, h - 2)}" rx="2" fill="${pal[j] || css('--soft')}"/>`; y0 -= h; });
+    const d = u.day.slice(8) + '.' + u.day.slice(5, 7);
+    g += `<text x="${L + i * bw + bw / 2}" y="${Hh + 16}" font-size="11" fill="${css('--soft')}" text-anchor="middle" font-family="JetBrains Mono">${d}</text>`;
+  });
+  svg.setAttribute('viewBox', `0 0 ${W} ${Hh + 40}`);
+  svg.innerHTML = g + `<text x="${L}" y="${Hh + 36}" font-size="12" fill="${css('--dim')}" font-family="JetBrains Mono">${srcs.map((s, j) => '■ ' + s).join('   ')}</text>`;
+  svg.querySelectorAll('rect[data-t]').forEach(r => { const [d, s, v] = r.dataset.t.split('|'); hover(r, `<b>${d}</b><br>${esc(s)}: ${v} skills`); });
+  // подкрасить подпись источников
+  const t = svg.querySelector('text:last-child'); if (t) t.innerHTML = srcs.map((s, j) => `<tspan fill="${pal[j]}">■</tspan> ${esc(s)}`).join('   ');
+}
+</script>
+</body>
+</html>
