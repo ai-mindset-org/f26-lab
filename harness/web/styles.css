@@ -627,10 +627,48 @@ body.l2-tab-onto #colR{grid-template-rows:minmax(0,1fr)}
 .l2-dl dt,.l2-dl dd{margin:0; padding:2px 0; border-bottom:1px dotted var(--hair)}
 .l2-dl dt{font-weight:500; overflow-wrap:anywhere}
 .l2-dl a{color:var(--ink); text-decoration:none; border-bottom:1px solid var(--accent)}
-#l2Routes{display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; border-top:1px solid var(--ink); margin:0 -10px; padding:6px 10px; font-size:10.5px}
-#l2Routes i{font-style:normal; color:var(--muted); letter-spacing:.16em; text-transform:uppercase; margin-right:4px}
-#l2Routes span{border:1px solid var(--ink); padding:1px 6px}
-#l2Routes b{font-weight:500}
+#l2Routes,#l2Call,.l2-calls{display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; border-top:1px solid var(--ink); margin:0 -10px; padding:6px 10px; font-size:10.5px}
+#l2Call{border-top:1px dotted var(--soft); padding-top:4px}
+#l2Routes i,#l2Call i,.l2-calls i{font-style:normal; color:var(--muted); letter-spacing:.16em; text-transform:uppercase; margin-right:4px; min-width:64px}
+#l2Routes span,#l2Call span,.l2-calls span{border:1px solid var(--ink); padding:1px 6px}
+#l2Call span:first-of-type b,.l2-calls span:first-of-type b{color:var(--accent-ink)}
+#l2Routes b,#l2Call b,.l2-calls b{font-weight:500}
+/* layer 2: caption on the graph, play button, start card «2 · научить» */
+#l2Cap{position:absolute; left:10px; top:8px; max-width:min(440px,52%); z-index:2; pointer-events:none; background:rgba(252,250,246,.9); border-left:2px solid var(--accent); padding:4px 10px 6px}
+#l2Cap[hidden]{display:none}
+body.l2 #narr{visibility:hidden} /* the build narration ends on «на зиму…»: in layer 2 the caption speaks instead */
+#l2Intro code{white-space:nowrap}
+#l2Cap span{display:inline-block; background:var(--ink); color:var(--bg); padding:2px 7px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase}
+#l2Cap b{display:block; font-size:15px; font-weight:700; line-height:1.3; margin-top:6px}
+#l2Cap small{display:block; font-size:11.5px; color:var(--muted); margin-top:3px}
+#l2Cap small:empty{display:none}
+body.l2-playing #l2Cap{border-left-width:4px}
+#l2P h2{display:flex; align-items:baseline; gap:8px}
+#l2P h2 > span{flex:1}
+.l2-play{border:1px solid var(--ink); background:var(--bg); color:var(--ink); padding:1px 8px; font-size:10.5px; letter-spacing:.08em; text-transform:none}
+.l2-play:hover,body.l2-playing .l2-play{background:var(--accent); border-color:var(--accent); color:var(--bg)}
+#l2Intro{position:fixed; inset:0; z-index:11; display:grid; place-items:center; background:rgba(252,250,246,.86); backdrop-filter:blur(3px)}
+#l2Intro[hidden]{display:none}
+#l2Intro .card{width:min(660px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; background:var(--bg); border:1px solid var(--ink); box-shadow:10px 10px 0 rgba(0,0,0,.08); padding:16px 18px 14px; animation:rise .35s var(--ease)}
+#l2Intro h3{font-size:24px; font-weight:800; line-height:1.15; letter-spacing:-.02em; margin:14px 0 10px}
+#l2Intro p{font-size:13px; line-height:1.6; margin:0 0 10px}
+.l2-chain{list-style:none; margin:12px 0 10px; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; background:var(--ink); border:1px solid var(--ink)}
+.l2-chain li{position:relative; background:var(--bg); padding:8px 10px 9px 12px}
+.l2-chain li + li::before{content:"→"; position:absolute; left:-7px; top:9px; background:var(--bg); color:var(--accent-ink); font-size:12px; line-height:1; padding:1px 0}
+.l2-chain b{display:block; font-size:13px; font-weight:700}
+.l2-chain small{display:block; font-size:10.5px; line-height:1.35; color:var(--muted); margin-top:4px}
+.l2-chain li:nth-child(3){background:var(--paper)}
+.l2-chain li:nth-child(3) b{color:var(--accent-ink)}
+#l2Intro p.l2-then{font-size:12px; color:var(--muted); border-left:2px solid var(--accent); padding-left:8px}
+.l2-calls{margin:0 0 12px; border-top:1px solid var(--ink); padding:7px 0 0}
+.l2-in-go{display:grid; grid-template-columns:minmax(0,1fr) auto}
+.l2-in-go button + button{border-left:none; padding:7px 14px}
+@media (max-width:600px){
+  .l2-chain{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .l2-chain li:nth-child(3)::before{display:none}
+  #l2Cap{max-width:calc(100% - 20px)}
+  #l2Cap b{font-size:13px}
+}
 body.l2-off-routes #l2Routes span{border-color:var(--soft); border-style:dashed; color:var(--muted)}
 body.l2-off-reviewer .lane[data-lane="reviewer"]{opacity:.45}
 body.l2-off-reviewer .lane[data-lane="reviewer"] .dot{background:none; border-style:dashed}

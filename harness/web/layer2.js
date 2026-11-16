@@ -1,9 +1,11 @@
 /* F26 self-harness · layer 2: a skill on the harness (?layer=2, synonym ?layer=skills)
  * loads before app.js. without the parameter this file does nothing and app.js runs as before.
- * with it: the finished build without the people layer, and a panel with four tabs –
- * сегодня (one process in four guided steps, each lights its nodes), сборка (replay the build),
+ * with it: the finished build without the people layer, a start card «2 · научить» (the four steps as one chain),
+ * a caption on the graph, a play mode, and a panel with three tabs –
+ * сегодня (one process in four guided steps, each lights its nodes),
  * блоки (eight switches that dim their nodes on the graph), онтология (three word lists).
- * state lives in the address: &tab=today|build|blocks|onto · &step=1..4 · &off=skills,desc,mirror,reviewer,routes · &on=log,eval,mcp
+ * state lives in the address: &tab=today|blocks|onto · &step=1..4 · &off=skills,desc,mirror,reviewer,routes · &on=log,eval,mcp
+ * &play=1 plays the whole layer once (steps → blocks one by one → онтология); &intro=0 skips the start card
  */
 (() => {
   'use strict';
@@ -35,6 +37,8 @@
   ];
   const ALL_ON = 'все блоки на месте: skill находится, запускается и проверяется';
   const ROUTES = [['чат', 'текст skill вставлен в сообщение'], ['файл', 'SKILL.md приложен к запросу'], ['папка', 'агент находит skill сам']];
+  // three ways to call a skill: by its name, by the words of the request (the description catches them), by an example of the result
+  const CALLS = [['/call-digest', 'по имени'], ['по описанию', '«разбери вчерашний звонок»'], ['по примеру', '«сделай как в эталоне»']];
   const ENTITIES = [
     ['рутина', 'дело, которое повторяется каждую неделю'],
     ['вход', 'файл или фрагмент, с которым работает skill'],
@@ -59,13 +63,13 @@
   const pathOf = (d) => (d.file && d.file.path) || '';
   const digest = (d) => /^skills\/.*call-digest/.test(pathOf(d));
   const STEPS = [
-    { k: 'процесс', p: 'практика 1 · нарисуй свой процесс', a: 'звонок прошёл, в папке лежит расшифровка', b: 'с этого начинается любая рутина: есть работа и её след',
+    { k: 'процесс', c: 'след работы: расшифровка звонка', p: 'практика 1 · нарисуй свой процесс', a: 'звонок прошёл, в папке лежит расшифровка', b: 'с этого начинается любая рутина: есть работа и её след',
       hot: (d) => /^raw\/.*call/.test(pathOf(d)) || pathOf(d).startsWith('meetings/'), warm: (d) => pathOf(d).startsWith('raw/') },
-    { k: 'рутина', p: 'практика 1 · отметь повторяющийся шаг', a: 'после каждого звонка одно и то же: решения, обязательства, сроки', b: 'повторяется каждую неделю, значит можно описать один раз',
+    { k: 'рутина', c: 'шаг, который повторяется каждую неделю', p: 'практика 1 · отметь повторяющийся шаг', a: 'после каждого звонка одно и то же: решения, обязательства, сроки', b: 'повторяется каждую неделю, значит можно описать один раз',
       hot: (d) => pathOf(d).startsWith('routines/'), warm: () => false },
-    { k: 'skill', p: 'практика 2 · из рутины в skill', a: 'рутина записана как skill call-digest', b: 'три части: когда брать, шаги, как сверить',
+    { k: 'skill', c: 'SKILL.md: когда брать, шаги, как сверить', p: 'практика 2 · из рутины в skill', a: 'рутина записана как skill call-digest', b: 'три части: когда брать, шаги, как сверить',
       hot: (d) => digest(d) || d.id === 'l2:desc', warm: (d) => pathOf(d).startsWith('skills/') },
-    { k: 'сверка', p: 'практика 3 · skill против эталона', a: 'запускаю skill на прошлом звонке и сравниваю с эталоном', b: 'одна правка правила, второй запуск, строка в журнале',
+    { k: 'сверка', c: 'запуск, эталон, строка в журнале', p: 'практика 3 · skill против эталона', a: 'запускаю skill на прошлом звонке и сравниваю с эталоном', b: 'одна правка правила, второй запуск, строка в журнале',
       hot: (d) => digest(d) || d.id === 'l2:eval' || d.id === 'l2:log', warm: () => false },
   ];
   const PROVEN = ['log', 'eval']; // step 4 draws these two stubs solid
@@ -83,7 +87,7 @@
   const lit = (k) => on[k] || forced(k);
   function writeAddress() {
     const p = new URLSearchParams(location.search);
-    ['tab', 'step', 'off', 'on'].forEach((k) => p.delete(k));
+    ['tab', 'step', 'off', 'on', 'play', 'intro'].forEach((k) => p.delete(k));
     const off = BLOCKS.filter((b) => b.def && !on[b.k]).map((b) => b.k);
     const extra = BLOCKS.filter((b) => !b.def && on[b.k]).map((b) => b.k);
     const q = `${p.toString()}&tab=${tab}${tab === 'today' ? `&step=${step}` : ''}${off.length ? `&off=${off.join(',')}` : ''}${extra.length ? `&on=${extra.join(',')}` : ''}`;
@@ -94,11 +98,11 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   document.body.classList.add('l2');
   const back = document.getElementById('l2link');
-  if (back) { back.textContent = '← сборка'; back.setAttribute('href', location.pathname.split('/').pop() || './'); back.title = 'обычный режим: сборка по фазам, все слои'; }
+  if (back) { back.textContent = '← 1 · собрать'; back.setAttribute('href', location.pathname.split('/').pop() || './'); back.title = 'обычный режим: сборка по фазам, все слои'; }
 
   const panel = document.createElement('div');
   panel.className = 'panel'; panel.id = 'l2P';
-  panel.innerHTML = `<h2><span>слой 2 · skill на харнесе</span><em id="l2Count"></em></h2>
+  panel.innerHTML = `<h2><span>слой 2 · научить</span><button type="button" id="l2Play" class="l2-play" title="проиграть слой 2: шаги, блоки по одному, онтология">▶ проиграть</button><em id="l2Count"></em></h2>
     <div class="l2-tabs" role="tablist">${TABS.map(([k, t]) => `<button type="button" role="tab" data-l2tab="${k}">${t}</button>`).join('')}</div>
     <div class="l2-body">
       <div class="l2-pane" data-l2pane="today">
@@ -106,10 +110,6 @@
         <div class="l2-step" aria-live="polite"><span id="l2StepTag"></span><p class="l2-lead" id="l2StepA"></p><p id="l2StepB"></p></div>
         <div class="l2-nav"><button type="button" id="l2Prev">← назад</button><button type="button" class="l2-go" id="l2Next">дальше →</button></div>
         <p class="cap" id="l2StepP"></p>
-      </div>
-      <div class="l2-pane" data-l2pane="build">
-        <button type="button" class="l2-go" id="l2Build">проиграть сборку харнеса</button>
-        <p class="cap">12 фаз · от пустой папки до папки, которую читает агент</p>
       </div>
       <div class="l2-pane" data-l2pane="blocks">
         <div class="l2-list">${BLOCKS.map((b) => `<button type="button" class="l2-b" data-b="${b.k}" aria-pressed="true"><i></i><span><b>${esc(b.name)}</b><small>${esc(b.map)}</small></span><em></em></button>`).join('')}</div>
@@ -133,6 +133,28 @@
   routes.id = 'l2Routes';
   routes.innerHTML = `<i>маршруты</i>${ROUTES.map(([w, d]) => `<span><b>${w}</b> · ${d}</span>`).join('')}`;
   document.getElementById('colC').appendChild(routes);
+  const calls = document.createElement('div');
+  calls.id = 'l2Call';
+  calls.innerHTML = `<i>позвать</i>${CALLS.map(([w, d]) => `<span><b>${esc(w)}</b> · ${esc(d)}</span>`).join('')}`;
+  document.getElementById('colC').appendChild(calls);
+
+  // caption on the graph: what the lit nodes are, in the words of the step or of the block just switched
+  const cap = document.createElement('div');
+  cap.id = 'l2Cap'; cap.setAttribute('aria-hidden', 'true');
+  cap.innerHTML = '<span></span><b></b><small></small>';
+  document.getElementById('stage').appendChild(cap);
+  let capBlock = null; // the block clicked or played last
+  function paintCap(st, n) {
+    let t = '', a = '', b = '';
+    if (tab === 'today') { t = `${step} · ${st.k}`; a = st.a; b = st.b; }
+    else if (tab === 'blocks') {
+      const k = BLOCKS.find((x) => x.k === capBlock);
+      if (k) { t = `${on[k.k] ? '+' : '–'} ${k.name} · ${n}/${BLOCKS.length}`; a = on[k.k] ? k.map : k.out; }
+      else { t = `блоки · ${n}/${BLOCKS.length}`; a = n === BLOCKS.length ? ALL_ON : 'выключи блок справа – на графе видно, что пропадает'; }
+    }
+    cap.hidden = !t;
+    cap.children[0].textContent = t; cap.children[1].textContent = a; cap.children[2].textContent = b;
+  }
 
   // ---------- graph: the nodes of a block that is off turn into dashed ghosts ----------
   const G = { nodeSel: null, linkSel: null };
@@ -182,13 +204,35 @@
     document.getElementById('l2Tag').textContent = last ? `выключено · ${last.name}` : `${n} из ${BLOCKS.length}`;
     document.getElementById('l2Out').textContent = last ? last.out : ALL_ON;
     panel.querySelector('.l2-out').classList.toggle('all', !last);
+    paintCap(st, n);
     repaint();
   }
   function setTab(t) { tab = t; paintPanel(); writeAddress(); }
   function setStep(n) { step = Math.min(STEPS.length, Math.max(1, n)); paintPanel(); writeAddress(); }
 
+  const ring = (k) => { if (G.nodeSel) G.nodeSel.filter((d) => blockOf(d) === k).append('circle').attr('class', 'ring').attr('r', 6).on('animationend', function () { this.remove(); }); };
+
+  // ---------- play: the four steps, then the eight blocks switched on one by one, then the words ----------
+  let playing = false, playT = null;
+  const playBtn = panel.querySelector('#l2Play');
+  function stopPlay() { playing = false; clearTimeout(playT); playBtn.textContent = '▶ проиграть'; document.body.classList.remove('l2-playing'); }
+  function play() {
+    stopPlay(); playing = true; playBtn.textContent = '■ стоп'; document.body.classList.add('l2-playing');
+    const seq = STEPS.map((_, i) => [4600, () => { tab = 'today'; step = i + 1; }]);
+    // all off, the next block to come is the last in offOrder, so the panel names what is still missing
+    seq.push([1800, () => { for (const b of BLOCKS) on[b.k] = false; offOrder = BLOCKS.map((b) => b.k).reverse(); capBlock = null; tab = 'blocks'; }]);
+    for (const b of BLOCKS) seq.push([2400, () => { on[b.k] = true; offOrder = offOrder.filter((x) => x !== b.k); capBlock = b.k; ring(b.k); }]);
+    seq.push([3200, () => { capBlock = null; }]);
+    seq.push([0, () => { tab = 'onto'; }]);
+    let i = 0;
+    const tick = () => { if (!playing) return; const [ms, fn] = seq[i++]; fn(); paintPanel(); writeAddress(); if (i < seq.length) playT = setTimeout(tick, ms); else stopPlay(); };
+    tick();
+  }
+
   let api = null;
   panel.addEventListener('click', (e) => {
+    if (e.target.closest('#l2Play')) { if (playing) stopPlay(); else play(); return; }
+    if (playing) stopPlay(); // any other click takes the panel back by hand
     const t = e.target.closest('[data-l2tab]');
     if (t) { setTab(t.dataset.l2tab); return; }
     const s = e.target.closest('[data-l2step]');
@@ -207,14 +251,44 @@
       on[k] = !on[k];
       offOrder = offOrder.filter((x) => x !== k);
       if (!on[k]) offOrder.push(k);
+      capBlock = k;
       paintPanel(); writeAddress();
-      // the same orange ring a fresh file gets: shows where the block sits on the map
-      if (G.nodeSel) G.nodeSel.filter((d) => blockOf(d) === k).append('circle').attr('class', 'ring').attr('r', 6).on('animationend', function () { this.remove(); });
+      ring(k); // the same orange ring a fresh file gets: shows where the block sits on the map
       return;
     }
-    if (e.target.closest('#l2Build') && api) api.build();
   });
   paintPanel();
+
+  // ---------- start card «2 · научить»: the chain of the day, how to call, two ways in ----------
+  const intro = document.createElement('div');
+  intro.id = 'l2Intro'; intro.setAttribute('role', 'dialog'); intro.setAttribute('aria-modal', 'true'); intro.setAttribute('aria-labelledby', 'l2InTitle');
+  intro.innerHTML = `<div class="card">
+    <div class="st-hd"><span>AI Mindset · Fall ’26 Lab · неделя 2</span><span>fig. 2.0</span></div>
+    <h3 id="l2InTitle">2 · научить: рутина становится skill</h3>
+    <p>в папке из недели 1 появляется skill – файл, который агент берёт по описанию, запускает на входе и сверяет с эталоном. пример слоя – разбор звонка <code>call-digest</code>.</p>
+    <ol class="l2-chain">${STEPS.map((s, i) => `<li><b>${i + 1} ${esc(s.k)}</b><small>${esc(s.c)}</small></li>`).join('')}</ol>
+    <p class="l2-then">дальше на графе – восемь блоков, которые держат skill в системе: описание, зеркало, журнал, проверка, проверяющий агент, маршруты, внешние сервисы</p>
+    <div class="l2-calls"><i>позвать</i>${CALLS.map(([w, d]) => `<span><b>${esc(w)}</b> · ${esc(d)}</span>`).join('')}</div>
+    <div class="l2-in-go"><button type="button" class="l2-go" id="l2InPlay">▶ проиграть · 50 с</button><button type="button" id="l2InSteps">по шагам →</button></div>
+  </div>`;
+  document.body.appendChild(intro);
+  intro.hidden = qs.has('tab') || qs.has('step') || qs.get('intro') === '0' || qs.get('play') === '1';
+  const closeIntro = (go) => { intro.hidden = true; if (go) go(); };
+  intro.addEventListener('click', (e) => {
+    if (e.target.closest('#l2InPlay')) closeIntro(play);
+    else if (e.target.closest('#l2InSteps')) closeIntro(() => { step = 1; setTab('today'); });
+    else if (!e.target.closest('.card')) closeIntro();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (!intro.hidden) {
+      if (e.key === 'Escape') { e.preventDefault(); closeIntro(); }
+      else if (e.key === 'Enter' || e.code === 'Space') { e.preventDefault(); e.stopPropagation(); closeIntro(play); }
+      return;
+    }
+    if (e.key === 'Escape' && playing) stopPlay();
+  }, true);
+  if (!intro.hidden) intro.querySelector('#l2InPlay').focus();
+  if (qs.get('play') === '1') setTimeout(play, 900);
 
   // ---------- what app.js asks for ----------
   window.F26L2 = {
@@ -251,7 +325,6 @@
     },
     paint(nodeSel, linkSel) { G.nodeSel = nodeSel; G.linkSel = linkSel; repaint(); },
     mount(a) { api = a; },
-    // the replay reached the end: from «сборка» the panel moves on to «блоки»
-    ended() { if (tab === 'build') setTab('blocks'); },
+    ended() { /* the build tab is gone since 16.11: nothing to hand over */ },
   };
 })();
