@@ -21,10 +21,10 @@
 <link rel="stylesheet" href="doc.css">
 <style>.wk{display:inline-block; padding:1px 6px; border:1px solid var(--ink); font-size:11px} .wk.w1{background:var(--accent)} ol.steps li,ul.steps li{margin:4px 0} h3.prg{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-ink); margin:14px 0 4px} details.pr > summary .cap{color:var(--muted); font-weight:400} details.pr[open]{padding-bottom:10px} details.pr pre{white-space:pre-wrap}</style>
 </head>
-<body><header id="hd"><img class="logo" src="assets/aim-logo.png" alt="AI Mindset"><div><h1>self harness · Guide</h1><p>как развернуть свою папку · F26 · неделя 1</p></div><nav class="pages"><a href="index.html">Demo</a><a href="index.html?mode=live">Local</a><a href="access.html">About</a></nav></header><main class="wrap">
+<body><header id="hd"><img class="logo" src="assets/aim-logo.png" alt="AI Mindset"><div><h1>self harness · Guide</h1><p>как развернуть свою папку · F26 · недели 1–2</p></div><nav class="pages"><a href="index.html">Demo</a><a href="index.html?mode=live">Local</a><a href="access.html">About</a></nav></header><main class="wrap">
 
 <p class="lead">Цель вечера – папка, на которую агент опирается в работе: <b>self.md</b>, пять правил агента, карта мест и правило имён. Проверка одна: агент описал тебя так, что ты узнал себя.</p>
-<div class="resource-links"><a href="#paths">три пути →</a><a href="#practices">практики →</a><a href="#prompts">запросы агенту →</a><a href="#weeks">как растёт →</a><a href="#agent">передать агенту →</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div>
+<div class="resource-links"><a href="#paths">три пути →</a><a href="#week2">неделя 2 →</a><a href="#practices">практики →</a><a href="#prompts">запросы агенту →</a><a href="#weeks">как растёт →</a><a href="#agent">передать агенту →</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div>
 
 <section class="panel" id="paths"><h2>01 · три пути</h2><div class="cols">
 <div><h3>A · без терминала</h3><ol class="steps"><li><a href="f26-self-harness-kit.zip">скачай набор</a>, открой папку <code>starter-kit/context</code> (в репозитории – <code>kit/context</code>)</li><li>заполни <code>self.md</code>: пять строк хватит, можно надиктовать агенту в чате</li><li>в проекте Claude или ChatGPT: <code>self.md</code> и <code>AGENTS.md</code> – в файлы проекта, текст правил – в инструкции</li><li>спроси: «кто я и что делаю на этой неделе?»</li></ol></div>
@@ -41,7 +41,26 @@
 <tr><td>+</td><td>любой</td><td>лаба в папке: <code>{project} F26 lab</code> и кураторы твоей тройки в <code>people/</code> – агент отвечает, к кому идти с вопросом</td></tr></table>
 <p>Суббота, второй час – субботник: опись через вердикты живой · архив · снести, спорное в чистилище с датой через 30 дней.</p></section>
 
-<section class="panel" id="practices"><h2>03 · практики · опора для своей папки</h2>
+<section class="panel" id="week2"><h2>03 · неделя 2 · научить: первый skill</h2>
+<p>На неделе 1 собрали папку. На неделе 2 папка учится одной повторяющейся работе. Круг: <b>нахожу → обсуждаю → описываю → записываю → меняю</b>.</p>
+<div class="cols">
+<div><h3>практика 1 · нарисуй свой процесс</h3><p class="cap">8 минут</p><pre class="md">Вот как у меня проходит [звонок с клиентом]: [расскажи голосом или текстом, 5–7 фраз]. Нарисуй этот процесс схемой Mermaid: шаги по порядку, что на входе, что на выходе. Отметь шаг, который повторяется каждый раз одинаково.</pre><p>Где откроется схема: Claude – артефакт, ChatGPT – канвас, агент в папке – HTML-файл.</p></div>
+<div><h3>практика 2 · из рутины в skill</h3><p class="cap">15 минут · тот же чат</p><pre class="md">Собери из отмеченного шага SKILL.md. Три части: когда брать – одна строка description; шаги – что делать по порядку; как сверить – по чему видно, что результат верный. Коротко, до 20 строк.</pre><p>Пример файла:</p><pre class="md">---
+name: call-digest
+description: сводка звонка. Бери, когда в папке появилась расшифровка.
+---
+1 Прочитай расшифровку.
+2 Выпиши решения, обязательства и сроки.
+3 Срок не назван – так и напиши.
+Сверка: у каждого обязательства есть кто и когда.</pre></div>
+<div><h3>практика 3 · skill против эталона</h3><p class="cap">20 минут · в тройке или с чистым чатом</p><ol class="steps"><li>эталон: результат, который ты уже делал руками</li><li>запуск skill на том же входе</li><li>одно место, где разошлось с эталоном</li><li>одна строка правки правила</li><li>второй запуск и строка в журнал</li></ol><p>Одна правка за раз, тогда видно, что помогло.</p></div>
+</div>
+<p><b>куда положить skill:</b> источник – файл <code>skills/{skill} &lt;имя&gt;.md</code> в своей папке, как <code>skills/{skill} call-digest.md</code> в наборе. Claude Code ищет skill в <code>.claude/skills/&lt;имя&gt;/SKILL.md</code>: когда skill прошёл сверку, скопируй его туда. Правка идёт в источник, зеркало обновляется копией.</p>
+<p><b>журнал запусков:</b> строка на запуск в заметке папки контекста: дата · skill · на чём запускал · где разошлось с эталоном · что поправил.</p>
+<p><b>что сдать на office hours сб 21.11:</b> один–три skills на своих рутинах; у каждого сверка с эталоном, одна правка, строка журнала.</p>
+<div class="resource-links"><a href="app.html?layer=2">тот же путь на карте →</a><a href="app.html?layer=2&amp;tab=today&amp;step=1">шаг 1 · процесс →</a><a href="app.html?layer=2&amp;tab=today&amp;step=2">шаг 2 · рутина →</a><a href="app.html?layer=2&amp;tab=today&amp;step=3">шаг 3 · skill →</a><a href="app.html?layer=2&amp;tab=today&amp;step=4">шаг 4 · сверка →</a><a href="app.html?layer=2&amp;tab=blocks">блоки →</a></div></section>
+
+<section class="panel" id="practices"><h2>04 · практики · опора для своей папки</h2>
 <p>Девять практик, у каждой шесть частей: когда · вход · шаги · выход · проверка · промпт. В наборе это файлы <code>skills/</code>: агент берёт практику, когда задача совпала. Начни с первых трёх – они работают с self.md с первого вечера.</p>
 <!-- practices:start -->
 <h3 class="prg">self</h3>
@@ -73,7 +92,7 @@
 <!-- practices:end -->
 </section>
 
-<section class="panel" id="prompts"><h2>04 · запросы агенту</h2>
+<section class="panel" id="prompts"><h2>05 · запросы агенту</h2>
 <table class="t"><tr><th>когда</th><th>запрос</th></tr>
 <tr><td>первый запуск</td><td>Прочитай все файлы в этой папке. Опиши меня в пяти строках: кто я, чем занят, как решаю, как со мной работать, чего не трогать. Отметь, где тебе пришлось угадывать.</td></tr>
 <tr><td>self.md интервью</td><td>Проведи со мной self-интервью в три круга: факты, примеры из последних двух недель, уровни от окружения до миссии. По одному вопросу, после ответа – строка для self.md. Ничего не записывай до моего «да».</td></tr>
@@ -87,15 +106,15 @@
 <tr><td>тройка</td><td>Прочитай self.md соседа по тройке. Перескажи в трёх фразах, кто он и как с ним работать. Назови три места, где агент понял бы его не так, и вопрос на каждое.</td></tr>
 <tr><td>проверка</td><td>Кто я и что делаю на этой неделе? Ответь по папке и назови файлы, откуда взял.</td></tr></table></section>
 
-<section class="panel" id="weeks"><h2>05 · как папка растёт до 7 декабря</h2>
+<section class="panel" id="weeks"><h2>06 · как папка растёт до 7 декабря</h2>
 <table class="t"><tr><th>неделя</th><th>понедельник · Алекс</th><th>что добавить в папку</th><th>признак готовности</th></tr>
 <tr><td><span class="wk w1">1 · собрать</span></td><td>09.11 · собрать себя в одну папку</td><td>self.md, AGENTS.md, raw/ и карта мест, naming, онтология с источниками и доступом, about me, люди лабы, чистилище</td><td>агент отвечает «кто я» с названиями файлов</td></tr>
-<tr><td><span class="wk">2 · научить</span></td><td>16.11 · повторяемая работа своего дня</td><td>практики из раздела 03 и один-три своих скилла из того, что ты каждую неделю просишь в чате</td><td>скилл сработал на второй неделе без пересказа</td></tr>
+<tr><td><span class="wk">2 · научить</span></td><td>16.11 · повторяемая работа своего дня</td><td>практики из раздела 04 и один-три своих скилла из того, что ты каждую неделю просишь в чате</td><td>скилл сработал на второй неделе без пересказа</td></tr>
 <tr><td><span class="wk">3 · отпустить</span></td><td>23.11 · работа идёт без тебя</td><td>реестр рутин, одна рутина с бюджетом, проверка «кто я», проверка каждого прогона</td><td>рутина неделю работает сама, сбой виден в обзоре недели</td></tr>
 <tr><td><span class="wk">4 · пользоваться</span></td><td>30.11 · одна точка входа</td><td>home – одна страница на утро; раздел «что выучено» в self.md</td><td>утро начинается с одной страницы</td></tr></table>
 <p>Среды Кирилла опираются на эту папку: «кто ты» для идеи проекта берётся из готового self.md.</p></section>
 
-<section class="panel" id="agent"><h2>06 · передать агенту</h2>
+<section class="panel" id="agent"><h2>07 · передать агенту</h2>
 <p>Скопируй агенту в папке целиком:</p>
 <pre>Прочитай https://github.com/ai-mindset-org/f26-lab – README, harness.md и harness/kit/files.
 Это self-harness лабы F26. Моя папка – текущая рабочая.
@@ -105,7 +124,7 @@
 4. в конце назови файлы, которые тронул</pre>
 <p>Обновить свою папку новыми файлами набора, не трогая правленое: <code>node ~/f26-lab/harness/tools/update-folder.mjs --dir ~/self --dry</code>, без <code>--dry</code> – запись.</p></section>
 
-<section class="panel"><h2>07 · команды</h2>
+<section class="panel"><h2>08 · команды</h2>
 <table class="t"><tr><th>что</th><th>команда</th></tr>
 <tr><td>новая папка + граф</td><td><code>harness/bin/new.sh ~/self [пресет]</code></td></tr>
 <tr><td>открыть свою папку</td><td><code>harness/bin/open.sh ~/self</code></td></tr>
