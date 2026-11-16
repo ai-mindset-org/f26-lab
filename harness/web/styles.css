@@ -573,3 +573,57 @@ body.fold-tabBody #colR{grid-template-rows:auto auto auto}
 .av-t { font: 600 7px/1 'JetBrains Mono', ui-monospace, monospace; fill: var(--ink, #141210); pointer-events: none; }
 .av-big { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid var(--ink, #141210); display: block; }
 .cn-tree{margin:4px 0 2px; padding:8px 10px; border:1px dashed var(--soft); font:11px/1.5 'JetBrains Mono', ui-monospace, monospace; white-space:pre; overflow:auto; color:var(--ink)}
+
+/* layer 2 (?layer=2): a skill on the harness – web/layer2.js. the link is the only part seen without the parameter */
+.l2-link{color:inherit; text-decoration:none; border-bottom:1px solid var(--soft); letter-spacing:.12em; white-space:nowrap}
+.l2-link:hover{color:var(--ink); border-bottom-color:var(--ink)}
+body.live .l2-link{display:none}
+body.l2 #anketaP,body.l2 #dashP,body.l2 #stopsBtn,body.l2 #legend span[data-l="person"]{display:none}
+body.l2 #colR{grid-template-rows:minmax(0,1fr) auto}
+body.l2-tab-onto #lanesP{display:none}
+body.l2-tab-onto #colR{grid-template-rows:minmax(0,1fr)}
+#l2P{overflow:hidden}
+.l2-tabs{display:flex; border-bottom:1px solid var(--ink); margin:-6px -10px 8px}
+.l2-tabs button{border:none; border-right:1px solid var(--ink); padding:7px 10px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; background:var(--bg); color:var(--muted)}
+.l2-tabs button.on{background:var(--ink); color:var(--bg)}
+.l2-body{overflow:auto; min-height:0; flex:1}
+.l2-go{background:var(--ink); color:var(--bg); padding:7px 16px; width:100%}
+.l2-go:hover{background:var(--accent); border-color:var(--accent)}
+.l2-b{display:grid; grid-template-columns:14px minmax(0,1fr) auto; gap:6px; align-items:center; width:100%; text-align:left; border:none; border-bottom:1px dotted var(--hair); padding:4px 0; letter-spacing:.02em}
+.l2-b:hover{background:var(--hair); color:var(--ink)}
+.l2-b i{width:10px; height:10px; border:1.3px solid var(--ink); border-radius:50%; background:var(--ink)}
+.l2-b b{display:block; font-weight:500}
+.l2-b small{display:block; color:var(--muted); font-size:10px; overflow-wrap:anywhere}
+.l2-b em{font-style:normal; font-size:10px; color:var(--muted)}
+.l2-b[aria-pressed="false"] i{background:none; border-style:dashed}
+.l2-b[aria-pressed="false"] b{color:var(--muted)}
+.l2-out{border-top:1px solid var(--ink); margin-top:8px; padding-top:8px}
+.l2-out span{display:inline-block; background:var(--ink); color:var(--bg); padding:3px 7px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase}
+.l2-out p{font-size:12.5px; margin-top:6px}
+.l2-out:not(.all) span{background:var(--accent-ink)}
+.l2-pane h3{font-size:10.5px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin:8px 0 4px}
+.l2-pane h3:first-child{margin-top:0}
+.l2-dl{margin:0; display:grid; grid-template-columns:96px minmax(0,1fr); gap:0 8px; font-size:11px; line-height:1.38}
+.l2-dl dt,.l2-dl dd{margin:0; padding:2px 0; border-bottom:1px dotted var(--hair)}
+.l2-dl dt{font-weight:500; overflow-wrap:anywhere}
+.l2-dl a{color:var(--ink); text-decoration:none; border-bottom:1px solid var(--accent); white-space:nowrap}
+#l2Routes{display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; border-top:1px solid var(--ink); margin:0 -10px; padding:6px 10px; font-size:10.5px}
+#l2Routes i{font-style:normal; color:var(--muted); letter-spacing:.16em; text-transform:uppercase; margin-right:4px}
+#l2Routes span{border:1px solid var(--ink); padding:1px 6px}
+#l2Routes b{font-weight:500}
+body.l2-off-routes #l2Routes span{border-color:var(--soft); border-style:dashed; color:var(--muted)}
+body.l2-off-reviewer .lane[data-lane="reviewer"]{opacity:.45}
+body.l2-off-reviewer .lane[data-lane="reviewer"] .dot{background:none; border-style:dashed}
+.node.l2off path{stroke:var(--muted)}
+.node.l2off text{fill:var(--muted)}
+#graph .node[class*="L-l2"] text{font-size:9px}
+.node[class*="L-l2"]:not(.l2off) text{font-weight:700}
+.link.l2off{stroke:#d6d6d6; stroke-dasharray:2 3}
+@media (max-width:1100px){
+  body.l2 #colR{grid-template-columns:minmax(0,2fr) minmax(0,1fr); grid-template-rows:auto}
+  body.l2-tab-onto #colR{grid-template-columns:minmax(0,1fr); grid-template-rows:auto}
+}
+@media (max-width:760px){
+  body.l2 #colR{order:-1; grid-template-columns:minmax(0,1fr)}
+  .l2-body{overflow:visible}
+}

@@ -5,6 +5,14 @@
 (() => {
   'use strict';
   const qs = new URLSearchParams(location.search);
+  // layer 2 (web/layer2.js, only with ?layer=2): the finished build without the people layer, plus the skill panel
+  const L2 = window.F26L2 || null;
+  if (L2) { qs.set('mode', 'replay'); qs.set('intro', '0'); qs.set('stops', '0'); qs.set('at', 'end'); qs.delete('phase'); }
+  const veiled = (p) => !!L2 && String(p).startsWith('people/');
+  const veilKeys = new Set(); // every link key that resolves to a people file at any moment of the replay
+  const veiledKey = (t) => !!L2 && (veilKeys.has(t) || /(^|\/)\{person\}\s|^people\//.test(t));
+  let veilRe = null; // names taken from the people files: masked wherever a file name or a file text is shown
+  const veilText = (s) => (L2 && veilRe ? String(s || '').replace(veilRe, '$1⬡ человек') : s);
   // replay: scenario.json · live: this computer's folder via the local server · team: the sprint folder from git, static state.json
   // the open copy (*.lab.aimindset.org) has no team state: Team lives on the team's internal show
   const TEAM_URL = 'access.html';
@@ -18,7 +26,7 @@
   document.body.classList.toggle('team', TEAM);
   document.querySelectorAll('.modes button').forEach((b) => {
     b.classList.toggle('on', b.dataset.mode === MODE);
-    b.onclick = () => { if (PUBLIC_COPY && b.dataset.mode === 'team') { location.href = TEAM_URL; return; } const u = new URL(location.href); u.searchParams.set('mode', b.dataset.mode); location.href = u.toString(); };
+    b.onclick = () => { if (PUBLIC_COPY && b.dataset.mode === 'team') { location.href = TEAM_URL; return; } const u = new URL(location.href); u.searchParams.set('mode', b.dataset.mode); if (L2) ['layer', 'tab', 'off', 'on'].forEach((k) => u.searchParams.delete(k)); location.href = u.toString(); };
     if (PUBLIC_COPY && b.dataset.mode === 'team') b.hidden = true;
   });
 
@@ -46,6 +54,7 @@
     agent:     { label: 'агент',      sym: 'circle',   fill: 'accent', size: 230, glyph: '●', ax: 0.3,   ay: 0.4 },
     ghost:     { label: 'план',       sym: 'circle',   fill: false,   size: 60,  glyph: '◌' },
   };
+  if (L2) Object.assign(LAYERS, L2.layers);
   // two shapes d3 lacks: a hexagon for roles, an hourglass for scheduled routines
   const hexagon = { draw(c, size) { const r = Math.sqrt(size / 2.598); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + (k * Math.PI) / 3; c[k ? 'lineTo' : 'moveTo'](r * Math.cos(a), r * Math.sin(a)); } c.closePath(); } };
   const hourglass = { draw(c, size) { const a = Math.sqrt(size) / 2; c.moveTo(-a, -a); c.lineTo(a, -a); c.lineTo(-a, a); c.lineTo(a, a); c.closePath(); } };
@@ -179,7 +188,7 @@
     .force('charge', d3.forceManyBody().strength((d) => (d.layer === 'ghost' ? -40 : d.layer === 'self' ? -600 : -190)))
     .force('x', d3.forceX((d) => anchor(d).x).strength((d) => (d.layer === 'ghost' ? 0.015 : 0.18)))
     .force('y', d3.forceY((d) => anchor(d).y).strength((d) => (d.layer === 'ghost' ? 0.015 : 0.18)))
-    .force('collide', d3.forceCollide((d) => Math.sqrt(LAYERS[d.layer].size) / 1.4 + 8))
+    .force('collide', d3.forceCollide((d) => Math.sqrt(LAYERS[d.layer].size) / 1.4 + 8 + (d.pad ? 14 : 0)))
     .alphaDecay(0.03)
     .on('tick', ticked);
   const VERTICAL = new Set(['source', 'eval', 'note', 'automation']);
@@ -204,11 +213,13 @@
     const idx = resolveIndex();
     const nodes = [], links = [];
     const ghosts = new Map();
-    for (const f of S.files.values()) nodes.push({ id: f.path, layer: f.layer, title: f.title, file: f });
+    for (const f of S.files.values()) if (!veiled(f.path)) nodes.push({ id: f.path, layer: f.layer, title: f.title, file: f });
     for (const f of S.files.values()) {
+      if (veiled(f.path)) continue;
       for (const t of f.links) {
         const target = idx.get(t);
-        if (target) { if (target !== f.path) links.push({ source: f.path, target, kind: 'wiki' }); }
+        if (target) { if (target !== f.path && !veiled(target)) links.push({ source: f.path, target, kind: 'wiki' }); }
+        else if (veiledKey(t)) continue;
         else {
           const gid = `ghost:${t}`;
           if (!ghosts.has(gid)) ghosts.set(gid, { id: gid, layer: 'ghost', title: bare(t.split('/').pop()), key: t });
@@ -226,7 +237,7 @@
       const wantSkill = l.skill || LANE_META[id].skill;
       const skillFile = [...S.files.values()].find((f) => f.layer === 'skill' && f.title === wantSkill);
       if (skillFile) links.push({ source: aid, target: skillFile.path, kind });
-      for (const p of S.wrote[id] || []) if (S.files.has(p)) links.push({ source: aid, target: p, kind });
+      for (const p of S.wrote[id] || []) if (S.files.has(p) && !veiled(p)) links.push({ source: aid, target: p, kind });
     }
     // console runs (live): an agent node while it works, linked to the files it touches;
     // afterwards its session file in sessions/ carries the same links
@@ -240,6 +251,7 @@
         if (touched.has(f.path) || (f.mtime && f.mtime >= r.startedAt && f.mtime <= (r.endedAt || Infinity) + 5000)) links.push({ source: aid, target: f.path, kind: r.status === 'running' ? 'agent' : 'agent-idle' });
       }
     }
+    if (L2) L2.extend(nodes, links, S.files);
     return { nodes, links };
   }
 
@@ -283,7 +295,7 @@
     nodeSel.select('path').attr('d', (d) => d3.symbol(SYM[LAYERS[d.layer].sym], LAYERS[d.layer].size)())
       .attr('fill', (d) => { const f = LAYERS[d.layer].fill; return f === true ? '#141210' : f === 'accent' ? (d.layer === 'agent' && !d.running ? '#141210' : '#f28c1c') : f === 'hair' ? '#efe6d6' : '#fcfaf6'; })
       .attr('stroke', (d) => (d.layer === 'agent' ? (d.running ? '#f28c1c' : '#141210') : null));
-    nodeSel.select('text').text((d) => d.title).attr('dy', (d) => Math.sqrt(LAYERS[d.layer].size) / 1.5 + 11);
+    nodeSel.select('text').text((d) => veilText(d.title)).attr('dy', (d) => Math.sqrt(LAYERS[d.layer].size) / 1.5 + 11);
     // people of the lab: a photo from the lab site or initials on top of the hexagon
     nodeSel.each(function (d) {
       const fm = (d.file && d.file.fm) || {};
@@ -319,11 +331,12 @@
     sim.force('link').links(links);
     sim.alpha(Math.max(sim.alpha(), 0.45)).restart();
     highlight();
+    if (L2) L2.paint(nodeSel, linkSel);
     document.getElementById('empty').style.opacity = S.files.size ? 0 : 1;
   }
   function ticked() {
     if (!linkSel) return;
-    for (const d of sim.nodes()) { d.x = Math.max(26, Math.min(W - 26, d.x)); d.y = Math.max(18, Math.min(H - 22, d.y)); }
+    for (const d of sim.nodes()) { const m = d.pad || 26; d.x = Math.max(m, Math.min(W - m, d.x)); d.y = Math.max(18, Math.min(H - 22, d.y)); } // pad: a layer-2 node with a long label keeps it inside the stage
     linkSel.attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y).attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
     nodeSel.attr('transform', (d) => `translate(${d.x},${d.y})`);
     gFx.selectAll('circle.ring').attr('cx', (d) => d.x).attr('cy', (d) => d.y);
@@ -365,6 +378,7 @@
   function renderTree() {
     const groups = new Map();
     for (const f of S.files.values()) {
+      if (veiled(f.path)) continue;
       const top = f.path.includes('/') ? f.path.split('/')[0] : '';
       if (!groups.has(top)) groups.set(top, []);
       groups.get(top).push(f);
@@ -377,10 +391,10 @@
       return `<div class="fold"><b>${g ? `${esc(g)}/` : './'}</b> ${files.length}</div>` + files.map((f) => {
         const isNew = S.fresh.has(f.path) && t - S.fresh.get(f.path) < 1800;
         const name = g ? f.path.slice(g.length + 1) : f.path;
-        return `<div class="file${isNew ? ' new' : ''}${f.path === SEL ? ' sel' : ''}" data-p="${esc(f.path)}" title="${esc(f.path)}"><span class="g">${LAYERS[f.layer].glyph}</span><span>${esc(name)}</span></div>`;
+        return `<div class="file${isNew ? ' new' : ''}${f.path === SEL ? ' sel' : ''}" data-p="${esc(f.path)}" title="${esc(f.path)}"><span class="g">${LAYERS[f.layer].glyph}</span><span>${esc(veilText(name))}</span></div>`;
       }).join('');
     }).join('');
-    document.getElementById('fileCount').textContent = S.files.size;
+    document.getElementById('fileCount').textContent = L2 ? [...S.files.keys()].filter((x) => !veiled(x)).length : S.files.size;
   }
   document.getElementById('tree').addEventListener('click', (e) => { const el = e.target.closest('.file'); if (el) openPreview(el.dataset.p); });
 
@@ -421,7 +435,7 @@
       if (l.status === 'running') active++;
       const status = { idle: 'ждёт запуска', waiting: l.note || 'ждёт', running: 'пишет', done: 'готово' }[l.status] || l.status;
       const wrote = S.wrote[id] ? S.wrote[id].size : 0;
-      return `<div class="lane ${l.status}"><i class="dot"></i><div><b>${esc(l.title || m.title)}</b><small>${esc(l.skill || m.skill)}</small></div>
+      return `<div class="lane ${l.status}"${L2 ? ` data-lane="${id}"` : ''}><i class="dot"></i><div><b>${esc(l.title || m.title)}</b><small>${esc(l.skill || m.skill)}</small></div>
         <div><div class="tgt">${l.status === 'running' ? `→ ${esc(bare(base(l.target || '')))}` : esc(status)}${wrote ? ` <small style="display:inline">· ${wrote} ф.</small>` : ''}</div><div class="bar"></div></div></div>`;
     }).join('');
     document.getElementById('laneCount').textContent = `${active} в работе`;
@@ -541,10 +555,11 @@
       .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
       .replace(/\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]/g, (m, t, label) => {
         const hit = idx && idx.get(norm(unesc(t)));
+        if (L2 && (veiledKey(norm(unesc(t))) || (hit && veiled(hit)))) return '<span>⬡ человек</span>';
         return hit ? `<a class="wl" data-p="${esc(hit)}">${label || esc(bare(unesc(t)))}</a>` : `<a class="wl miss" title="файла ещё нет">${label || t}</a>`;
       })
       // a photo from the lab site is served next to the page (the page allows only its own images)
-      .replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/g, (m, alt, url) => { const k = /\/people\/bank\/([a-z0-9-]+)(?:\/[a-z0-9-]+)?\.jpg$/.exec(url); return k ? `<img class="av-big" src="assets/people/${k[1]}.jpg" alt="${alt}">` : ''; })
+      .replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/g, (m, alt, url) => { if (L2) return ''; const k = /\/people\/bank\/([a-z0-9-]+)(?:\/[a-z0-9-]+)?\.jpg$/.exec(url); return k ? `<img class="av-big" src="assets/people/${k[1]}.jpg" alt="${alt}">` : ''; })
       .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')).replace(/(<a [^>]*>)<a [^>]*>([^<]*)<\/a>/g, '$1$2');
   }
   const BLOCK = /^(#{1,4}\s|```|\s*[-*]\s|\s*\d+[.)]\s|\s*\||>|---+\s*$)/;
@@ -617,7 +632,7 @@
     if (!PV.path || PV.kind !== 'file') return;
     const f = S.files.get(PV.path);
     const editing = PV.mode === 'edit';
-    const content = editing ? PV.buffer : (f ? f.content : '');
+    const content = editing ? PV.buffer : veilText(f ? f.content : '');
     const isHtml = PV.path.endsWith('.html'), isMd = PV.path.endsWith('.md');
     const rich = (isHtml || isMd) && PV.mode !== 'raw';
     $('pvEditor').hidden = !editing;
@@ -645,19 +660,19 @@
     $('preview').classList.toggle('dirty', editing && PV.buffer !== PV.base);
   }
   function openPreview(p) {
-    const f = S.files.get(p); if (!f) return;
+    const f = S.files.get(p); if (!f || veiled(p)) return;
     if (PV.mode === 'edit' && PV.buffer !== PV.base && PV.path !== p) pvNote(`правки в ${bare(base(PV.path))} не сохранены и сброшены`); else pvNote('');
     setKind('file');
     const idx0 = resolveIndex();
     // a link written with the final name ({context} truth-pack) still finds the file before the renaming phase
     const idx = { get: (t) => idx0.get(t) || idx0.get(norm(bare(String(t).split('/').pop()))) };
-    const out = [...new Set(f.links.map((t) => idx.get(t)).filter((x) => x && x !== p))];
-    const miss = [...new Set(f.links.filter((t) => !idx.get(t)))];
-    const back = [...S.files.values()].filter((g) => g.path !== p && g.links.some((t) => idx.get(t) === p)).map((g) => g.path);
-    $('pvTitle').textContent = `${LAYERS[f.layer].glyph} ${f.title}`;
+    const out = [...new Set(f.links.map((t) => idx.get(t)).filter((x) => x && x !== p && !veiled(x)))];
+    const miss = [...new Set(f.links.filter((t) => !idx.get(t) && !veiledKey(t)))];
+    const back = [...S.files.values()].filter((g) => g.path !== p && !veiled(g.path) && g.links.some((t) => idx.get(t) === p)).map((g) => g.path);
+    $('pvTitle').textContent = `${LAYERS[f.layer].glyph} ${veilText(f.title)}`;
     const text = f.content || '';
     const words = (text.replace(/^---\n[\s\S]*?\n---/, '').match(/[\p{L}\p{N}]+/gu) || []).length;
-    $('pvPath').innerHTML = `<span>${esc(f.path)}</span><span>${LAYERS[f.layer].label}</span><span>${text.split('\n').length} строк · ${words} слов</span>${f.mtime ? `<span>изменён ${ago(f.mtime)}</span>` : ''}`;
+    $('pvPath').innerHTML = `<span>${esc(veilText(f.path))}</span><span>${LAYERS[f.layer].label}</span><span>${text.split('\n').length} строк · ${words} слов</span>${f.mtime ? `<span>изменён ${ago(f.mtime)}</span>` : ''}`;
     $('pvLinks').hidden = false;
     $('pvLinks').innerHTML = `<div><b>→ ${out.length}</b>${out.length ? linkGroups(out) : ' –'}${miss.length ? `<span class="lg"><i>◌ нет файла ${miss.length}</i>${miss.slice(0, 8).map((t) => `<a class="miss">${esc(bare(t.split('/').pop()))}</a>`).join('')}</span>` : ''}</div><div><b>← ${back.length}</b>${back.length ? linkGroups(back) : ' –'}</div>`;
     PV.path = p; PV.mode = 'view'; PV.mtime = f.mtime; PV.escArmed = false;
@@ -763,7 +778,7 @@
   function showStop(id, files, go) {
     const i = META.phases.findIndex((x) => x.id === id);
     const ph = META.phases[i];
-    if (!ph || !ph.stop) return false;
+    if (!ph || !ph.stop || L2) return false; // layer 2 runs without phase cards: their text names people
     const idx = resolveIndex();
     $('stNum').textContent = `фаза ${id.slice(1)} · ${ph.title}`;
     $('stStep').textContent = `${i + 1} / ${META.phases.length}`;
@@ -801,7 +816,7 @@
   function apply(e, animate) {
     switch (e.type) {
       case 'phase': S.phase = e.id; break;
-      case 'narrate': S.narr = e.text; S.narrTag = e.lane ? 'агент' : `фаза ${(S.phase || '').slice(1)}`; break;
+      case 'narrate': S.narr = L2 && e.path && veiled(e.path) ? L2.veilNarr : veilText(e.text); S.narrTag = e.lane ? 'агент' : `фаза ${(S.phase || '').slice(1)}`; break;
       case 'answers': S.answersTyping = { at: e.at, dwell: e.dwell }; break;
       case 'file': upsertFile(e.path, e.content, e.lane, animate); break;
       case 'rename': renameFile(e.from, e.to, e.content, animate); break;
@@ -816,6 +831,18 @@
     const sc = await fetch('scenario.json', { cache: 'no-store' }).then((r) => r.json());
     META = { questions: sc.questions, answers: sc.answers, phases: sc.phases, duration: sc.duration };
     for (const e of sc.events) if (e.type === 'rename') FINAL.set(e.from, e.to);
+    if (L2) {
+      const names = new Set();
+      for (const e of sc.events) {
+        const p = e.type === 'file' ? e.path : e.type === 'rename' ? e.to : null;
+        if (!p || !veiled(p)) continue;
+        [norm(p), norm(base(p)), norm(bare(base(p)))].forEach((k) => veilKeys.add(k));
+        // the name as the file has it and as its heading has it; a first name alone counts from four letters
+        for (const n of [bare(base(p)), ((e.content || '').match(/^# (.*)$/m) || ['', ''])[1].split('·')[0].trim()]) { if (!n) continue; names.add(n); const first = n.split(/\s+/)[0]; if (first.length >= 4) names.add(first); }
+      }
+      const list = [...names].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      if (list.length) veilRe = new RegExp(`(^|[^\\p{L}])(?:${list.join('|')})(?![\\p{L}])`, 'giu');
+    }
     const phaseFiles = {};
     { let cur = null; for (const e of sc.events) { if (e.type === 'phase') cur = e.id; if (cur && (e.type === 'file' || e.type === 'rename')) (phaseFiles[cur] ||= new Set()).add(e.type === 'file' ? e.path : e.to); } }
     const R = { t: 0, i: 0, playing: qs.get('autoplay') !== '0', speed: Number(qs.get('speed') || 1), last: now() };
@@ -873,6 +900,8 @@
     }
     const startPhase = sc.phases.find((x) => x.id === qs.get('phase'));
     if (qs.get('at') === 'end') { seek(sc.duration); setPlay(false); } else if (startPhase) { jumpToPhase(sc.phases.indexOf(startPhase)); } else setPlay(R.playing);
+    // layer 2: «проиграть сборку харнеса» replays from zero at 4×, no stops; the panel learns when it ends
+    if (L2) L2.mount({ build: () => { setStops(false); R.speed = 4; btnSpeed.textContent = '4×'; seek(0); setPlay(true); } });
     function frame(t) {
       const dt = Math.min(200, t - R.last); R.last = t;
       if (R.playing) {
@@ -882,7 +911,7 @@
           apply(e, true);
           if (e.type === 'commit' && STOPS && e.phase && showStop(e.phase, [...(phaseFiles[e.phase] || [])], () => setPlay(true))) { R.t = e.at; setPlay(false); markDirty(); break; }
         }
-        if (R.t >= sc.duration) { R.t = sc.duration; S.phase = 'done'; setPlay(false); markDirty(); }
+        if (R.t >= sc.duration) { R.t = sc.duration; S.phase = 'done'; setPlay(false); markDirty(); if (L2) L2.ended(); }
       }
       document.getElementById('clock').textContent = `${fmt(R.t)} / ${fmt(sc.duration)} · ${R.speed}×`;
       renderAll(R.t / sc.duration, R.t);
@@ -1168,6 +1197,7 @@
     const t = q.trim().toLowerCase();
     const out = [];
     for (const f of S.files.values()) {
+      if (veiled(f.path)) continue;
       const title = f.title.toLowerCase(), path = f.path.toLowerCase(), name = bare(base(f.path)).toLowerCase(), full = base(f.path).toLowerCase();
       let score = 0, hit = '';
       const aliases = String(f.fm.aliases || '').toLowerCase().replace(/[[\]"]/g, '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -1178,8 +1208,9 @@
       else if (path.includes(t)) score = 55;
       else if (ns || ts || as) score = Math.max(ns, ts, as);
       else {
-        const k = (f.content || '').toLowerCase().indexOf(t);
-        if (k >= 0) { score = 30; hit = f.content.slice(Math.max(0, k - 30), k + 70).replace(/\s+/g, ' '); }
+        const body = veilText(f.content || '');
+        const k = body.toLowerCase().indexOf(t);
+        if (k >= 0) { score = 30; hit = body.slice(Math.max(0, k - 30), k + 70).replace(/\s+/g, ' '); }
       }
       if (score) out.push({ kind: 'file', p: f.path, glyph: LAYERS[f.layer].glyph, label: f.title, sub: f.path, hit, score });
     }
@@ -1205,7 +1236,7 @@
   }
   const hl = (label, q) => { const t = q.trim().toLowerCase(); const k = t ? label.toLowerCase().indexOf(t) : -1; return k < 0 ? esc(label) : `${esc(label.slice(0, k))}<mark>${esc(label.slice(k, k + t.length))}</mark>${esc(label.slice(k + t.length))}`; };
   function searchPaint() {
-    $('qres').innerHTML = QS.list.map((r, k) => `<li class="${k === QS.i ? 'on' : ''}" data-k="${k}"><span>${r.glyph}</span><span>${hl(r.kind === 'file' ? base(r.p) + (r.p.endsWith('.md') ? '' : ` .${r.p.split('.').pop()}`) : r.label, $('q').value)}</span><small>${esc(r.kind === 'file' ? r.sub.split('/').slice(0, -1).join('/') || './' : 'карточка фазы')}</small>${r.hit ? `<span class="hit">…${esc(r.hit)}…</span>` : ''}</li>`).join('') || '<li><span></span><span>ничего не нашлось</span></li>';
+    $('qres').innerHTML = QS.list.map((r, k) => `<li class="${k === QS.i ? 'on' : ''}" data-k="${k}"><span>${r.glyph}</span><span>${hl(r.kind === 'file' ? veilText(base(r.p)) + (r.p.endsWith('.md') ? '' : ` .${r.p.split('.').pop()}`) : r.label, $('q').value)}</span><small>${esc(r.kind === 'file' ? r.sub.split('/').slice(0, -1).join('/') || './' : 'карточка фазы')}</small>${r.hit ? `<span class="hit">…${esc(r.hit)}…</span>` : ''}</li>`).join('') || '<li><span></span><span>ничего не нашлось</span></li>';
     const on = $('qres').querySelector('li.on'); if (on) on.scrollIntoView({ block: 'nearest' });
   }
   function searchPick(k) {
@@ -1541,7 +1572,7 @@
   function linkGroups(paths) {
     const g = new Map();
     for (const p of paths) { const L = layerOf(p); if (!g.has(L)) g.set(L, []); g.get(L).push(p); }
-    return [...g].map(([L, ps]) => `<span class="lg"><i>${LAYERS[L].glyph} ${LAYERS[L].label} ${ps.length}</i>${ps.slice(0, 12).map((x) => `<a data-p="${esc(x)}" title="${esc(x)}">${esc(base(x).replace(/^\{[a-z-]+\}\s+/, ''))}</a>`).join('')}${ps.length > 12 ? `<em>…ещё ${ps.length - 12}</em>` : ''}</span>`).join('');
+    return [...g].map(([L, ps]) => `<span class="lg"><i>${LAYERS[L].glyph} ${LAYERS[L].label} ${ps.length}</i>${ps.slice(0, 12).map((x) => `<a data-p="${esc(x)}" title="${esc(x)}">${esc(veilText(base(x).replace(/^\{[a-z-]+\}\s+/, '')))}</a>`).join('')}${ps.length > 12 ? `<em>…ещё ${ps.length - 12}</em>` : ''}</span>`).join('');
   }
 
   resize();

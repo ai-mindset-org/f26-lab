@@ -9,7 +9,7 @@ const out=path.join(root,'.public');
 fs.mkdirSync(out,{recursive:true});
 // Only this generated, fixed path may be replaced.
 for(const entry of fs.readdirSync(out)) fs.rmSync(path.join(out,entry),{recursive:true,force:true});
-const allowed=['index.html','guide.html','access.html','styles.css','doc.css','app.js','doc.js','scenario.json','kit-docs.json','og.png','assets','vendor'];
+const allowed=['index.html','guide.html','access.html','styles.css','doc.css','app.js','layer2.js','doc.js','scenario.json','kit-docs.json','og.png','assets','vendor'];
 for(const f of allowed) fs.cpSync(path.join(root,'web',f),path.join(out,f),{recursive:true});
 for(const f of ['index.html','guide.html','access.html']) {
  let s=fs.readFileSync(path.join(out,f),'utf8');
