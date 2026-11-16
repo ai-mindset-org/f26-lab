@@ -59,13 +59,13 @@
   const pathOf = (d) => (d.file && d.file.path) || '';
   const digest = (d) => /^skills\/.*call-digest/.test(pathOf(d));
   const STEPS = [
-    { k: 'процесс', a: 'звонок прошёл, в папке лежит расшифровка', b: 'с этого начинается любая рутина: есть работа и её след',
+    { k: 'процесс', p: 'практика 1 · нарисуй свой процесс', a: 'звонок прошёл, в папке лежит расшифровка', b: 'с этого начинается любая рутина: есть работа и её след',
       hot: (d) => /^raw\/.*call/.test(pathOf(d)) || pathOf(d).startsWith('meetings/'), warm: (d) => pathOf(d).startsWith('raw/') },
-    { k: 'рутина', a: 'после каждого звонка одно и то же: решения, обязательства, сроки', b: 'повторяется каждую неделю, значит можно описать один раз',
+    { k: 'рутина', p: 'практика 1 · отметь повторяющийся шаг', a: 'после каждого звонка одно и то же: решения, обязательства, сроки', b: 'повторяется каждую неделю, значит можно описать один раз',
       hot: (d) => pathOf(d).startsWith('routines/'), warm: () => false },
-    { k: 'skill', a: 'рутина записана как skill call-digest', b: 'три части: когда брать, шаги, как сверить',
+    { k: 'skill', p: 'практика 2 · из рутины в skill', a: 'рутина записана как skill call-digest', b: 'три части: когда брать, шаги, как сверить',
       hot: (d) => digest(d) || d.id === 'l2:desc', warm: (d) => pathOf(d).startsWith('skills/') },
-    { k: 'сверка', a: 'запускаю skill на прошлом звонке и сравниваю с эталоном', b: 'одна правка правила, второй запуск, строка в журнале',
+    { k: 'сверка', p: 'практика 3 · skill против эталона', a: 'запускаю skill на прошлом звонке и сравниваю с эталоном', b: 'одна правка правила, второй запуск, строка в журнале',
       hot: (d) => digest(d) || d.id === 'l2:eval' || d.id === 'l2:log', warm: () => false },
   ];
   const PROVEN = ['log', 'eval']; // step 4 draws these two stubs solid
@@ -105,7 +105,7 @@
         <div class="l2-rail">${STEPS.map((s, i) => `<button type="button" data-l2step="${i + 1}">${i + 1} ${s.k}</button>`).join('')}</div>
         <div class="l2-step" aria-live="polite"><span id="l2StepTag"></span><p class="l2-lead" id="l2StepA"></p><p id="l2StepB"></p></div>
         <div class="l2-nav"><button type="button" id="l2Prev">← назад</button><button type="button" class="l2-go" id="l2Next">дальше →</button></div>
-        <p class="cap">сегодня на этом слое: один процесс проходит четыре шага</p>
+        <p class="cap" id="l2StepP"></p>
       </div>
       <div class="l2-pane" data-l2pane="build">
         <button type="button" class="l2-go" id="l2Build">проиграть сборку харнеса</button>
@@ -173,6 +173,7 @@
     document.getElementById('l2StepTag').textContent = `шаг ${step} из ${STEPS.length} · ${st.k}`;
     document.getElementById('l2StepA').textContent = st.a;
     document.getElementById('l2StepB').textContent = st.b;
+    document.getElementById('l2StepP').textContent = `в деке сегодня: ${st.p}`;
     document.getElementById('l2Prev').disabled = step === 1;
     document.getElementById('l2Next').textContent = step === STEPS.length ? 'блоки →' : 'дальше →';
     const n = BLOCKS.filter((b) => lit(b.k)).length;
