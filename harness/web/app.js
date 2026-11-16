@@ -28,7 +28,7 @@
   document.body.classList.toggle('team', TEAM);
   document.querySelectorAll('.modes button').forEach((b) => {
     b.classList.toggle('on', b.dataset.mode === MODE);
-    b.onclick = () => { if (PUBLIC_COPY && b.dataset.mode === 'team') { location.href = TEAM_URL; return; } const u = new URL(location.href); u.searchParams.set('mode', b.dataset.mode); if (L2) ['layer', 'tab', 'off', 'on'].forEach((k) => u.searchParams.delete(k)); location.href = u.toString(); };
+    b.onclick = () => { if (PUBLIC_COPY && b.dataset.mode === 'team') { location.href = TEAM_URL; return; } const u = new URL(location.href); u.searchParams.set('mode', b.dataset.mode); if (L2) ['layer', 'tab', 'off', 'on', 'step'].forEach((k) => u.searchParams.delete(k)); location.href = u.toString(); };
     if (PUBLIC_COPY && b.dataset.mode === 'team') b.hidden = true;
   });
 
@@ -898,7 +898,7 @@
       $('intro').hidden = false; $('inGo').focus();
       $('inGo').onclick = () => introClose(() => setPlay(true));
       $('inEnd').onclick = () => introClose(() => { seek(sc.duration); setPlay(false); });
-      window.addEventListener('keydown', function onIntroKey(e) { if ($('intro').hidden) { window.removeEventListener('keydown', onIntroKey, true); return; } if (e.key === 'Enter' || e.code === 'Space') { e.preventDefault(); e.stopPropagation(); $('inGo').click(); } }, true);
+      window.addEventListener('keydown', function onIntroKey(e) { if ($('intro').hidden) { window.removeEventListener('keydown', onIntroKey, true); return; } if ((e.key === 'Enter' || e.code === 'Space') && !(e.target && e.target.id === 'lv2')) { e.preventDefault(); e.stopPropagation(); $('inGo').click(); } }, true);
     }
     const startPhase = sc.phases.find((x) => x.id === qs.get('phase'));
     if (qs.get('at') === 'end') { seek(sc.duration); setPlay(false); } else if (startPhase) { jumpToPhase(sc.phases.indexOf(startPhase)); } else setPlay(R.playing);
@@ -1296,6 +1296,9 @@
     if (go) go();
     else if (MODE === 'replay' && !S.narr) { S.narr = 'пробел или ▶ – запустить сборку · End – сразу финал · клик по фазе внизу – её карточка'; S.narrTag = 'старт'; markDirty(); }
   }
+
+  // the strip of four levels on the intro: level 1 starts what the main button starts, level 2 is a plain link to ?layer=2
+  if ($('lv1')) $('lv1').onclick = () => $('inGo').click();
 
   // ---------- live folder bar: local path and its git remote ----------
   async function folderBar() {

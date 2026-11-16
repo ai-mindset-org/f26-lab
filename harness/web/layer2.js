@@ -1,8 +1,9 @@
 /* F26 self-harness · layer 2: a skill on the harness (?layer=2, synonym ?layer=skills)
  * loads before app.js. without the parameter this file does nothing and app.js runs as before.
- * with it: the finished build without the people layer, and a panel with three tabs –
- * сборка (replay the build), блоки (eight switches that dim their nodes on the graph), онтология (three word lists).
- * state lives in the address: &tab=build|blocks|onto · &off=skills,desc,mirror,reviewer,routes · &on=log,eval,mcp
+ * with it: the finished build without the people layer, and a panel with four tabs –
+ * сегодня (one process in four guided steps, each lights its nodes), сборка (replay the build),
+ * блоки (eight switches that dim their nodes on the graph), онтология (three word lists).
+ * state lives in the address: &tab=today|build|blocks|onto · &step=1..4 · &off=skills,desc,mirror,reviewer,routes · &on=log,eval,mcp
  */
 (() => {
   'use strict';
@@ -53,7 +54,21 @@
     ['цикл проверки', 'тот же запрос без skill и со skill, сверка по пунктам', 'https://agentskills.io/skill-creation/evaluating-skills'],
     ['место и жизнь', 'личная папка, проект, команда', 'https://code.claude.com/docs/en/skills'],
   ];
-  const TABS = [['build', 'сборка'], ['blocks', 'блоки'], ['onto', 'онтология']];
+  const TABS = [['today', 'сегодня'], ['build', 'сборка'], ['blocks', 'блоки'], ['onto', 'онтология']];
+  // the guided path of the day: name · the line · the second line · nodes that pulse · nodes that only stay bright
+  const pathOf = (d) => (d.file && d.file.path) || '';
+  const digest = (d) => /^skills\/.*call-digest/.test(pathOf(d));
+  const STEPS = [
+    { k: 'процесс', a: 'звонок прошёл, в папке лежит расшифровка', b: 'с этого начинается любая рутина: есть работа и её след',
+      hot: (d) => /^raw\/.*call/.test(pathOf(d)) || pathOf(d).startsWith('meetings/'), warm: (d) => pathOf(d).startsWith('raw/') },
+    { k: 'рутина', a: 'после каждого звонка одно и то же: решения, обязательства, сроки', b: 'повторяется каждую неделю, значит можно описать один раз',
+      hot: (d) => pathOf(d).startsWith('routines/'), warm: () => false },
+    { k: 'skill', a: 'рутина записана как skill call-digest', b: 'три части: когда брать, шаги, как сверить',
+      hot: (d) => digest(d) || d.id === 'l2:desc', warm: (d) => pathOf(d).startsWith('skills/') },
+    { k: 'сверка', a: 'запускаю skill на прошлом звонке и сравниваю с эталоном', b: 'одна правка правила, второй запуск, строка в журнале',
+      hot: (d) => digest(d) || d.id === 'l2:eval' || d.id === 'l2:log', warm: () => false },
+  ];
+  const PROVEN = ['log', 'eval']; // step 4 draws these two stubs solid
 
   // ---------- state from the address ----------
   const csv = (k) => (qs.get(k) || '').split(',').map((x) => x.trim()).filter((x) => BLOCKS.some((b) => b.k === x));
@@ -62,13 +77,16 @@
   for (const b of BLOCKS) on[b.k] = (b.def || askedOn.includes(b.k)) && !askedOff.includes(b.k);
   // the consequence line follows the block switched off last; at start – the ones off by default, then &off= in its order
   let offOrder = [...BLOCKS.filter((b) => !on[b.k] && !askedOff.includes(b.k)).map((b) => b.k), ...askedOff.filter((k, i) => askedOff.indexOf(k) === i)];
-  let tab = TABS.some(([k]) => k === qs.get('tab')) ? qs.get('tab') : 'blocks';
+  let tab = TABS.some(([k]) => k === qs.get('tab')) ? qs.get('tab') : 'today';
+  let step = Math.min(STEPS.length, Math.max(1, parseInt(qs.get('step'), 10) || 1));
+  const forced = (k) => tab === 'today' && step === STEPS.length && PROVEN.includes(k);
+  const lit = (k) => on[k] || forced(k);
   function writeAddress() {
     const p = new URLSearchParams(location.search);
-    ['tab', 'off', 'on'].forEach((k) => p.delete(k));
+    ['tab', 'step', 'off', 'on'].forEach((k) => p.delete(k));
     const off = BLOCKS.filter((b) => b.def && !on[b.k]).map((b) => b.k);
-    const lit = BLOCKS.filter((b) => !b.def && on[b.k]).map((b) => b.k);
-    const q = `${p.toString()}&tab=${tab}${off.length ? `&off=${off.join(',')}` : ''}${lit.length ? `&on=${lit.join(',')}` : ''}`;
+    const extra = BLOCKS.filter((b) => !b.def && on[b.k]).map((b) => b.k);
+    const q = `${p.toString()}&tab=${tab}${tab === 'today' ? `&step=${step}` : ''}${off.length ? `&off=${off.join(',')}` : ''}${extra.length ? `&on=${extra.join(',')}` : ''}`;
     try { history.replaceState(null, '', `${location.pathname}?${q}${location.hash}`); } catch { /* a file:// page keeps its address */ }
   }
 
@@ -83,6 +101,12 @@
   panel.innerHTML = `<h2><span>слой 2 · skill на харнесе</span><em id="l2Count"></em></h2>
     <div class="l2-tabs" role="tablist">${TABS.map(([k, t]) => `<button type="button" role="tab" data-l2tab="${k}">${t}</button>`).join('')}</div>
     <div class="l2-body">
+      <div class="l2-pane" data-l2pane="today">
+        <div class="l2-rail">${STEPS.map((s, i) => `<button type="button" data-l2step="${i + 1}">${i + 1} ${s.k}</button>`).join('')}</div>
+        <div class="l2-step" aria-live="polite"><span id="l2StepTag"></span><p class="l2-lead" id="l2StepA"></p><p id="l2StepB"></p></div>
+        <div class="l2-nav"><button type="button" id="l2Prev">← назад</button><button type="button" class="l2-go" id="l2Next">дальше →</button></div>
+        <p class="cap">сегодня на этом слое: один процесс проходит четыре шага</p>
+      </div>
       <div class="l2-pane" data-l2pane="build">
         <button type="button" class="l2-go" id="l2Build">проиграть сборку харнеса</button>
         <p class="cap">12 фаз · от пустой папки до папки, которую читает агент</p>
@@ -113,7 +137,7 @@
   // ---------- graph: the nodes of a block that is off turn into dashed ghosts ----------
   const G = { nodeSel: null, linkSel: null };
   const blockOf = (d) => d.block || (d.file && d.file.path.startsWith('skills/') ? 'skills' : d.id === 'agent:reviewer' ? 'reviewer' : null);
-  const isOff = (d) => { const k = d && blockOf(d); return !!k && !on[k]; };
+  const isOff = (d) => { const k = d && blockOf(d); return !!k && !lit(k); };
   // the services stand pinned on the left edge under the caption strip, clear of the labels of the folder
   function pin(d) {
     const r = document.getElementById('stage').getBoundingClientRect();
@@ -126,6 +150,12 @@
     const end = (x) => (x && typeof x === 'object' ? x : byId.get(x));
     G.nodeSel.classed('ghost', (d) => d.layer === 'ghost' || isOff(d)).classed('l2off', isOff);
     G.linkSel.classed('l2off', (l) => isOff(end(l.source)) || isOff(end(l.target)));
+    // «сегодня»: the nodes of the step pulse, the rest of the map steps back
+    const st = tab === 'today' ? STEPS[step - 1] : null;
+    G.nodeSel.classed('l2dim', (d) => !!st && !st.hot(d) && !st.warm(d));
+    G.linkSel.classed('l2dim', (l) => { const a = end(l.source), b = end(l.target); return !!st && !(a && b && (st.hot(a) || st.hot(b))); });
+    G.nodeSel.selectAll('circle.l2focus').remove();
+    if (st) G.nodeSel.filter(st.hot).insert('circle', 'path').attr('class', 'l2focus').attr('r', 14);
   }
 
   function paintPanel() {
@@ -138,20 +168,38 @@
       el.querySelector('em').textContent = on[b.k] ? 'вкл' : 'выкл';
       document.body.classList.toggle(`l2-off-${b.k}`, !on[b.k]);
     }
-    const lit = BLOCKS.filter((b) => on[b.k]).length;
-    document.getElementById('l2Count').textContent = `${lit}/${BLOCKS.length}`;
+    const st = STEPS[step - 1];
+    panel.querySelectorAll('[data-l2step]').forEach((b) => { const cur = +b.dataset.l2step === step; b.classList.toggle('on', cur); b.setAttribute('aria-current', cur ? 'step' : 'false'); });
+    document.getElementById('l2StepTag').textContent = `шаг ${step} из ${STEPS.length} · ${st.k}`;
+    document.getElementById('l2StepA').textContent = st.a;
+    document.getElementById('l2StepB').textContent = st.b;
+    document.getElementById('l2Prev').disabled = step === 1;
+    document.getElementById('l2Next').textContent = step === STEPS.length ? 'блоки →' : 'дальше →';
+    const n = BLOCKS.filter((b) => lit(b.k)).length;
+    document.getElementById('l2Count').textContent = `${n}/${BLOCKS.length}`;
     const last = BLOCKS.find((b) => b.k === offOrder[offOrder.length - 1]);
-    document.getElementById('l2Tag').textContent = last ? `выключено · ${last.name}` : `${lit} из ${BLOCKS.length}`;
+    document.getElementById('l2Tag').textContent = last ? `выключено · ${last.name}` : `${n} из ${BLOCKS.length}`;
     document.getElementById('l2Out').textContent = last ? last.out : ALL_ON;
     panel.querySelector('.l2-out').classList.toggle('all', !last);
     repaint();
   }
   function setTab(t) { tab = t; paintPanel(); writeAddress(); }
+  function setStep(n) { step = Math.min(STEPS.length, Math.max(1, n)); paintPanel(); writeAddress(); }
 
   let api = null;
   panel.addEventListener('click', (e) => {
     const t = e.target.closest('[data-l2tab]');
     if (t) { setTab(t.dataset.l2tab); return; }
+    const s = e.target.closest('[data-l2step]');
+    if (s) { setStep(+s.dataset.l2step); return; }
+    if (e.target.closest('#l2Prev')) { setStep(step - 1); return; }
+    if (e.target.closest('#l2Next')) {
+      if (step < STEPS.length) { setStep(step + 1); return; }
+      // the last step hands over to «блоки» with the two stubs it has just drawn solid left on
+      for (const k of PROVEN) on[k] = true;
+      offOrder = offOrder.filter((x) => !PROVEN.includes(x));
+      setTab('blocks'); return;
+    }
     const b = e.target.closest('.l2-b');
     if (b) {
       const k = b.dataset.b;
