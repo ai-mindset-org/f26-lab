@@ -54,7 +54,7 @@
     ['цикл проверки', 'тот же запрос без skill и со skill, сверка по пунктам', 'https://agentskills.io/skill-creation/evaluating-skills'],
     ['место и жизнь', 'личная папка, проект, команда', 'https://code.claude.com/docs/en/skills'],
   ];
-  const TABS = [['today', 'сегодня'], ['build', 'сборка'], ['blocks', 'блоки'], ['onto', 'онтология']];
+  const TABS = [['today', 'сегодня'], ['blocks', 'блоки'], ['onto', 'онтология']]; // сборка убрана 16.11: повтор сборки уже есть на основном экране
   // the guided path of the day: name · the line · the second line · nodes that pulse · nodes that only stay bright
   const pathOf = (d) => (d.file && d.file.path) || '';
   const digest = (d) => /^skills\/.*call-digest/.test(pathOf(d));
