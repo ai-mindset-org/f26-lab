@@ -7,7 +7,6 @@
     rows.forEach(function (r) { if (!r) return; var p = el('div'); if (r[0]) p.appendChild(el('b', r[0])); p.appendChild(document.createTextNode(r[1])); b.appendChild(p); });
   }
   function span(sec) { return sec >= 3600 ? Math.round(sec / 3600) + ' ч' : sec >= 120 ? Math.round(sec / 60) + ' мин' : sec + ' с'; }
-  try { if (localStorage.getItem('relay.theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) { }
   get('api/whoami').then(function (w) {
     box('me', 'кого видит сервер', [
       w.viewer ? ['на столе ты: ', w.shown || w.viewer] : ['', 'Ты не вошёл. Стол открыт на чтение, имена участников скрыты.'],

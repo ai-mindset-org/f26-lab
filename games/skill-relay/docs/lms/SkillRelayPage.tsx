@@ -1,85 +1,125 @@
 /**
- * SkillRelayPage — эстафета skills внутри лабы. Образец для aim-lms: src/pages/SkillRelayPage.tsx.
- * Маршрут: /f26/relay, под ProtectedRoute tier="user" labId="f26", как у компаса.
+ * SkillRelayPage – the skill relay of a lab inside the LMS.
  *
- * Страница просит у функции LMS одноразовую ссылку входа и ставит её адресом рамки.
- * Игра открывает узкую версию /lms/ и сообщает высоту содержимого: рамка растёт без своей прокрутки.
- * В CSP LMS нужен адрес игры в frame-src.
+ * The relay is a separate game service: a table of skills, each grows by one
+ * change at a time and goes on to the next person as a new version. The page
+ * asks the skill-relay-enter function for a one-time entry link and uses it as
+ * the frame address; the game opens its narrow LMS version and reports the
+ * height of its content, so the frame grows without a scrollbar of its own.
+ *
+ * Route: /f26/relay. Entry: the relay card in the right rail of /f26 pages
+ * (SkillRelayCard); absent from the left menu and search.
  */
 
-import { useEffect, useState } from 'react';
-import { getAuthToken } from '../hooks/useAuth';
-
-const ENTER_ENDPOINT = '/.netlify/functions/skill-relay-enter';
-/** Адрес игры: тот же, что в frame-src и в SKILL_RELAY_URL функции входа. */
-const RELAY_ORIGIN = import.meta.env.VITE_SKILL_RELAY_URL as string;
+import { useCallback, useEffect, useState } from 'react';
+import { ArrowUpRight, RotateCcw } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import { Button, PageTransition } from '../components/ui';
+import {
+  RELAY_MIN_HEIGHT,
+  RelayError,
+  relayErrorText,
+  relayFrameHeight,
+  requestRelayEntry,
+  type RelayEntry,
+} from '../lib/skill-relay';
 
 interface SkillRelayPageProps {
   labId: string;
+  labTitle: string;
 }
 
-export default function SkillRelayPage({ labId }: SkillRelayPageProps) {
-  const [src, setSrc] = useState<string | null>(null);
+export default function SkillRelayPage({ labId, labTitle }: SkillRelayPageProps) {
+  const [entry, setEntry] = useState<RelayEntry | null>(null);
   const [height, setHeight] = useState(720);
-  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      try {
-        const token = getAuthToken();
-        if (!token) throw new Error('unauthorized');
-        const response = await fetch(ENTER_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ lab: labId }),
-        });
-        const data = (await response.json()) as { ok?: boolean; auth_link?: string; error?: string };
-        if (!response.ok || !data.auth_link) throw new Error(data.error || 'enter_failed');
-        if (alive) setSrc(data.auth_link);
-      } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : 'enter_failed');
-      }
-    })();
+    setEntry(null);
+    setErrorCode(null);
+    requestRelayEntry(labId)
+      .then((value) => {
+        if (alive) setEntry(value);
+      })
+      .catch((error: unknown) => {
+        if (alive) setErrorCode(error instanceof RelayError ? error.code : 'relay_failed');
+      });
     return () => {
       alive = false;
     };
-  }, [labId]);
+  }, [labId, attempt]);
 
   useEffect(() => {
+    if (!entry) return;
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== RELAY_ORIGIN) return;
-      const data = event.data as { type?: string; height?: number } | null;
-      if (data?.type === 'skill-relay:height' && Number(data.height) > 0) {
-        setHeight(Math.max(420, Math.round(Number(data.height))));
-      }
+      if (event.origin !== entry.origin) return;
+      const next = relayFrameHeight(event.data);
+      if (next !== null) setHeight(next);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, []);
+  }, [entry]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-3xl font-semibold tracking-tight text-gray-900">эстафета skills</h1>
-      <p className="mt-2 mb-6 text-gray-600 max-w-2xl">
-        Skill растёт по одному изменению. Возьми skill со стола, примени одно правило и отдай новой
-        версией следующему.
-      </p>
-
-      {error && (
-        <p className="text-sm text-gray-600">
-          Стол сейчас не открылся ({error}). Обнови страницу или напиши куратору.
-        </p>
-      )}
-
-      {src && (
-        <iframe
-          src={src}
-          title="эстафета skills"
-          className="block w-full border-0"
-          style={{ height }}
+    <PageTransition>
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        <PageHeader
+          kicker={`${labTitle} · эстафета`}
+          title="Эстафета skills"
+          subtitle="Skill растёт по одному изменению. Возьми skill со стола, примени одно правило и передай новой версией следующему."
+          actions={
+            entry ? (
+              <a
+                href={entry.origin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-mono text-xs text-aim-gray-500 hover:text-aim-red"
+              >
+                на весь экран
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </a>
+            ) : undefined
+          }
         />
-      )}
-    </div>
+
+        {errorCode && (
+          <div className="rounded-lg border border-dashed border-aim-gray-300 px-5 py-8 text-center text-sm text-aim-gray-500">
+            <p className="mb-4">{relayErrorText(errorCode)}</p>
+            {errorCode !== 'relay_not_configured' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                onClick={retry}
+              >
+                попробовать ещё раз
+              </Button>
+            )}
+          </div>
+        )}
+
+        {!entry && !errorCode && (
+          <div
+            className="rounded-lg bg-aim-gray-100 animate-pulse"
+            style={{ height: RELAY_MIN_HEIGHT }}
+            aria-busy="true"
+          />
+        )}
+
+        {entry && (
+          <iframe
+            src={entry.authLink}
+            title="эстафета skills"
+            className="block w-full border-0"
+            style={{ height }}
+            referrerPolicy="no-referrer"
+          />
+        )}
+      </div>
+    </PageTransition>
   );
 }

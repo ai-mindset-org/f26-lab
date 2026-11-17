@@ -50,6 +50,14 @@ PACKS = {"base": SKILLS, "popular": CASES, "text": STARTER}
 WEB = HERE / "web"
 GUIDES = HERE / "guides"
 LOGIN = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
+
+
+def nick_of(p):
+    """ник человека в Telegram: записанный при входе, иначе логин из состава; у мест демо и у логинов id… ника нет"""
+    if p.get("nick"):
+        return p["nick"]
+    login = p.get("login", "")
+    return login if p.get("tg_id") and not p.get("seat") and not re.match(r"^id\d+$", login) else ""
 SKILL_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 MAX_LINES, MAX_CHARS, MAX_CHANGED, MAX_REVIEWS = 180, 14000, 12, 3
 MAX_LANES, MAX_ADDED = 12, 2  # дорожек на столе и своих skills от одного участника
@@ -1073,7 +1081,7 @@ class Game:
                 r = st["runners"].get(login, {})
                 own = sum(1 for l in st["lanes"].values() if l.get("added_by") == login)
                 out["add"] = {"left": max(0, min(MAX_ADDED - own, MAX_LANES - len(st["order"]))), "own": own, "max": MAX_ADDED, "lanes": MAX_LANES}
-                out["viewer"] = {"login": login, "name": viewer.get("name", login), "profile": viewer.get("profile") or {},
+                out["viewer"] = {"login": login, "name": viewer.get("name", login), "nick": viewer.get("nick", ""), "profile": viewer.get("profile") or {},
                                  "auth": viewer.get("auth") or r.get("auth", ""),
                                  "rest": self.rest_left(login), "rest_until": r.get("last_take", 0) + self.hour if r.get("last_take") else 0,
                                  "holding": self.holding(login), "legs": r.get("legs", 0)}
@@ -1649,7 +1657,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
         if not p:  # сессия живёт месяц, а из состава человека могли убрать
             return None
         return {"login": p["login"], "name": p.get("name") or p["login"], "tg_id": p.get("tg_id"), "profile": p.get("profile") or {},
-                "auth": data.get("auth", "")}
+                "nick": nick_of(p), "auth": data.get("auth", "")}
 
     def session_cookie(person, auth=""):
         now = int(time.time())
@@ -1664,13 +1672,33 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
 
     def admit(tg_id, username, name):
         """состав решает, кто входит; с --open новый человек дописывается в состав"""
+        name = " ".join(str(name or "").split())[:80]
+        nick = username if LOGIN.match(username or "") else ""
         with GATE:
             p = table.person(tg_id=tg_id) or (table.person(login=username) if username else None)
-            if p or not open_roster:
+            if p:  # вход приносит свежие имя и ник: пустые поля состава дополняются, записанное руками остаётся
+                data = table.roster()
+                q = next((x for x in data["people"] if x.get("login") == p["login"]), None)
+                new = {}
+                if q is not None:
+                    if name and (not q.get("name") or q.get("name") == q["login"]):
+                        new["name"] = name
+                    if nick and nick != q["login"] and q.get("nick") != nick:
+                        new["nick"] = nick
+                    if not q.get("tg_id"):
+                        new["tg_id"] = str(tg_id)
+                if new:
+                    q.update(new)
+                    table.save_roster(data)
+                    p = dict(p, **new)
                 return p
-            login = username if LOGIN.match(username or "") else f"id{tg_id}"
+            if not open_roster:
+                return None
+            login = nick or f"id{tg_id}"
             data = table.roster()
             p = {"login": login, "tg_id": str(tg_id), "name": name or login, "profile": {}}
+            if nick:
+                p["nick"] = nick
             data["people"].append(p)
             table.save_roster(data)
             return p

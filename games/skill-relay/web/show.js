@@ -24,7 +24,6 @@
     return el;
   }
   var q = new URLSearchParams(location.search), S = null, skew = 0, busy = false, auto = null, seen = {}, held = {}, first = true;
-  try { if ((q.get('theme') || localStorage.getItem('relay.theme')) === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) { }
   var two = function (n) { return (n < 10 ? '0' : '') + n; };
   var now = function () { return Date.now() / 1000 + skew; };
   function clock(sec) { sec = Math.max(0, Math.round(sec)); return two(Math.floor(sec / 60)) + ':' + two(sec % 60); }
@@ -150,11 +149,6 @@
     else if (k === 'arrowleft') { stopAuto(); if (S.step > 0) go(S.step - 1); }
     else if (k === 'a' || k === 'ф') toggleAuto();
     else if (k === 'r' || k === 'к') { stopAuto(); go(0); }
-    else if (k === 't' || k === 'е') {
-      var dark = document.documentElement.getAttribute('data-theme') !== 'dark';
-      if (dark) document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
-      try { localStorage.setItem('relay.theme', dark ? 'dark' : 'light'); } catch (x) { }
-    }
   });
   setInterval(function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-until]'), function (e) { e.textContent = clock(Number(e.getAttribute('data-until')) - now()); });

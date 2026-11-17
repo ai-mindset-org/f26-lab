@@ -7,7 +7,8 @@
   var lms = /^\/lms(\/|$)/.test(location.pathname);
   if (lms) root.setAttribute('data-skin', 'lms');
   window.SKIN = lms ? 'lms' : 'web';
-  try { localStorage.removeItem('relay.skin'); } catch (e) {}
+  // переключателей вида и темы нет: вид задаёт адрес, тема одна, светлая
+  try { localStorage.removeItem('relay.skin'); localStorage.removeItem('relay.theme'); } catch (e) {}
 
   var ITEMS = [['./', lms ? 'skills' : 'стол', ''], ['show', 'как работает', 'show'], ['try', 'попробовать', 'try'], ['rules', 'правила', 'rules'], ['./?view=log', 'журнал', 'log']];
   if (!lms) ITEMS.push(['about', 'о системе', 'about']);

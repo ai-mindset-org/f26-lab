@@ -32,10 +32,9 @@
     return el;
   }
   var q = new URLSearchParams(location.search);
-  var S = null, RULES = null, SRC = null, view = q.get('view') || 'auto', key = '', skew = 0, glyph = q.get('ball') !== 'solid', still = q.get('still') === '1';
+  var S = null, RULES = null, SRC = null, view = q.get('view') || 'auto', key = '', skew = 0, glyph = true, still = q.get('still') === '1';
   var leg = null; // забег: {lane, base, text, rule, analysis, result}
   var focusV = 0, HIT = [], hover = ''; // версия, открытая в истории дорожки; шарики стадиона и тот, что под курсором
-  if ((q.get('theme') || LS.get('relay.theme')) === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
   function api(method, path, body) {
     var o = { method: method, credentials: 'same-origin', headers: {} };
@@ -214,6 +213,14 @@
       until(l.until), h('i', { 'data-bar': l.until, 'data-all': all, style: 'width:' + Math.round(100 * left / all) + '%' }));
   }
 
+  // кто за столом: имя, ник и способ входа. Под этим именем версии лягут в журнал
+  function whoLine(v) {
+    return h('div', { class: 'who', title: 'под этим именем твои версии видны на столе и в журнале' },
+      h('span', { class: 'av', 'aria-hidden': 'true' }, (v.name || v.login || '?').trim().charAt(0).toUpperCase()),
+      h('span', null, 'ты за столом как ', h('b', null, v.name || v.login), v.nick ? [' · ', h('span', { class: 'nick' }, '@' + v.nick)] : null,
+        v.auth ? h('i', null, ' · вход: ' + v.auth) : null));
+  }
+
   // ---------- вход ----------
   function how() {
     var st = [['возьми skill', 'Свободный skill закрепляется за тобой на ' + span(S.lock) + '.'],
@@ -222,28 +229,34 @@
       ['новая версия', 'В дорожке лежит v+1. Следующий берёт её и добавляет своё.']];
     return h('div', { class: 'how' }, st.map(function (x, i) { return h('div', { class: 'st' }, h('span', { class: 'n' }, two(i + 1)), A.step(i), h('b', null, x[0]), x[1]); }));
   }
+  var introBox = null; // анимация входа живёт одна на страницу: перерисовка стола её не сбрасывает
+  function intro() { return introBox || (introBox = A.intro({ lock: span(S.lock), still: still })); }
   function viewEntry() {
-    var box = h('div');
-    var seats = (S.seats || []).map(function (s) {
-      return h('button', { onclick: function () { api('POST', 'api/demo/login', { login: s.login }).then(load, out(box)); } }, s.name + (s.taken ? ' · уже был' : ''));
-    });
+    var box = h('div'), demo = S.mode === 'демо';
+    function sit(login) { return function () { api('POST', 'api/demo/login', { login: login }).then(load, out(box)); }; }
+    var free = (S.seats || []).filter(function (s) { return !s.taken; })[0] || (S.seats || [])[0];
+    var seats = (S.seats || []).map(function (s) { return h('button', { onclick: sit(s.login) }, s.name + (s.taken ? ' · уже был' : '')); });
     var nm = S.tailnet ? h('input', { type: 'text', id: 'tname', maxlength: 40, value: S.tailnet.name, 'aria-label': 'имя на столе', style: 'max-width:260px' }) : null;
     var tail = S.tailnet ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сервер узнал тебя по Tailscale · имя на столе можно поправить'),
       h('div', { class: 'row' }, nm, h('button', { class: 'go', onclick: function () { api('POST', 'api/tailnet/login', { name: nm.value }).then(load, out(box)); } }, 'войти'))] : null;
+    var t = S.totals || {};
     return [
-      h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : S.sso ? 'единый вход' : 'вход по ссылке') + ' }'),
+      h('div', { class: 'kick' }, '{ открытая эстафета · ' + (demo ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : S.lms ? 'вход из LMS' : S.sso ? 'единый вход' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
-      h('p', { class: 'why' }, 'Skill растёт по одному изменению. Берёшь skill со стола, он закрепляется за тобой на ' + span(S.lock) + ', применяешь одно правило и отдаёшь новой версией следующему.'),
-      h('p', { class: 's' }, 'Игра лабы F26: за одну встречу skill проходит через несколько рук, и у каждой версии видно, кто её внёс и по какому правилу.'),
-      lab26(), how(),
-      S.mode === 'демо' ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сядь на место: в демо входа нет, пауза после взятия ' + span(S.hour)), h('div', { class: 'row' }, seats),
-        S.tailnet ? tail : null,
-        h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show' }, 'как это работает: один круг по шагам'))] :
-        tail || [S.lms ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.lms, target: '_top' }, 'войти через LMS')) : S.sso && window.SKIN !== 'lms' ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.sso.url }, 'войти через ' + S.sso.name)) : S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
-          h('p', { class: 's' }, S.lms ? 'Вход идёт со страницы лабы в LMS: она подтверждает участника и открывает стол под твоим именем.' : S.sso ? 'Единый вход AI Mindset: тот же аккаунт, что в других сервисах лабы. На столе будет видно твоё имя у каждой версии.' : S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
+      h('p', { class: 'why' }, 'Skill растёт по одному изменению. Берёшь skill со стола, применяешь одно правило и отдаёшь новой версией следующему.'),
+      intro(),
+      demo ? [h('div', { class: 'row', style: 'margin-top:18px' },
+          free ? h('button', { class: 'go', onclick: sit(free.login) }, 'сесть за стол') : null,
+          h('a', { class: 'btn', href: 'show' }, 'один круг по шагам')),
+        h('p', { class: 's' }, 'Демо: входа нет, имена выдуманные, пауза после взятия ' + span(S.hour) + '. Стол можно трогать, он учебный.'),
+        seats.length > 1 ? h('details', { class: 'own' }, h('summary', null, 'выбрать место самому · ' + seats.length), h('div', { class: 'row' }, seats)) : null,
+        S.tailnet ? tail : null] :
+        tail || [S.lms ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.lms, target: '_top' }, 'войти через LMS')) : S.sso && window.SKIN !== 'lms' ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.sso.url }, 'войти через ' + S.sso.name)) : S.login_url ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
+          h('p', { class: 's' }, S.lms ? 'Вход идёт со страницы лабы в LMS: она подтверждает участника и открывает стол под твоим именем и ником.' : S.sso ? 'Единый вход AI Mindset: тот же аккаунт, что в других сервисах лабы. На столе будет видно твоё имя у каждой версии.' : S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
       box,
-      S.lanes && S.lanes.length ? [lanesBlock(true), trailBlock(6)] : null,
-      h('div', { class: 'keys' }, h('kbd', null, 'T'), 'тема ', h('kbd', null, 'G'), 'шар глифами или сплошной'),
+      S.lanes && S.lanes.length ? h('details', { class: 'own onTable' },
+        h('summary', null, 'что сейчас на столе · skills ' + S.lanes.length + (t.laps != null ? ' · версий ' + t.laps : '')),
+        lab26(), lanesBlock(true), trailBlock(6)) : null,
       links()
     ];
   }
@@ -293,12 +306,13 @@
   function viewLanes() {
     var v = S.viewer, resting = v.rest > 0;
     return [
-      h('div', { class: 'kick' }, '{ ' + v.name + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + (v.auth ? ' · вход: ' + v.auth : '') + ' · твоих версий ' + v.legs + ' }'),
+      h('div', { class: 'kick' }, '{ твоих версий ' + v.legs + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + ' }'),
       h('h1', { class: 'h1s' }, 'эстафета skills', h('em', null, '.')),
+      whoLine(v),
       resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, S.lanes.length <= 4 ? 'выбери один из ' + ['', 'одного', 'двух', 'трёх', 'четырёх'][S.lanes.length] + ' ' : 'возьми ', h('em', null, S.lanes.length <= 4 && S.lanes.length > 1 ? 'skills' : 'skill')),
       h('p', { class: 's' }, resting ? 'Следующий skill можно взять, когда выйдет время. Дорожки, версии и правила можно читать.' :
         'Взял: skill закреплён за тобой на ' + span(S.lock) + '. Применяешь одно правило и отдаёшь новой версией, дальше его берёт следующий. После взятия ' + span(S.hour) + ' паузы на все дорожки.'),
-      lab26(), lanesBlock(false), trailBlock(), links()
+      lanesBlock(false), trailBlock(), links()
     ];
   }
 
@@ -745,13 +759,7 @@
   addEventListener('keydown', function (e) {
     var tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.metaKey || e.ctrlKey || e.altKey) return;
-    var k = e.key.toLowerCase();
-    if (k === 't' || k === 'е') {
-      var dark = document.documentElement.getAttribute('data-theme') !== 'dark';
-      if (dark) document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
-      LS.set('relay.theme', dark ? 'dark' : 'light'); colors();
-    } else if (k === 'g' || k === 'п') { glyph = !glyph; }
-    else if (k === 'escape') { go('auto'); }
+    if (e.key === 'Escape') go('auto');
   });
   colors();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(colors);

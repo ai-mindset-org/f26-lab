@@ -113,8 +113,94 @@
     return box;
   }
 
+  // анимация входа: что значит взять skill. Одна дорожка, четыре кадра по кругу:
+  // взял (skill закреплён) → одно правило → проверка → новая версия, её берёт следующий.
+  // Кадр ставит JS атрибутом data-ph, движение и проявление делает CSS. Кадр можно выбрать подписью.
+  var INTRO_MS = 2800;
+  function intro(o) {
+    o = o || {};
+    var lock = o.lock || '5 мин';
+    var CAP = [
+      ['возьми skill', 'Свободный skill закрепляется за тобой на ' + lock + '. Пока идёт время, его правишь только ты.'],
+      ['одно правило', 'Выбираешь одно правило из книги. Модель вносит в текст одно изменение: несколько строк.'],
+      ['проверка', 'Сервер ищет в тексте личное и секреты, разбор смотрит, применено ли правило. Ты нажимаешь «закоммитить».'],
+      ['новая версия', 'В дорожке лежит v+1 с твоим именем. Skill снова свободен: его берёт следующий.']
+    ];
+    var svg = el('svg', { viewBox: '0 0 560 172', class: 'art intro-art', role: 'img', 'aria-label': 'взять skill: закрепить за собой, применить одно правило, пройти проверку, передать новой версией' });
+    function add(tag, a, on, cls) {
+      var e = el(tag, a);
+      if (cls) e.setAttribute('class', cls);
+      if (on != null) e.setAttribute('data-on', on);
+      svg.appendChild(e); return e;
+    }
+    function text(x, y, t, on, cls) { var e = add('text', { x: x, y: y }, on, 'tx ' + (cls || '')); e.textContent = t; return e; }
+    // дорожка и принятые версии
+    add('line', { x1: 24, y1: 70, x2: 536, y2: 70 }, null, 'm');
+    [0, 1, 2].forEach(function (i) { add('circle', { cx: 60 + i * 56, cy: 70, r: 5 }, null, 'f'); text(52 + i * 56, 52, 'v' + i); });
+    add('line', { x1: 60, y1: 70, x2: 228, y2: 70 });
+    // голова дорожки: за тобой, потом принятая v3
+    add('circle', { cx: 228, cy: 70, r: 15 }, '0,1,2', 'halo');
+    add('circle', { cx: 228, cy: 70, r: 7 }, '0,1,2', 'af');
+    add('circle', { cx: 228, cy: 70, r: 5 }, '3', 'f');
+    text(220, 52, 'v3', '3');
+    // время закрепления: полоса тает от кадра к кадру
+    add('rect', { x: 192, y: 22, width: 72, height: 5 }, '0,1,2', 'm');
+    add('rect', { x: 192, y: 22, width: 72, height: 5 }, '0,1,2', 'af bar');
+    text(192, 15, 'закреплён · ' + lock, '0,1,2', 'ta');
+    // ты и следующий
+    var me = add('g', {}, '0,1,2', 'who me');
+    me.appendChild(el('circle', { cx: 228, cy: 108, r: 9 }));
+    me.appendChild(el('path', { d: 'M228 98L228 88M224 92L228 88L232 92', class: 'a' }));
+    var t1 = el('text', { x: 244, y: 112, class: 'tx' }); t1.textContent = 'ты'; me.appendChild(t1);
+    add('circle', { cx: 284, cy: 70, r: 7 }, '3', 'a');
+    var nx = add('g', {}, '3', 'who next');
+    nx.appendChild(el('circle', { cx: 284, cy: 108, r: 9, class: 'm' }));
+    nx.appendChild(el('path', { d: 'M284 98L284 88M280 92L284 88L288 92', class: 'm' }));
+    var t2 = el('text', { x: 300, y: 112, class: 'tx' }); t2.textContent = 'следующий'; nx.appendChild(t2);
+    // правило: одна карточка из книги
+    var rule = add('g', {}, '1,2', 'rulechip');
+    rule.appendChild(el('rect', { x: 352, y: 6, width: 78, height: 32, class: 'a' }));
+    rule.appendChild(el('line', { x1: 362, y1: 17, x2: 396, y2: 17, class: 'a' }));
+    rule.appendChild(el('line', { x1: 362, y1: 27, x2: 418, y2: 27, class: 'm' }));
+    var t3 = el('text', { x: 352, y: 54, class: 'tx ta' }); t3.textContent = 'одно правило'; rule.appendChild(t3);
+    add('path', { d: 'M430 22C478 22 506 40 506 76M500 70L506 76L512 70' }, '1,2', 'a');
+    // текст skill: старые строки на месте, одна новая
+    var paper = add('g', {}, '1,2', 'paper');
+    paper.appendChild(el('rect', { x: 424, y: 82, width: 112, height: 80 }));
+    [0, 1, 2, 4].forEach(function (i) { paper.appendChild(el('line', { x1: 434, y1: 96 + i * 13, x2: 434 + [84, 66, 90, 0, 72][i], y2: 96 + i * 13, class: 'm' })); });
+    paper.appendChild(el('line', { x1: 434, y1: 135, x2: 512, y2: 135, class: 'a newline' }));
+    var t4 = el('text', { x: 424, y: 76, class: 'tx' }); t4.textContent = 'SKILL.md'; paper.appendChild(t4);
+    // проверка
+    var ok = add('g', {}, '2', 'okmark');
+    ok.appendChild(el('circle', { cx: 396, cy: 122, r: 11, class: 'a' }));
+    ok.appendChild(el('path', { d: 'M390 122L394.5 127L402 116', class: 'a' }));
+
+    var box = document.createElement('div'), steps = document.createElement('div'), cap = document.createElement('p'), ph = -1, timer = 0;
+    box.className = 'intro';
+    steps.className = 'isteps'; cap.className = 'icap';
+    var btns = CAP.map(function (c, i) {
+      var b = document.createElement('button'), n = document.createElement('i');
+      b.type = 'button'; n.textContent = '0' + (i + 1); b.appendChild(n); b.appendChild(document.createTextNode(c[0]));
+      b.addEventListener('click', function () { show(i); clearInterval(timer); timer = setInterval(tick, INTRO_MS * 1.6); });
+      steps.appendChild(b); return b;
+    });
+    function show(i) {
+      ph = i; box.setAttribute('data-ph', i);
+      Array.prototype.forEach.call(svg.querySelectorAll('[data-on]'), function (e) { e.classList.toggle('on', e.getAttribute('data-on').split(',').indexOf(String(i)) >= 0); });
+      btns.forEach(function (b, k) { b.classList.toggle('on', k === i); });
+      cap.textContent = CAP[i][1];
+    }
+    function tick() { if (box.isConnected && !document.hidden) show((ph + 1) % CAP.length); }
+    box.appendChild(svg); box.appendChild(steps); box.appendChild(cap);
+    var calm = o.still || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    show(calm ? 0 : 3);
+    if (!calm) { setTimeout(function () { show(0); }, 60); timer = setInterval(tick, INTRO_MS); }
+    return box;
+  }
+
   window.ART = {
     scheme: scheme,
+    intro: intro,
     rule: function (id) { return RULE[id] ? draw(96, 64, RULE[id], 'rule-art') : null; },
     kind: function (id) { return KIND[id] ? draw(16, 16, KIND[id], 'kind-art') : null; },
     step: function (i) { return draw(72, 48, STEP[i], 'step-art'); },

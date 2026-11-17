@@ -512,6 +512,50 @@ def main():
         finally:
             srv.terminate()
             srv.wait(5)
+        # ---------- два входа из LMS на открытом столе ----------
+        print("два входа из LMS, имя и ник, чистый вход")
+        table4 = tmp / "lms2"
+        subprocess.run([sys.executable, RELAY, "init", str(table4)], env=env, capture_output=True)
+        pt = port()
+        srv = start([str(table4), "--live", "--open", "--port", str(pt)], env3)
+        try:
+            mint = {"X-Mint-Secret": "m" * 40, "Origin": None}
+            def enter(body):
+                c0 = Client(pt)
+                code, d, _ = c0.call("POST", "/api/mint", dict(body, source="lms"), headers=mint)
+                if code != 200 or not d.get("authorized"):
+                    return c0, {}
+                c0.call("GET", "/auth/complete" + d["auth_link"].split("/auth/complete")[1])
+                return c0, (c0.call("GET", "/lms/api/state")[1].get("viewer") or {})
+            a, va = enter({"tg_id": "700100200", "username": "Help_Desk", "display_name": "  Служба   поддержки "})
+            b, vb = enter({"tg_id": "700100300", "username": "tester_one", "display_name": "Тестер Первый"})
+            say("первый вход из LMS: имя, ник и способ входа подтянулись", va.get("name") == "Служба поддержки" and va.get("nick") == "help_desk" and va.get("auth") == "LMS", str(va))
+            say("второй вход из LMS: свой человек и своя сессия", vb.get("name") == "Тестер Первый" and vb.get("nick") == "tester_one" and vb.get("login") != va.get("login") and a.cookie != b.cookie, str(vb))
+            lanes = a.call("GET", "/lms/api/state")[1]["lanes"]
+            say("первый берёт skill", a.call("POST", "/lms/api/take", {"lane": lanes[0]["id"]})[0] == 200)
+            seen = b.call("GET", "/lms/api/state")[1]["lanes"][0]
+            say("второй видит, кто правит, по имени", seen["status"] == "бежит" and seen.get("runner") == "Служба поддержки" and not seen.get("mine"), str({k: seen.get(k) for k in ("status", "runner", "mine")}))
+            say("второй не может взять занятый skill и берёт соседний", b.call("POST", "/lms/api/take", {"lane": lanes[0]["id"]})[0] != 200 and b.call("POST", "/lms/api/take", {"lane": lanes[1]["id"]})[0] == 200)
+            _, v2 = enter({"tg_id": "700100200", "username": "help_desk", "display_name": "Другое Имя"})
+            say("повторный вход не переписывает имя, записанное раньше", v2.get("name") == "Служба поддержки" and v2.get("login") == va.get("login"), str(v2))
+            _, v3 = enter({"tg_id": "700100400"})
+            _, v4 = enter({"tg_id": "700100400", "username": "Late_Nick", "display_name": "Имя Позже"})
+            say("вход без имени и ника пускает под id, следующий вход дополняет имя и ник", v3.get("login") == "id700100400" and v3.get("nick") == "" and v4.get("login") == "id700100400" and v4.get("name") == "Имя Позже" and v4.get("nick") == "late_nick", str(v3) + str(v4))
+            people = json.loads((table4 / "roster.json").read_text(encoding="utf-8"))["people"]
+            say("в составе три человека, без дублей", len([x for x in people if str(x.get("tg_id", "")).startswith("7001")]) == 3, str([x["login"] for x in people]))
+            pages = {n: str(Client(pt).call("GET", "/" + n)[1]) for n in ("app.js", "rules.js", "show.js", "try.js", "about.js", "art.js", "shell.js", "show.html")}
+            say("клавиш темы и глифов нет ни на одной странице", not any("relay.theme'," in pages[n] or "data-theme', 'dark'" in pages[n] or "glyph = !glyph" in pages[n] for n in ("app.js", "rules.js", "show.js", "try.js", "about.js")) and "тема" not in pages["show.html"].split("class=\"keys\"")[1][:200])
+            say("старая настройка темы стирается у тех, у кого осталась", "removeItem('relay.theme')" in pages["shell.js"])
+            say("на входе анимация «что значит взять skill» в четыре кадра", "function intro" in pages["art.js"] and "A.intro(" in pages["app.js"] and all(w in pages["art.js"] for w in ("возьми skill", "одно правило", "проверка", "новая версия")))
+            say("после входа видно, под каким именем и ником человек за столом", "function whoLine" in pages["app.js"] and "v.nick" in pages["app.js"])
+            say("у правил карта с поиском, фильтрами и историей в три кадра", all(w in pages["rules.js"] for w in ("function board", "function story", "bq", "первоисточники", "01 · было", "03 · стало")))
+            rb = a.call("GET", "/lms/api/rules")[1]
+            keys = {g["key"] for g in rb["sources"]["guides"] + rb["sources"]["research"]}
+            say("каждое правило карты стоит на первоисточнике с адресом", all(any(k in keys for k in r["src"]) for r in rb["rules"]) and all(str(g.get("url", "")).startswith("https://") for g in rb["sources"]["guides"] + rb["sources"]["research"]), str([r["id"] for r in rb["rules"] if not any(k in keys for k in r["src"])]))
+            say("у каждого правила есть часть файла и пример «было и стало»", all(r.get("part") and r.get("ex", {}).get("now") for r in rb["rules"]), str([r["id"] for r in rb["rules"] if not (r.get("part") and r.get("ex", {}).get("now"))]))
+        finally:
+            srv.terminate()
+            srv.wait(5)
         # ---------- настоящий разбор ----------
         if with_model:
             print("разбор моделью")

@@ -29,7 +29,6 @@
     return fetch(path, o).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('ошибка ' + r.status)); return d; }); });
   }
   var q = new URLSearchParams(location.search);
-  try { if ((q.get('theme') || localStorage.getItem('relay.theme')) === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) { }
   var A = window.ART, KN = {}, RULES = [], KINDS = [], KIT = [], MODEL = '', LIM = { changed: 12, lines: 400 };
   // состояние песочницы: исходный текст, принятые версии, изменение на рассмотрении
   var st = { v0: '', versions: [], redo: [], kind: '', rule: '', pending: null, error: null, busy: false, look: null, t0: 0 };
@@ -190,14 +189,6 @@
       var last = st.versions[st.versions.length - 1], typed = e.target === $('text') && !st.pending && $('text').value !== (last ? last.text : st.v0);
       if (typed) return;
       if (e.shiftKey ? redo() : undo()) e.preventDefault();
-      return;
-    }
-    if (e.metaKey || e.ctrlKey || e.altKey || /^(TEXTAREA|INPUT)$/.test((e.target || {}).tagName || '')) return;
-    var k = e.key.toLowerCase();
-    if (k === 't' || k === 'е') {
-      var dark = document.documentElement.getAttribute('data-theme') !== 'dark';
-      if (dark) document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
-      try { localStorage.setItem('relay.theme', dark ? 'dark' : 'light'); } catch (x) { }
     }
   });
   Promise.all([api('GET', 'api/rules'), api('GET', 'api/try/kit')]).then(function (r) {
