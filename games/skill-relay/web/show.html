@@ -11,7 +11,7 @@
 </head>
 <body data-field>
 <div class="frame"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
-<div class="top"><span><b>AI Mindset</b><span class="x"> · f26</span> · <a href="./">эстафета skills</a> · прогон</span><span class="ph" id="ph"></span></div>
+<div class="top"><a class="brand" href="./" title="на стол"><b>AI Mindset</b><span class="x"> · f26</span> · эстафета skills</a><nav class="tabs"><a href="./">стол</a><a href="show" class="on">как это работает</a><a href="rules">правила</a><a href="./?view=log">журнал</a></nav><span class="ph" id="ph"></span></div>
 <main class="page">
   <div class="head">
     <div>
@@ -23,10 +23,11 @@
       <div class="row">
         <button id="prev">← назад</button>
         <button class="go" id="next">дальше →</button>
-        <button id="auto">сам</button>
-        <button id="again">сначала</button>
+        <button id="auto" title="листает шаги сам, раз в пять секунд">▶ автопоказ</button>
+        <button id="again" title="возвращает прогон к шагу 0: стол прогона создаётся заново">↺ с начала</button>
       </div>
-      <div class="keys" style="margin-top:10px"><kbd>→</kbd>дальше<kbd>←</kbd>назад<kbd>A</kbd>сам<kbd>R</kbd>сначала<kbd>T</kbd>тема</div>
+      <div class="keys" style="margin-top:10px"><kbd>→</kbd>дальше<kbd>←</kbd>назад<kbd>A</kbd>автопоказ<kbd>R</kbd>с начала<kbd>T</kbd>тема</div>
+      <p class="hint">Автопоказ листает шаги сам. «С начала» возвращает прогон к шагу 0. Основной стол прогон не трогает: <a href="./">вернуться на стол</a>.</p>
     </div>
   </div>
   <div id="err"></div>

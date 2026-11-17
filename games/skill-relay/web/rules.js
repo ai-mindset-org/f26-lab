@@ -43,7 +43,7 @@
       return h('div', { class: 'rule pic', id: x.id },
         h('div', { class: 'fig' }, window.ART.rule(x.id)),
         h('div', null,
-          h('h3', null, x.id + ' ', h('span', null, '· ' + x.title)),
+          h('h3', null, h('span', { class: 'id' }, x.id), x.title),
           h('p', null, h('b', null, 'вопрос. '), x.ask),
           h('p', null, h('b', null, 'изменение. '), x.fix),
           x.why ? h('p', { class: 'why' }, h('b', null, 'практика. '), x.why) : null,

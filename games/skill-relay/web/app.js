@@ -160,13 +160,14 @@
   }
   function links() {
     return h('div', { class: 'more' },
-      h('a', { class: 'quiet', href: 'show', target: '_blank', rel: 'noopener' }, 'прогон по шагам ↗'),
-      h('a', { class: 'quiet', href: 'rules', target: '_blank', rel: 'noopener' }, 'виды изменения, правила и настройка skills ↗'),
+      h('a', { class: 'quiet', href: 'show' }, 'как это работает'),
+      h('a', { class: 'quiet', href: 'rules' }, 'правила'),
       view !== 'log' && S.trail ? h('button', { class: 'quiet', onclick: function () { go('log'); } }, 'журнал') : null,
-      view !== 'auto' ? h('button', { class: 'quiet', onclick: function () { go('auto'); } }, 'к дорожкам') : null,
+      view !== 'auto' ? h('button', { class: 'quiet', onclick: function () { go('auto'); } }, '← на стол') : null,
       S.viewer ? h('button', { class: 'quiet', onclick: function () { api('POST', 'api/auth/logout', {}).then(function () { leg = null; load(); }); } }, 'выйти') : null);
   }
-  function go(v) { view = v; key = ''; render(); $('panel').scrollTop = 0; if (innerWidth <= 900 && v !== 'auto') $('panel').scrollIntoView(); }
+  function tabs() { Array.prototype.forEach.call(document.querySelectorAll('.tabs a'), function (x) { var log = x.getAttribute('href').indexOf('view=log') > 0; x.classList.toggle('on', x.getAttribute('href') === './' ? view !== 'log' : log && view === 'log'); }); }
+  function go(v) { view = v; key = ''; tabs(); render(); $('panel').scrollTop = 0; if (innerWidth <= 900 && v !== 'auto') $('panel').scrollIntoView(); }
 
   // ---------- вход ----------
   function how() {
@@ -187,7 +188,7 @@
       h('p', { class: 'why' }, 'Skill растёт по одному изменению. Каждый участник добавляет одно и за ' + span(S.lock) + ' коммитит: в дорожке лежит новая версия для следующего.'),
       S.lanes && S.lanes.length ? how() : null,
       S.mode === 'демо' ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сядь на место: в демо входа нет, пауза после взятия ' + span(S.hour)), h('div', { class: 'row' }, seats),
-        h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show', target: '_blank', rel: 'noopener' }, 'посмотреть один круг по шагам ↗'))] :
+        h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show' }, 'как это работает: один круг по шагам'))] :
         [S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
           h('p', { class: 's' }, S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
       box,
@@ -288,7 +289,7 @@
       Array.prototype.forEach.call(kindBox.querySelectorAll('button.kind'), function (b) { b.classList.toggle('sel', b.getAttribute('data-kind') === kind); });
       options(kind);
       fill(ruleBox, r ? h('div', { class: 'rule pic' }, h('div', { class: 'fig' }, A.rule(r.id)), h('div', null,
-        h('h3', null, r.id + ' ', h('span', null, '· ' + r.title)), h('p', null, h('b', null, 'вопрос. '), r.ask), h('p', null, h('b', null, 'изменение. '), r.fix),
+        h('h3', null, h('span', { class: 'id' }, r.id), r.title), h('p', null, h('b', null, 'вопрос. '), r.ask), h('p', null, h('b', null, 'изменение. '), r.fix),
         r.why ? h('p', null, h('b', null, 'практика. '), r.why) : null,
         h('p', null, h('a', { href: 'rules#' + r.id, target: '_blank', rel: 'noopener' }, 'правило, источники и настройка skills отдельным окном ↗')))) : null);
       sel.value = id || '';
@@ -312,13 +313,17 @@
       if (mark && mark.scrollIntoView) mark.scrollIntoView({ block: 'center' });
       rail();
     }
-    api('GET', 'api/analysis?lane=' + encodeURIComponent(leg.lane)).then(function (a) {
+    var tries = 0, mine = leg;
+    function ask() { api('GET', 'api/analysis?fast=1&lane=' + encodeURIComponent(mine.lane)).then(function (a) {
+      if (leg !== mine) return;
+      if (a.pending && tries++ < 25) setTimeout(ask, 3000);
       leg.analysis = a;
       fill(cand, h('div', { class: 'lab', style: 'margin-top:14px' }, 'чего этому skill не хватает больше всего · ' + a.by), a.candidates.map(function (c) {
         return h('button', { class: 'cand', 'data-rule': c.rule, onclick: function () { pick(c.rule); } }, h('b', null, kindTag(kindOf(c.rule)), ' ' + c.rule + ' · ' + c.title), h('span', null, c.why));
       }));
       pick(leg.rule || (a.candidates[0] || {}).rule);
-    }, function (e) { fill(cand, h('div', { class: 'msg' }, e.message)); options(''); });
+    }, function (e) { fill(cand, h('div', { class: 'msg' }, e.message)); options(''); }); }
+    ask();
     count();
     if (leg.result) setTimeout(function () { showResult(leg.result); }, 0);
     return [
@@ -404,6 +409,7 @@
     return S.viewer.rest > 0 ? 4 : 1;
   }
   function rail() {
+    tabs();
     var names = ['вход', 'взять', 'одно изменение', 'коммит', 'пауза'], pos = phase();
     fill($('rail'), names.map(function (n, i) { return h('div', { class: 'seg' + (i < pos ? ' past' : i === pos ? ' now' : '') }, h('span', null, n)); }));
     $('ph').textContent = '{ ' + names[pos] + ' }';

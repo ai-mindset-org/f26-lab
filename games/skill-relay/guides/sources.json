@@ -142,6 +142,54 @@
    "title": "Agent Skills in the Wild · An Empirical Study of Security Vulnerabilities at Scale (arXiv 2601.10338)",
    "url": "https://arxiv.org/abs/2601.10338",
    "note": "31 132 skills, автоматический разбор шаблонов"
+  },
+  {
+   "key": "ACE",
+   "title": "Agentic Context Engineering · Evolving Contexts for Self-Improving Language Models (ICLR 2026)",
+   "url": "https://arxiv.org/abs/2510.04618",
+   "note": "контекст как растущий плейбук: точечные добавки вместо переписывания, плюс 10,6% на агентных задачах"
+  },
+  {
+   "key": "GEPA",
+   "title": "GEPA · Reflective Prompt Evolution",
+   "url": "https://gepa-ai.github.io/gepa/guides/",
+   "note": "изменение предлагается по следам прогона и остаётся, если на тех же примерах счёт вырос"
+  },
+  {
+   "key": "PROTEGI",
+   "title": "Automatic Prompt Optimization with «Gradient Descent» and Beam Search (EMNLP 2023)",
+   "url": "https://aclanthology.org/2023.emnlp-main.494.pdf",
+   "note": "ошибки на пачке примеров превращаются в описание изъяна, по нему делается правка"
+  },
+  {
+   "key": "AUTHOR",
+   "title": "Authoring Agent Skills: A Software-Engineering Approach (arXiv 2607.25032)",
+   "url": "https://arxiv.org/html/2607.25032v1",
+   "note": "сначала проверочные задачи и замер без skill, затем минимум инструкций; два экземпляра модели: один пишет, второй проверяет с чистого листа"
+  },
+  {
+   "key": "EVALIT",
+   "title": "agent-skills-creator · evaluation and iteration",
+   "url": "https://github.com/mblode/agent-skills/blob/main/skills/agent-skills-creator/references/evaluation-and-iteration.md",
+   "note": "цикл улучшения: одна правка за круг, иначе регресс нельзя приписать; правка остаётся, только если выросли обе выборки"
+  },
+  {
+   "key": "SKILLV",
+   "title": "Skill-V · Verifiable Self-Evolving Skill Library (arXiv 2610.11781)",
+   "url": "https://arxiv.org/html/2610.11781",
+   "note": "skill как проверяемый контракт: правка не должна ухудшать согласие с накопленными прогонами, принятая становится новой версией"
+  },
+  {
+   "key": "SELFEVO",
+   "title": "SelfEvoSkill · Paired Execution Audits for Skill Revision (arXiv 2606.14239)",
+   "url": "https://arxiv.org/html/2606.14239",
+   "note": "парный прогон со skill и без; вердикт «навредил» отклоняет кандидата и возвращает последнюю принятую версию"
+  },
+  {
+   "key": "DYNSK",
+   "title": "Dynamic Agent Skills · A Lifecycle Survey and Taxonomy of Evolving Skill Libraries (arXiv 2607.10113)",
+   "url": "https://arxiv.org/html/2607.10113v1",
+   "note": "обзор жизненного цикла библиотек skills и набор операций над ними: добавить, уточнить, слить, разделить, сократить"
   }
  ]
 }

@@ -104,7 +104,7 @@
     fill($('rail'), S.steps.map(function (t, i) {
       return h('button', { class: (i < n ? 'past' : i === n ? 'now' : '') + (i > S.steps.length / 2 ? ' r' : ''), title: two(i) + ' ' + t, onclick: function () { go(i); } }, h('span', null, i === n ? two(i) + ' ' + t : two(i)));
     }));
-    $('auto').className = auto ? 'on' : '';
+    $('auto').className = auto ? 'on' : ''; $('auto').textContent = auto ? '❚❚ пауза' : '▶ автопоказ';
     first = false;
   }
   function take(d) { S = d; skew = d.now - Date.now() / 1000; fill($('err')); render(); }

@@ -54,6 +54,7 @@ MODEL_DEFAULT = "anthropic/claude-sonnet-5.5"
 MODEL_URL = "https://openrouter.ai/api/v1/chat/completions"
 BODY_MAX = 64 * 1024
 GATE = threading.RLock()
+PENDING = set()  # разборы «чего не хватает», которые модель считает прямо сейчас
 
 
 class Refuse(Exception):
@@ -714,7 +715,7 @@ class Game:
     def skip_rules(self, lid):
         return self.t.st["lanes"][lid].get("applied", [])[-3:]
 
-    def analysis(self, login, lid):
+    def analysis(self, login, lid, fast=False):
         with GATE:
             self.t.load()
             self.held(login, lid)
@@ -723,7 +724,35 @@ class Game:
             hit = self.t.st.get("analysis", {}).get(key) or (MEMO.get(("a", key)) if getattr(self, "memo", False) else None)
         if hit:
             return hit
-        out = analyze(text, skip) if self.budget() else {"by": "признаки без модели", "candidates": candidates_offline(text, skip)}
+        offline = {"by": "признаки без модели", "candidates": candidates_offline(text, skip)}
+        if getattr(self, "offline", False) or not model_name():
+            return offline          # прогон и стол без ключа отвечают сразу
+        if fast:                    # странице сразу признаки, модель дочитывает в фоне
+            with GATE:
+                start = key not in PENDING
+                PENDING.add(key)
+            if start:
+                threading.Thread(target=self.analysis_bg, args=(key, text, skip), daemon=True).start()
+            return dict(offline, by="признаки, модель дочитывает", pending=True)
+        for _ in range(90):         # агент ждёт уже идущий разбор, второй вызов модели не нужен
+            if key not in PENDING:
+                break
+            time.sleep(0.5)
+        with GATE:
+            self.t.load()
+            hit = self.t.st.get("analysis", {}).get(key)
+        if hit:
+            return hit
+        out = analyze(text, skip) if self.budget() else offline
+        return self.analysis_keep(key, out)
+
+    def analysis_bg(self, key, text, skip):
+        try:
+            self.analysis_keep(key, analyze(text, skip) if self.budget() else {"by": "признаки без модели", "candidates": candidates_offline(text, skip)})
+        finally:
+            PENDING.discard(key)
+
+    def analysis_keep(self, key, out):
         if getattr(self, "memo", False):
             MEMO[("a", key)] = out
         with GATE:
@@ -1143,6 +1172,7 @@ class Show:
         t.save_roster({"people": [{"login": l, "tg_id": str(200001 + i), "name": n, "profile": {"harness": h}} for i, (l, n, h) in enumerate(SHOW_CAST)]})
         self.game = Game(t, HOUR_LIVE, LOCK_LIVE, True)
         self.game.memo = True
+        self.game.offline = not self.use_model
         self.step, self.cards, self.files, self.order = 0, {}, [], list(t.st["order"])
         self.lane = self.order[0]
 
@@ -1422,7 +1452,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", "")})
                     return self.out(200, game.public(viewer))
                 if u.path == "/api/rules":
-                    return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
+                    return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "principles": BOOK.get("principles", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
                                           "sources": json.loads((GUIDES / "sources.json").read_text(encoding="utf-8")),
                                           "limits": {"lines": MAX_LINES, "changed": MAX_CHANGED, "reviews": MAX_REVIEWS}})
                 if u.path == "/api/show":
@@ -1447,7 +1477,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     if u.path == "/api/lane":
                         return self.out(200, game.lane(q.get("id", ""), viewer))
                     if u.path == "/api/analysis":
-                        return self.out(200, game.analysis(viewer["login"], q.get("lane", "")))
+                        return self.out(200, game.analysis(viewer["login"], q.get("lane", ""), fast=q.get("fast") == "1"))
                     if u.path == "/api/download":
                         with GATE:
                             table.load()
