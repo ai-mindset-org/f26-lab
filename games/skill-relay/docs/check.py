@@ -152,13 +152,13 @@ def main():
             say("передача записана, счётчик вырос на один", code == 200 and row["laps"] == laps + 1 and row["status"] == "свободна")
             say("после взятия идёт пауза на все дорожки", after["viewer"]["rest"] > 0 and a.call("POST", "/api/take", {"lane": "text-summary"})[0] == 409)
             say("след и протокол дорожки обновлены", "G-16" in (table / "lanes" / lane / "RELAY.md").read_text(encoding="utf-8")
-                and "передал" in (table / "TRAIL.md").read_text(encoding="utf-8"))
+                and "передача" in (table / "TRAIL.md").read_text(encoding="utf-8"))
             code, d, _ = b.call("POST", "/api/take", {"lane": lane})
             say("следующий бегун берёт ту же палочку", code == 200)
             time.sleep(4.6)
             s2 = b.call("GET", "/api/state")[1]
             row = [l for l in s2["lanes"] if l["id"] == lane][0]
-            say("срок вышел: палочка вернулась на старт", row["status"] == "свободна" and any("время вышло" in e["what"] for e in s2["trail"]))
+            say("срок вышел: палочка вернулась на старт", row["status"] == "свободна" and any("замок истёк" in e["what"] for e in s2["trail"]))
             time.sleep(4.0)
             code, d, _ = a.call("POST", "/api/take", {"lane": lane})
             say("свою прошлую правку подряд не продолжают", code == 409 and "другую дорожку" in d["error"], str(d))
@@ -167,8 +167,52 @@ def main():
             say("возврат на старт без правки", a.call("POST", "/api/drop", {"lane": "text-summary"})[0] == 200)
             code, d, _ = a.call("GET", "/api/lane?id=" + lane)
             say("цепочка версий с диффом и разбором", d["laps"] == laps + 1 and d["legs"][-1]["review"]["verdict"] == "принять" and d["legs"][-1]["diff"])
-            say("правила и источники отдаются странице", len(a.call("GET", "/api/rules")[1]["rules"]) == 17)
             say("страница и шрифт отдаются", a.call("GET", "/")[0] == 200 and a.call("GET", "/app.js")[0] == 200)
+            # ---------- журнал, «от чьего лица», записка агента, книга правил ----------
+            print("журнал и агент")
+            code, lg, _ = a.call("GET", "/api/log?n=200")
+            kinds = {e["kind"] for e in lg["events"]}
+            say("журнал пишет вход, взятие, разбор, передачу, остановку и истёкший замок",
+                code == 200 and {"enter", "take", "review", "give", "stop", "expire", "agent", "drop"} <= kinds, str(sorted(kinds)))
+            say("в журнале видно, от чьего лица и через что", any(e["via"] == "агент" for e in lg["events"]) and any(e["via"] == "система" for e in lg["events"])
+                and any(e.get("auth") == "гостевое место" for e in lg["events"]) and any(e.get("auth") == "бот демо" for e in lg["events"]))
+            say("журнал лежит файлами в папке стола", (table / "events.jsonl").exists() and "через:" in (table / "TRAIL.md").read_text(encoding="utf-8"))
+            lane2 = "source-research"
+            b.call("POST", "/api/take", {"lane": lane2})
+            tok2 = b.call("GET", f"/api/lane?id={lane2}")[1]["mine"]["token"]
+            ag = Client(pt)
+            code, legd, _ = ag.call("GET", "/api/leg", headers={"X-Leg-Token": tok2, "X-Agent": "Codex"})
+            fx2 = [f for f in patch(lane2) if f["find"] in legd["text"]][0]
+            new2 = legd["text"].replace(fx2["find"], fx2["replace"], 1)
+            code, d, _ = ag.call("POST", "/api/leg/check", {"text": new2, "rule": fx2["rule"], "note": fx2["note"], "tried": fx2["tried"], "next": ""},
+                                 headers={"X-Leg-Token": tok2, "X-Agent": "Codex", "Origin": None})
+            dr = b.call("GET", f"/api/lane?id={lane2}")[1]["mine"]["draft"]
+            say("правка агента с тремя строками ждёт человека на странице", d["ok"] and dr["via"] == "агент" and dr["agent"] == "Codex" and dr["note"] == fx2["note"], str(d)[:200])
+            code, d, _ = b.call("POST", "/api/describe", {"lane": lane2, "text": new2, "rule": fx2["rule"]})
+            say("записку «что поменял и зачем» пишет агент стола", code == 200 and len(d["note"]) > 20 and bool(d["by"]), str(d)[:200])
+            code, d, _ = b.call("POST", "/api/pass", {"lane": lane2, "anyway": True})
+            last = b.call("GET", f"/api/lane?id={lane2}")[1]["legs"][-1]
+            say("в цепочке записано, кто передал, через какого агента и как вошёл",
+                code == 200 and last["via"] == "агент" and last["agent"] == "Codex" and last["auth"] == "гостевое место" and last["passed"] == "страница",
+                str({k: last.get(k) for k in ("via", "agent", "auth", "passed")}))
+            rb = a.call("GET", "/api/rules")[1]
+            say("правила с практикой и источником, настройка и замеры отдаются странице", len(rb["rules"]) == 19 and all(r.get("why") and r.get("src") for r in rb["rules"])
+                and len(rb["settings"]) >= 8 and len(rb["evidence"]) >= 3 and len(rb["sources"]["research"]) >= 3)
+            say("книга правил и прогон открываются отдельными страницами", a.call("GET", "/rules")[0] == 200 and a.call("GET", "/show")[0] == 200
+                and a.call("GET", "/pages.css")[0] == 200 and a.call("GET", "/show.js")[0] == 200 and a.call("GET", "/rules.js")[0] == 200)
+            # ---------- прогон по шагам ----------
+            print("прогон")
+            laps_main = a.call("GET", "/api/state")[1]["totals"]["laps"]
+            code, sh, _ = a.call("GET", "/api/show")
+            say("прогон стоит на старте: три окна, двенадцать шагов", code == 200 and sh["step"] == 0 and len(sh["windows"]) == 3 and sh["total"] == 12, str(sh)[:200])
+            code, sh, _ = a.call("POST", "/api/show/go", {"to": 11})
+            say("прогон проходит круг: две передачи, остановка, отказ и истёкший замок", code == 200 and sh["step"] == 11 and len(sh["chain"]) == 2
+                and {"stop", "refuse", "expire", "give", "agent", "enter"} <= {e["kind"] for e in sh["log"]}, str(sh)[:300])
+            say("в цепочке прогона видно агента и способ входа", [c["agent"] for c in sh["chain"]] == ["Claude Code", "Codex"]
+                and all(c["auth"] == "одноразовая ссылка" and c["passed"] == "страница" for c in sh["chain"]))
+            code, sh, _ = a.call("POST", "/api/show/go", {"to": 6})
+            say("прогон возвращается на любой шаг", code == 200 and sh["step"] == 6 and [x for x in sh["windows"] if x["login"] == "lis"][0]["holding"] == "text-summary")
+            say("прогон идёт на отдельном столе", a.call("GET", "/api/state")[1]["totals"]["laps"] == laps_main and (table / ".show" / "state.json").exists())
         finally:
             srv.terminate()
             srv.wait(5)
@@ -197,6 +241,7 @@ def main():
         try:
             c = Client(pt)
             say("без входа состояние закрыто", c.call("GET", "/api/state")[0] == 401 and c.call("GET", "/api/lane?id=text-summary")[0] == 401)
+            say("без входа журнал и прогон закрыты", c.call("GET", "/api/log")[0] == 401 and c.call("GET", "/api/show")[0] == 401 and c.call("POST", "/api/show/go", {"to": 1})[0] == 401)
             say("деморежимный вход выключен", c.call("POST", "/api/demo/login", {"login": "gost1"})[0] == 404)
             say("выдача ссылки без секрета закрыта", c.call("POST", "/api/mint", {"tg_id": "123456"}, headers={"Origin": None})[0] == 401)
             code, d, _ = c.call("POST", "/api/mint", {"tg_id": "123456", "username": "nobody"}, headers={"X-Mint-Secret": "m" * 40, "Origin": None})
@@ -215,7 +260,7 @@ def main():
             say("ссылка одноразовая", Client(pt).call("GET", path)[0] == 403)
             say("подделанный билет отклонён", Client(pt).call("GET", path[:-4] + "AAAA")[0] == 403)
             code, me, _ = c.call("GET", "/api/auth/me")
-            say("сессия узнаёт человека", code == 200 and me["viewer"]["login"] == "chizh" and me["viewer"]["name"] == "Чиж")
+            say("сессия узнаёт человека и способ входа", code == 200 and me["viewer"]["login"] == "chizh" and me["viewer"]["name"] == "Чиж" and me["viewer"]["auth"] == "одноразовая ссылка")
             code, s, _ = c.call("GET", "/api/state")
             say("живой режим: час паузы и замок 20 минут", code == 200 and s["hour"] == 3600 and s["lock"] == 1200 and s["mode"] == "живой")
             say("ход в живом режиме идёт", c.call("POST", "/api/take", {"lane": "text-summary"})[0] == 200)
@@ -260,6 +305,9 @@ def main():
                     rv = d.get("review") or {}
                     say("обезличенную граблю модель принимает", d["ok"] and rv.get("verdict") == "принять", str(d)[:400])
                     print("        " + rv.get("comment", "") + " · следующему: " + rv.get("next", ""))
+                    d = c.call("POST", "/api/describe", {"lane": lane, "text": good, "rule": "G-08"})[1]
+                    say("записку по правке пишет модель", str(d.get("by", "")).startswith("модель") and len(d.get("note", "")) > 20, str(d)[:300])
+                    print("        записка: " + d.get("note", "") + " · следующему: " + d.get("next", ""))
                     say("передача после разбора моделью", c.call("POST", "/api/pass", {"lane": lane})[0] == 200)
                 finally:
                     srv.terminate()

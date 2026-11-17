@@ -28,6 +28,7 @@ import os
 import random
 import re
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
@@ -63,10 +64,11 @@ class Refuse(Exception):
 
 def load_rules():
     data = json.loads((GUIDES / "rules.json").read_text(encoding="utf-8"))
-    return {r["id"]: r for r in data["rules"]}
+    return {r["id"]: r for r in data["rules"]}, data
 
 
-RULES = load_rules()
+RULES, BOOK = load_rules()
+MEMO = {}  # разборы прогона: повтор шага не зовёт модель второй раз
 
 # ---------- проверка текста: факты, решение за человеком ----------
 
@@ -261,6 +263,11 @@ def probe(text):
     out["G-16"] = (0.6, f"причин у требований мало ({why})") if why < 3 else (0.2, "")
     params = re.search(r"(?is)^#{2,3}\s+параметры[^\n]*\n(.*?)(?=^#{2,3}\s|\Z)", body, re.M)
     rows = len(re.findall(r"(?m)^\|(?!\s*-)(?!\s*параметр)", params.group(1))) if params else 0
+    edge = re.search(r"(?i)не бери|не нужен|не используй|когда не |запасн\w+ ход|do not use when", body + " " + desc)
+    out["G-17"] = (0.5, "не сказано, когда skill брать не нужно, и нет запасного хода") if not edge else (0.15, "")
+    risky = re.search(r"(?im)^(?!\s*[-*]?\s*не ).*\b(?:отправ|удал|оплат|опублик|запуш)\w+", body)
+    asks = re.search(r"(?i)спроси|подтвержд\w+|слов\w+ человека|дождись|покажи человеку", body)
+    out["G-18"] = (0.55, "есть шаг с последствиями без остановки на слово человека") if risky and not asks else (0.1, "")
     out["R-01"] = (0.9, "нет раздела «параметры»") if not params else (0.5, f"параметров {rows}: есть ли ещё зашитые значения") if rows < 4 else (0.25, "")
     return out
 
@@ -396,6 +403,43 @@ def review(rule, old, new, note, tried, use_model=True):
         return out
 
 
+def describe_offline(rule, old, new):
+    minus, plus, rows = changed_lines(old, new)
+    added = [r["t"].strip() for r in rows if r["op"] == "+" and r["t"].strip()]
+    sec, cur = "", ""
+    for line in norm(new).split("\n"):
+        m = re.match(r"^#{2,3}\s+(.+)$", line)
+        if m:
+            cur = m.group(1).strip()
+        if added and line.strip() == added[0]:
+            sec = cur
+            break
+    note = f"правка по правилу {rule} «{RULES.get(rule, {}).get('title', '')}»: +{plus} / −{minus} строк"
+    note += (f" в разделе «{sec}»" if sec else "") + (f", первая строка: {cut(added[0], 90)}" if added else "")
+    return {"note": note, "next": "", "by": "признаки без модели"}
+
+
+def describe(rule, old, new, use_model=True):
+    """что поменяно и зачем: записку пишет агент, человек её читает и правит"""
+    if not (use_model and model_name()) or rule not in RULES:
+        return describe_offline(rule, old, new)
+    r = RULES[rule]
+    diff = "\n".join(x["op"] + " " + x["t"] for x in changed_lines(old, new)[2])
+    user = (f"Правило передачи: {r['id']} · {r['title']}\nВопрос правила: {r['ask']}\n\nИзменённые строки:\n{diff}\n\n"
+            f"Стало:\n<<<SKILL\n{new}\nSKILL>>>\n\nНапиши записку к передаче. Формат: две строки «ключ: значение».\n"
+            "note: одной фразой до 200 знаков, что изменено в skill и зачем это следующему пользователю; без имён, компаний и данных\n"
+            "next: одной фразой, что стоит поправить следующему бегуну")
+    try:
+        d = labeled(call_model(SYSTEM, user, 1600), ("note", "next"))
+        if len(d.get("note", "")) < 10:
+            raise ValueError("в ответе модели нет записки")
+        return {"note": cut(d["note"], 300), "next": cut(d.get("next", ""), 300), "by": "модель " + model_name()}
+    except Exception as e:
+        out = describe_offline(rule, old, new)
+        out["by"] += " (модель не ответила: " + cut(e, 50) + ")"
+        return out
+
+
 # ---------- вход: билет и сессия, как в стандарте авторизации сервисов AIM ----------
 
 def b64(raw):
@@ -501,13 +545,20 @@ class Table:
         meta = json.loads((d / f"{n:03d}.json").read_text(encoding="utf-8"))
         return meta, (d / f"{n:03d}.md").read_text(encoding="utf-8")
 
-    def event(self, who, what, lane=""):
-        row = {"at": int(time.time()), "who": who, "what": what, "lane": lane}
+    def event(self, who, what, lane="", kind="", via="", agent=""):
+        """журнал стола: кто, от чьего лица и через что. who = логин или «система»"""
+        via = via or ("система" if who in ("система", "стол") else "страница")
+        row = {"at": int(time.time()), "who": who, "what": what, "lane": lane, "kind": kind, "via": via}
+        if agent:
+            row["agent"] = agent
         self.st.setdefault("trail", []).append(row)
-        self.st["trail"] = self.st["trail"][-200:]
-        stamp = datetime.datetime.fromtimestamp(row["at"]).strftime("%Y-%m-%d %H:%M")
+        self.st["trail"] = self.st["trail"][-400:]
+        stamp = datetime.datetime.fromtimestamp(row["at"]).strftime("%Y-%m-%d %H:%M:%S")
+        how = via + (" " + agent if agent else "")
         with open(self.root / "TRAIL.md", "a", encoding="utf-8") as f:
-            f.write(f"- {stamp} · {who} · {what}" + (f" · {lane}" if lane else "") + "\n")
+            f.write(f"- {stamp} · {who} · {what}" + (f" · {lane}" if lane else "") + f" · через: {how}\n")
+        with open(self.root / "events.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     def name(self, login):
         p = self.person(login=login)
@@ -547,8 +598,11 @@ def do_init(root, heats=1, demo=False, seats=6):
             people.append({"login": f"gost{i}", "tg_id": str(100100 + i), "name": f"Гость {i}", "seat": True, "profile": {"harness": "свой", "level": ""}})
     t.save_roster({"note": "Состав эстафеты. В живом режиме заполняется из среза участников лабы: tg_id, login, name, profile.", "people": people})
     write(t.root / "TRAIL.md", "# след эстафеты\n\n")
-    write(t.root / ".gitignore", "state.json\nroster.json\n*.tmp\n")
-    t.event("стол", f"открыт: дорожек {len(t.st['order'])}")
+    write(t.root / ".gitignore", "state.json\nroster.json\n*.tmp\n.show/\n")
+    for person in people:
+        if person.get("bot"):
+            t.st["runners"][person["login"]] = {"auth": "бот демо"}
+    t.event("система", f"стол открыт: дорожек {len(t.st['order'])}", kind="open")
     for lid in t.st["order"]:
         relay_md(t, lid)
     t.save()
@@ -580,9 +634,10 @@ class Game:
             lk = lane.get("lock")
             if lk and lk["until"] < now:
                 lane["lock"] = None
+                lane["freed"] = int(now)
                 self.t.st["runners"].setdefault(lk["login"], {}).setdefault("dropped", 0)
                 self.t.st["runners"][lk["login"]]["dropped"] += 1
-                self.t.event(lk["login"], "время вышло, палочка вернулась на старт", lid)
+                self.t.event("система", f"замок истёк ({self.t.name(lk['login'])}): палочка вернулась на старт без правки", lid, kind="expire")
                 changed = True
         return changed
 
@@ -609,7 +664,7 @@ class Game:
             return "прошлую правку здесь делал ты: возьми другую дорожку"
         return ""
 
-    def take(self, login, lid, lock=None):
+    def take(self, login, lid, lock=None, via="страница"):
         with GATE:
             self.t.load()
             self.sweep()
@@ -617,14 +672,17 @@ class Game:
                 raise Refuse("такой дорожки нет")
             no = self.why_not(login, lid)
             if no:
+                self.t.event("система", f"отказ ({self.t.name(login)}): {no}", lid, kind="refuse")
                 self.t.save()
                 raise Refuse(no)
             now = time.time()
-            self.t.st["lanes"][lid]["lock"] = {"login": login, "since": int(now), "until": round(now + (lock or self.lock), 2),
+            hold = lock or self.lock
+            self.t.st["lanes"][lid]["lock"] = {"login": login, "since": int(now), "until": round(now + hold, 2),
                                               "token": secrets.token_urlsafe(18), "reviews": 0, "draft": None}
             r = self.t.st["runners"].setdefault(login, {})
             r["last_take"] = int(now)
-            self.t.event(login, "взял палочку", lid)
+            self.t.event(login, "палочка взята: дорожка закрыта за логином на " + (f"{round(hold / 60)} мин" if hold >= 60 else f"{round(hold)} с"),
+                         lid, kind="take", via=via)
             self.t.save()
             return self.t.st["lanes"][lid]["lock"]
 
@@ -653,10 +711,12 @@ class Game:
             self.held(login, lid)
             text, skip = self.t.text(lid), self.skip_rules(lid)
             key = digest(text) + ":" + ",".join(skip)
-            hit = self.t.st.get("analysis", {}).get(key)
+            hit = self.t.st.get("analysis", {}).get(key) or (MEMO.get(("a", key)) if getattr(self, "memo", False) else None)
         if hit:
             return hit
         out = analyze(text, skip) if self.budget() else {"by": "признаки без модели", "candidates": candidates_offline(text, skip)}
+        if getattr(self, "memo", False):
+            MEMO[("a", key)] = out
         with GATE:
             self.t.load()
             self.t.st.setdefault("analysis", {})[key] = out
@@ -683,7 +743,7 @@ class Game:
             self.t.save()
             return True
 
-    def check(self, login, lid, d, use_model=True):
+    def check(self, login, lid, d, use_model=True, via="страница", agent=""):
         text = norm(d.get("text", "")).rstrip("\n") + "\n"
         rule = str(d.get("rule", "")).strip()
         fields = {k: " ".join(str(d.get(k, "")).split())[:400] for k in ("note", "tried", "next")}
@@ -716,6 +776,10 @@ class Game:
             base = {"lane": lid, "minus": minus, "plus": plus, "diff": rows[:60], "facts": found, "errors": errors,
                     "lines": len(text.split("\n")) - 1, "digest": digest(text), "reviews_left": MAX_REVIEWS - lk["reviews"]}
             if errors:
+                self.t.event(login, "проверка не пропустила: " + cut(errors[-1] if stops(found) else errors[0], 90)
+                             + (" (" + ", ".join(sorted({f["rule"] for f in stops(found)}))[:80] + ")" if stops(found) else ""),
+                             lid, kind="stop", via=via, agent=agent)
+                self.t.save()
                 return dict(base, ok=False, review=None)
             same = lk.get("draft") and lk["draft"]["digest"] == digest(text) and lk["draft"]["rule"] == rule
             if same:
@@ -727,15 +791,23 @@ class Game:
                             errors=[f"разборов на этот забег было {MAX_REVIEWS}: передай последнюю разобранную версию или верни палочку на старт"])
             lk["reviews"] += 1
             self.t.save()
-        rv = review(rule, old, text, fields["note"], fields["tried"], use_model=use_model and self.budget())
+        mk = (rule, digest(old), digest(text))
+        rv = MEMO.get(mk) if getattr(self, "memo", False) else None
+        if not rv:
+            rv = review(rule, old, text, fields["note"], fields["tried"], use_model=use_model and self.budget())
+            if getattr(self, "memo", False):
+                MEMO[mk] = rv
         with GATE:
             self.t.load()
             lane = self.held(login, lid)
-            lane["lock"]["draft"] = dict(fields, text=text, rule=rule, digest=digest(text), minus=minus, plus=plus, review=rv, at=int(time.time()))
+            lane["lock"]["draft"] = dict(fields, text=text, rule=rule, digest=digest(text), minus=minus, plus=plus, review=rv, at=int(time.time()),
+                                         via=via, agent=agent)
+            self.t.event(login, f"разбор {lane['lock']['reviews']} из {MAX_REVIEWS}: {rv['verdict']} · {rule} · {rv.get('by', '')}", lid,
+                         kind="review", via=via, agent=agent)
             self.t.save()
             return dict(base, ok=True, review=rv, reviews_left=MAX_REVIEWS - lane["lock"]["reviews"])
 
-    def give(self, login, lid, anyway=False):
+    def give(self, login, lid, anyway=False, via="страница"):
         with GATE:
             self.t.load()
             self.sweep()
@@ -752,29 +824,33 @@ class Game:
             prev = digest(self.t.text(lid))
             meta = {"n": n, "runner": login, "rule": dr["rule"], "note": dr["note"], "tried": dr["tried"], "next": dr["next"],
                     "minus": dr["minus"], "plus": dr["plus"], "prev": prev, "digest": dr["digest"], "review": dr["review"],
-                    "held": int(time.time()) - lane["lock"]["since"], "at": int(time.time()), "noted": dr["review"]["verdict"] != "принять"}
+                    "held": int(time.time()) - lane["lock"]["since"], "at": int(time.time()), "noted": dr["review"]["verdict"] != "принять",
+                    "via": dr.get("via", "страница"), "agent": dr.get("agent", ""), "passed": via,
+                    "auth": self.t.st["runners"].get(login, {}).get("auth", "")}
             write(d / "legs" / f"{n:03d}.md", dr["text"])
             write(d / "legs" / f"{n:03d}.json", json.dumps(meta, ensure_ascii=False, indent=1))
             write(d / "SKILL.md", dr["text"])
-            lane.update(laps=n, lock=None, last_runner=login)
+            lane.update(laps=n, lock=None, last_runner=login, freed=int(time.time()))
             lane.setdefault("applied", []).append(dr["rule"])
             r = self.t.st["runners"].setdefault(login, {})
             r["legs"] = r.get("legs", 0) + 1
-            self.t.event(login, f"передал: передача {n} · {dr['rule']} · {cut(dr['note'], 70)}", lid)
+            self.t.event(login, f"передача {n} записана · {dr['rule']} · {cut(dr['note'], 70)}", lid, kind="give", via=via,
+                         agent=dr.get("agent", "") if via != "страница" else "")
             relay_md(self.t, lid)
             self.t.save()
             if self.use_git:
                 self.commit(f"передача {n} · {lid} · {dr['rule']} · {login}")
             return meta
 
-    def drop(self, login, lid):
+    def drop(self, login, lid, via="страница"):
         with GATE:
             self.t.load()
             lane = self.held(login, lid)
             lane["lock"] = None
+            lane["freed"] = int(time.time())
             r = self.t.st["runners"].setdefault(login, {})
             r["dropped"] = r.get("dropped", 0) + 1
-            self.t.event(login, "вернул палочку на старт без правки", lid)
+            self.t.event(login, "палочка возвращена на старт без правки", lid, kind="drop", via=via)
             self.t.save()
 
     def commit(self, message):
@@ -806,6 +882,8 @@ class Game:
                        "last_runner": self.t.name(lane["last_runner"]) if lane.get("last_runner") else ""}
                 if lk:
                     row.update(runner=self.t.name(lk["login"]), since=lk["since"], until=lk["until"], mine=lk["login"] == login)
+                else:
+                    row["idle_since"] = lane.get("freed") or st.get("created", 0)
                 if login:
                     row["why_not"] = self.why_not(login, lid)
                 lanes.append(row)
@@ -816,16 +894,70 @@ class Game:
                    "totals": {"laps": sum(l["laps"] for l in st["lanes"].values()), "running": sum(1 for l in st["lanes"].values() if l.get("lock")),
                               "runners": sum(1 for r in st["runners"].values() if r.get("legs")), "people": len(people)},
                    "trail": [dict(e, who=self.t.name(e["who"])) for e in st.get("trail", [])[-14:]][::-1],
+                   "events": len(st.get("trail", [])), "created": st.get("created", 0),
                    "login_url": os.environ.get("RELAY_BOT_LINK", "")}
             if self.demo:
-                busy = set(st["runners"]) | {l["lock"]["login"] for l in st["lanes"].values() if l.get("lock")}
+                busy = {k for k, r in st["runners"].items() if r.get("last_take")} | {l["lock"]["login"] for l in st["lanes"].values() if l.get("lock")}
                 out["seats"] = [{"login": p["login"], "name": p["name"], "taken": p["login"] in busy} for p in people if p.get("seat")]
             if viewer:
                 r = st["runners"].get(login, {})
                 out["viewer"] = {"login": login, "name": viewer.get("name", login), "profile": viewer.get("profile") or {},
+                                 "auth": viewer.get("auth") or r.get("auth", ""),
                                  "rest": self.rest_left(login), "rest_until": r.get("last_take", 0) + self.hour if r.get("last_take") else 0,
                                  "holding": self.holding(login), "legs": r.get("legs", 0)}
             return out
+
+    def agent_seen(self, login, lid, agent=""):
+        with GATE:
+            self.t.load()
+            lk = self.held(login, lid)["lock"]
+            if not lk.get("agent_seen"):
+                lk["agent_seen"] = True
+                self.t.event(login, "агент забрал палочку по ключу забега", lid, kind="agent", via="агент", agent=agent)
+                self.t.save()
+
+    def describe(self, login, lid, d):
+        """записка «что поменял и зачем» по правке: её пишет модель стола, человек читает и правит"""
+        text = norm(d.get("text", "")).rstrip("\n") + "\n"
+        rule = str(d.get("rule", "")).strip()
+        with GATE:
+            self.t.load()
+            lk = self.held(login, lid)["lock"]
+            old = self.t.text(lid)
+            if rule not in RULES:
+                raise Refuse("выбери правило, по которому сделана правка")
+            if not changed_lines(old, text)[2]:
+                raise Refuse("текст не изменился: записку пишут по правке")
+            if stops(facts(text)):
+                raise Refuse("в правке есть строки «стоп»: сначала убери их, потом записка")
+            lk["notes"] = lk.get("notes", 0) + 1
+            many = lk["notes"] > MAX_REVIEWS
+            self.t.save()
+        out = describe(rule, old, text, use_model=not many and self.budget())
+        with GATE:
+            self.t.load()
+            self.t.event(login, "записку к правке написал агент стола: " + out["by"], lid, kind="note", via="агент", agent="агент стола")
+            self.t.save()
+        return out
+
+    def log(self, n=120, lane=""):
+        """журнал для страницы: свежие сверху, имена вместо логинов"""
+        with GATE:
+            self.t.load()
+            if self.sweep():
+                self.t.save()
+            rows = [e for e in self.t.st.get("trail", []) if not lane or e.get("lane") == lane]
+            auth = {k: r.get("auth", "") for k, r in self.t.st["runners"].items()}
+            return [dict(e, who=self.t.name(e["who"]), auth=auth.get(e["who"], "")) for e in rows[-max(1, min(int(n), 400)):]][::-1]
+
+    def enter(self, login, auth):
+        """вход в журнале: кто и каким способом"""
+        with GATE:
+            self.t.load()
+            r = self.t.st["runners"].setdefault(login, {})
+            r["auth"] = auth
+            self.t.event(login, "вход: " + auth, kind="enter")
+            self.t.save()
 
     def lane(self, lid, viewer):
         with GATE:
@@ -872,14 +1004,15 @@ def bot_leg(game, login, lid, use_model=False):
                 break
         game.t.save()
     if not fx:
-        game.drop(login, lid)
+        game.drop(login, lid, via="бот")
         return False
     new = text.replace(fx["find"], fx["replace"], 1)
-    res = game.check(login, lid, {"text": new, "rule": fx["rule"], "note": fx["note"], "tried": fx["tried"], "next": fx.get("next", "")}, use_model=use_model)
+    res = game.check(login, lid, {"text": new, "rule": fx["rule"], "note": fx["note"], "tried": fx["tried"], "next": fx.get("next", "")},
+                     use_model=use_model, via="бот")
     if not res["ok"]:
-        game.drop(login, lid)
+        game.drop(login, lid, via="бот")
         return False
-    game.give(login, lid, anyway=True)
+    game.give(login, lid, anyway=True, via="бот")
     return True
 
 
@@ -899,10 +1032,12 @@ def bots_loop(game, logins, stop):
                 if lid:
                     if time.time() >= plan.get(login, 0):
                         bot_leg(game, login, lid)
+                elif not free and login == logins[0] and game.demo and spent(game):
+                    renew(game)
                 elif free and rnd.random() < 0.12:
                     lid = rnd.choice(free)
                     hold = min(game.lock, rnd.uniform(40, 80))  # бот бежит быстрее человека: стадион в демо живой
-                    game.take(login, lid, lock=hold)
+                    game.take(login, lid, lock=hold, via="бот")
                     plan[login] = time.time() + hold * rnd.uniform(0.5, 0.85)
         except Refuse:
             pass
@@ -917,7 +1052,7 @@ def seed(game, n=4):
     for i in range(n):
         lid, login = order[i % len(order)], bots[i % len(bots)]
         try:
-            game.take(login, lid)
+            game.take(login, lid, via="бот")
             bot_leg(game, login, lid)
         except Refuse:
             continue
@@ -933,6 +1068,185 @@ def seed(game, n=4):
 
 
 # ---------- сервер ----------
+
+def spent(game):
+    """в демо кончились заготовки, никто не бежит и четыре минуты тихо"""
+    with GATE:
+        game.t.load()
+        st = game.t.st
+        if any(l.get("lock") for l in st["lanes"].values()):
+            return False
+        left = any(l.get("fx", 0) < len(patches().get(l["skill"], [])) for l in st["lanes"].values())
+        last = (st.get("trail") or [{"at": 0}])[-1]["at"]
+        return not left and time.time() - last > 240
+
+
+def renew(game):
+    """демо-стол начинает круг заново: базовые версии, первые передачи, тот же состав"""
+    with GATE:
+        game.t.load()
+        root = game.t.root
+        heats = max(l["heat"] for l in game.t.st["lanes"].values())
+        seats = sum(1 for p in game.t.roster()["people"] if p.get("seat"))
+        for name in ("lanes", "state.json", "roster.json", "TRAIL.md", "events.jsonl"):
+            f = root / name
+            if f.is_dir():
+                shutil.rmtree(f)
+            elif f.exists():
+                f.unlink()
+        do_init(root, heats, True, seats)
+        game.t.load()
+    seed(game)
+    with GATE:
+        game.t.load()
+        game.t.event("система", "демо-стол начат заново: заготовки ботов закончились", kind="open")
+        game.t.save()
+
+
+# ---------- прогон: один круг по шагам на отдельном столе, каждое действие настоящее ----------
+
+SHOW_CAST = [("sova", "Сова", "Claude Code"), ("lis", "Лис", "Codex"), ("ezh", "Ёж", "чат в браузере")]
+SHOW_STEPS = [
+    ("стол открыт", "Пять skills лежат на дорожках. В системе никого: журнал показывает, что стол ждёт."),
+    ("вход", "Сова, Лис и Ёж входят под своими логинами. В живой игре это одноразовая ссылка из бота или из LMS. В журнале видно, кто вошёл и каким способом."),
+    ("взять", "Сова берёт дорожку 01. Дорожка закрыта за её логином на 20 минут: у Лиса и Ежа она занята. У Совы пошёл час паузы на остальные дорожки."),
+    ("агент забирает палочку", "Сова отдаёт своему агенту одну команду с ключом забега. Агент получает текст skill, пределы и три места, где одна правка даст больше всего."),
+    ("агент правит и объясняет", "Агент примеряет skill на задаче Совы, вносит одну правку и сам пишет три строки: что поменял и зачем, на чём примерил, записка следующему. Сервер проверяет текст и отдаёт разбор."),
+    ("человек передаёт", "Сова читает карточку агента и нажимает «передать». Версия записана: файл передачи, цепочка дорожки, журнал. Счётчик дорожки стал 1: skill прошёл через одни руки."),
+    ("палочка в другом окне", "Дорожка 01 снова свободна, и её берёт Лис. В его окне skill уже с правкой Совы, рядом её записка и разбор."),
+    ("стоп: личное в правке", "Агент Лиса дописал граблю с названием компании и почтой. Проверка текста остановила правку до разбора. Причина записана в журнал."),
+    ("исправил и передал", "Агент убрал личное и прислал правку заново. Разбор её принял, Лис передал. Счётчик дорожки 2."),
+    ("пауза", "Сова хочет взять следующую дорожку. Система отказывает: после взятия час паузы на все дорожки."),
+    ("не успел", "Ёж взял дорожку 03 и ушёл. Замок истёк, система сама вернула палочку на старт: дорожка свободна, пауза у Ежа осталась."),
+    ("что записано", "Дорожка 01 прошла две передачи. У каждой версии в цепочке видно, от чьего лица она передана, через какого агента, по какому правилу и что сказал разбор."),
+]
+
+
+class Show:
+    def __init__(self, home, use_model=True):
+        self.home, self.use_model, self.gate = Path(home), use_model, threading.Lock()
+        self.reset()
+
+    def reset(self):
+        shutil.rmtree(self.home, ignore_errors=True)
+        t = do_init(self.home)
+        t.save_roster({"people": [{"login": l, "tg_id": str(200001 + i), "name": n, "profile": {"harness": h}} for i, (l, n, h) in enumerate(SHOW_CAST)]})
+        self.game = Game(t, HOUR_LIVE, LOCK_LIVE, True)
+        self.game.memo = True
+        self.step, self.cards, self.files, self.order = 0, {}, [], list(t.st["order"])
+        self.lane = self.order[0]
+
+    def card(self, res, title):
+        rv = res.get("review") or {}
+        return {"title": title, "errors": res.get("errors") or [], "facts": [f for f in res.get("facts", []) if f["level"] == "стоп"][:4],
+                "diff": res.get("diff", [])[:8], "minus": res.get("minus", 0), "plus": res.get("plus", 0),
+                "verdict": rv.get("verdict", ""), "by": rv.get("by", ""), "comment": rv.get("comment", "")}
+
+    def run(self, n):
+        g, t, L = self.game, self.game.t, self.lane
+        with GATE:
+            t.load()
+            fx = patches().get(t.st["lanes"][L]["skill"], [])
+            old = t.text(L)
+        base = [f"lanes/{L}/SKILL.md", "events.jsonl", "TRAIL.md"]
+        if n == 1:
+            for login, _, _ in SHOW_CAST:
+                g.enter(login, "одноразовая ссылка")
+            self.files = ["roster.json", "events.jsonl", "TRAIL.md"]
+        elif n == 2:
+            g.take("sova", L)
+            self.cards["sova"] = {"title": "палочка у Совы", "note": "Ключ забега выдан: по нему агент читает палочку и присылает правку."}
+            self.files = ["state.json: замок и ключ забега", "events.jsonl", "TRAIL.md"]
+        elif n == 3:
+            g.agent_seen("sova", L, "Claude Code")
+            a = g.analysis("sova", L)
+            self.cards["sova"] = {"title": "агент получил палочку", "by": a["by"], "candidates": [{"rule": c["rule"], "title": c["title"], "why": c["why"]} for c in a["candidates"]]}
+            self.files = ["GET /api/leg: текст, пределы, три правила", "events.jsonl"]
+        elif n == 4:
+            x = fx[0]
+            res = g.check("sova", L, {"text": old.replace(x["find"], x["replace"], 1), "rule": x["rule"], "note": x["note"], "tried": x["tried"], "next": x.get("next", "")},
+                          use_model=self.use_model, via="агент", agent="Claude Code")
+            self.cards["sova"] = dict(self.card(res, "агент прислал правку"), rule=x["rule"], note=x["note"], tried=x["tried"], next=x.get("next", ""))
+            self.files = ["POST /api/leg/check: правка и три строки", "state.json: черновик с разбором", "events.jsonl"]
+        elif n == 5:
+            m = g.give("sova", L)
+            self.cards["sova"] = {"title": "передано", "note": f"Передача {m['n']} записана от лица Совы. Правку прислал агент {m['agent']}, передал человек со страницы."}
+            self.files = [f"lanes/{L}/legs/001.md", f"lanes/{L}/legs/001.json", f"lanes/{L}/RELAY.md"] + base
+        elif n == 6:
+            g.take("lis", L)
+            m, _ = t.leg(L, 1)
+            self.cards["lis"] = {"title": "палочка у Лиса", "note": "Записка от Совы: " + (m.get("next") or m.get("note", "")), "verdict": m["review"]["verdict"], "by": m["review"].get("by", "")}
+            self.files = ["state.json: замок и ключ забега", "events.jsonl", "TRAIL.md"]
+        elif n == 7:
+            bad = old.replace("\n\n## никогда", "\n- Отчёт для «Ромашка Трейд» ушёл с ошибкой в сумме, вопросы на otchet@romashka.example.\n\n## никогда", 1)
+            g.agent_seen("lis", L, "Codex")
+            res = g.check("lis", L, {"text": bad, "rule": "G-08", "note": "грабля из примерки: в отчёте ушла неверная сумма", "tried": "отчёт для заказчика", "next": ""},
+                          use_model=self.use_model, via="агент", agent="Codex")
+            self.cards["lis"] = dict(self.card(res, "проверка остановила правку"), rule="G-08")
+            self.files = ["events.jsonl: причина остановки", "палочка не изменилась"]
+        elif n == 8:
+            x = fx[1]
+            res = g.check("lis", L, {"text": old.replace(x["find"], x["replace"], 1), "rule": x["rule"], "note": x["note"], "tried": x["tried"], "next": x.get("next", "")},
+                          use_model=self.use_model, via="агент", agent="Codex")
+            g.give("lis", L, anyway=True)
+            self.cards["lis"] = dict(self.card(res, "принято и передано"), rule=x["rule"], note=x["note"], tried=x["tried"])
+            self.files = [f"lanes/{L}/legs/002.md", f"lanes/{L}/legs/002.json", f"lanes/{L}/RELAY.md"] + base
+        elif n == 9:
+            try:
+                g.take("sova", self.order[1])
+            except Refuse as e:
+                self.cards["sova"] = {"title": "отказ системы", "note": str(e)}
+            self.files = ["events.jsonl: отказ с причиной"]
+        elif n == 10:
+            g.take("ezh", self.order[2], lock=1)
+            time.sleep(1.15)
+            with GATE:
+                t.load()
+                g.sweep()
+                t.save()
+            self.cards["ezh"] = {"title": "замок истёк", "note": "Палочка вернулась на старт без правки. Пауза у Ежа идёт от момента взятия."}
+            self.files = ["state.json: замок снят", "events.jsonl: запись от системы", "TRAIL.md"]
+        elif n == 11:
+            self.files = [f"lanes/{L}/RELAY.md", f"lanes/{L}/legs/000.md … 002.md", "events.jsonl", "TRAIL.md"]
+
+    def go(self, to):
+        with self.gate:
+            to = max(0, min(int(to), len(SHOW_STEPS) - 1))
+            if to < self.step:
+                self.reset()
+            retried = False
+            while self.step < to:
+                try:
+                    self.run(self.step + 1)
+                    self.step += 1
+                except Refuse:  # шаг простоял дольше замка: круг начинается заново
+                    if retried:
+                        raise
+                    retried = True
+                    self.reset()
+            return self.state()
+
+    def state(self):
+        g, t = self.game, self.game.t
+        wins = []
+        for login, name, harness in SHOW_CAST:
+            pub = g.public({"login": login, "name": name, "profile": {"harness": harness}})
+            v = pub["viewer"]
+            wins.append({"login": login, "name": name, "harness": harness, "auth": v.get("auth", ""), "rest_until": v["rest_until"] if v["rest"] > 0 else 0,
+                         "holding": v["holding"], "legs": v["legs"], "card": self.cards.get(login),
+                         "lanes": [{k: l.get(k) for k in ("id", "n", "title", "laps", "status", "runner", "mine", "until", "why_not")} for l in pub["lanes"]]})
+        chain = []
+        with GATE:
+            t.load()
+            for n in range(1, t.st["lanes"][self.lane]["laps"] + 1):
+                m, _ = t.leg(self.lane, n)
+                chain.append({"n": n, "runner": t.name(m["runner"]), "rule": m["rule"], "rule_title": RULES.get(m["rule"], {}).get("title", ""), "note": m["note"],
+                              "via": m.get("via", ""), "agent": m.get("agent", ""), "auth": m.get("auth", ""), "passed": m.get("passed", ""),
+                              "minus": m["minus"], "plus": m["plus"], "digest": m["digest"], "verdict": m["review"]["verdict"], "by": m["review"].get("by", "")})
+        return {"step": self.step, "total": len(SHOW_STEPS), "steps": [x[0] for x in SHOW_STEPS], "title": SHOW_STEPS[self.step][0], "text": SHOW_STEPS[self.step][1],
+                "windows": wins, "log": g.log(40), "files": self.files, "chain": chain, "lane": self.lane, "now": time.time(),
+                "model": model_name() if self.use_model else "", "hour": g.hour, "lock": g.lock}
+
 
 def lan_ip():
     try:
@@ -983,12 +1297,13 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
             p = table.person(login=data.get("login"))
         if not p:  # сессия живёт месяц, а из состава человека могли убрать
             return None
-        return {"login": p["login"], "name": p.get("name") or p["login"], "tg_id": p.get("tg_id"), "profile": p.get("profile") or {}}
+        return {"login": p["login"], "name": p.get("name") or p["login"], "tg_id": p.get("tg_id"), "profile": p.get("profile") or {},
+                "auth": data.get("auth", "")}
 
-    def session_cookie(person):
+    def session_cookie(person, auth=""):
         now = int(time.time())
         tok = jwt_sign({"aud": "relay", "sid": secrets.token_hex(8), "tg_id": str(person.get("tg_id", "")), "login": person["login"],
-                        "display_name": person.get("name", ""), "iat": now, "exp": now + SESSION_TTL}, session_secret)
+                        "display_name": person.get("name", ""), "auth": auth, "iat": now, "exp": now + SESSION_TTL}, session_secret)
         return f"{cookie}={tok}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL}" + ("; Secure" if secure else "")
 
     def ticket(person):
@@ -1008,6 +1323,17 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
             data["people"].append(p)
             table.save_roster(data)
             return p
+
+    stage = {}
+
+    def the_show():
+        with GATE:
+            if "show" not in stage:
+                stage["show"] = Show(table.root / ".show")
+            return stage["show"]
+
+    def agent_of(handler):
+        return re.sub(r"[^\w .+-]", "", handler.headers.get("X-Agent") or "")[:40].strip()
 
     class H(BaseHTTPRequestHandler):
         server_version = "relay"
@@ -1067,7 +1393,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         p = table.person(login=data["login"]) if fresh else None
                     if not p:
                         return self.out(403, "ссылка для входа устарела или уже использована: попроси новую", "text/plain; charset=utf-8")
-                    return self.out(302, "", "text/plain", {"Location": "/", "Set-Cookie": session_cookie(p)})
+                    game.enter(p["login"], "одноразовая ссылка")
+                    return self.out(302, "", "text/plain", {"Location": "/", "Set-Cookie": session_cookie(p, "одноразовая ссылка")})
                 viewer = viewer_of(self)
                 if u.path == "/api/auth/me":
                     return self.out(200, {"viewer": viewer}) if viewer else self.out(401, {"error": "нет входа"})
@@ -1076,9 +1403,20 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", "")})
                     return self.out(200, game.public(viewer))
                 if u.path == "/api/rules":
-                    return self.out(200, {"rules": list(RULES.values()), "sources": json.loads((GUIDES / "sources.json").read_text(encoding="utf-8"))})
+                    return self.out(200, {"rules": list(RULES.values()), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
+                                          "sources": json.loads((GUIDES / "sources.json").read_text(encoding="utf-8")),
+                                          "limits": {"lines": MAX_LINES, "changed": MAX_CHANGED, "reviews": MAX_REVIEWS}})
+                if u.path == "/api/show":
+                    if not demo and not viewer:
+                        return self.out(401, {"error": "нет входа"})
+                    return self.out(200, the_show().state())
+                if u.path == "/api/log":
+                    if not demo and not viewer:
+                        return self.out(401, {"error": "нет входа"})
+                    return self.out(200, {"events": game.log(q.get("n", 120), q.get("lane", "")), "now": time.time()})
                 if u.path == "/api/leg":  # вход агента по ключу забега
                     login, lid = game.by_token(self.headers.get("X-Leg-Token") or q.get("token", ""))
+                    game.agent_seen(login, lid, agent_of(self))
                     text = table.text(lid)
                     if q.get("raw"):
                         return self.out(200, text, "text/markdown; charset=utf-8")
@@ -1098,7 +1436,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                             text = table.text(q["lane"])
                         return self.out(200, text, "text/markdown; charset=utf-8", {"Content-Disposition": 'attachment; filename="SKILL.md"'})
                     return self.out(404, {"error": "нет такого адреса"})
-                rel = "index.html" if u.path in ("/", "") else u.path.lstrip("/")
+                rel = {"": "index.html", "rules": "rules.html", "show": "show.html"}.get(u.path.strip("/"), u.path.lstrip("/"))
                 path = safe(WEB, rel)
                 if not path.is_file():
                     return self.out(404, "нет такого файла", "text/plain; charset=utf-8")
@@ -1131,9 +1469,13 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     return self.out(200, {"authorized": True, "auth_link": f"{base}/auth/complete?token={ticket(p)}", "ttl": TICKET_TTL})
                 if u.path == "/api/leg/check":  # агент присылает черновик по ключу забега, передаёт человек
                     login, lid = game.by_token(self.headers.get("X-Leg-Token") or "")
-                    return self.out(200, game.check(login, lid, d))
+                    return self.out(200, game.check(login, lid, d, via="агент", agent=agent_of(self)))
                 if not self.origin_ok():
                     return self.out(403, {"error": "чужой источник запроса"})
+                if u.path == "/api/show/go":
+                    if not demo and not viewer_of(self):
+                        return self.out(401, {"error": "нет входа"})
+                    return self.out(200, the_show().go(d.get("to", 0)))
                 if u.path == "/api/demo/login":
                     if not demo:
                         return self.out(404, {"error": "только в деморежиме"})
@@ -1141,7 +1483,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         p = table.person(login=str(d.get("login", "")))
                     if not p or not p.get("seat"):
                         return self.out(409, {"error": "такого места нет"})
-                    return self.out(200, {"ok": True}, extra={"Set-Cookie": session_cookie(p)})
+                    game.enter(p["login"], "гостевое место")
+                    return self.out(200, {"ok": True}, extra={"Set-Cookie": session_cookie(p, "гостевое место")})
                 if u.path == "/api/auth/logout":
                     return self.out(200, {"ok": True}, extra={"Set-Cookie": f"{cookie}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0" + ("; Secure" if secure else "")})
                 viewer = viewer_of(self)
@@ -1152,7 +1495,10 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     lk = game.take(viewer["login"], lid)
                     return self.out(200, {"ok": True, "until": lk["until"]})
                 if u.path == "/api/check":
-                    return self.out(200, game.check(viewer["login"], lid, d))
+                    return self.out(200, game.check(viewer["login"], lid, d, via=str(d.get("via", "")) if d.get("via") in ("агент",) else "страница",
+                                                    agent=cut(str(d.get("agent", "")), 40) if d.get("via") == "агент" else ""))
+                if u.path == "/api/describe":
+                    return self.out(200, game.describe(viewer["login"], lid, d))
                 if u.path == "/api/pass":
                     meta = game.give(viewer["login"], lid, anyway=bool(d.get("anyway")))
                     return self.out(200, {"ok": True, "n": meta["n"], "rest": game.rest_left(viewer["login"])})
@@ -1175,7 +1521,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
         threading.Thread(target=bots_loop, args=(game, logins, stop), daemon=True).start()
     mode = "демо" if demo else "живой"
     print(f"эстафета skills · стол {table.root.name} · режим {mode} · час {hour} с · замок {lock} с · разбор: {model_name() or 'признаки без модели'}")
-    print(f"открой: {base}/")
+    print(f"открой: {base}/ · прогон по шагам: {base}/show · правила и настройка skills: {base}/rules")
     if ip:
         print(f"в сети: http://{ip}:{port}/")
     if not demo:
@@ -1210,14 +1556,22 @@ def cmd_state(root):
 
 def cmd_rules():
     src = json.loads((GUIDES / "sources.json").read_text(encoding="utf-8"))
-    keys = {g["key"]: g for g in src["guides"]}
+    keys = {g["key"]: g for g in src["guides"] + src.get("research", [])}
     rows = ["# правила развития skills", "",
             "Книга эстафеты: по одному правилу на передачу. Собрано из гайдов, формулировки свои, первоисточники ниже.",
             "Файл собирается командой `python3 relay.py rules` из `rules.json`.", ""]
     for r in RULES.values():
         refs = " · ".join(f"[{keys[k]['title']}]({keys[k]['url']})" if k in keys else "правило эстафеты" for k in r["src"])
-        rows += [f"## {r['id']} · {r['title']}", "", f"**Вопрос.** {r['ask']}", "", f"**Правка.** {r['fix']}", "", f"Источник: {refs}", ""]
+        rows += [f"## {r['id']} · {r['title']}", "", f"**Вопрос.** {r['ask']}", "", f"**Правка.** {r['fix']}", "",
+                 f"**Практика.** {r.get('why', '')}", "", f"Источник: {refs}", ""]
+    rows += ["# настройка skill в харнессе", ""]
+    for x in BOOK.get("settings", []):
+        rows += [f"## {x['id']} · {x['title']}", "", x["text"], "", "Источник: " + " · ".join(f"[{keys[k]['title']}]({keys[k]['url']})" if k in keys else "соглашение эстафеты" for k in x["src"]), ""]
+    rows += ["# что показывают замеры", ""]
+    for x in BOOK.get("evidence", []):
+        rows += [f"## {x['id']} · {x['title']}", "", x["text"], "", "Источник: " + " · ".join(f"[{keys[k]['title']}]({keys[k]['url']})" for k in x["src"] if k in keys), ""]
     rows += ["## гайды", ""] + [f"- {g['title']} – {g['url']}" for g in src["guides"]]
+    rows += ["", "## замеры и исследования", ""] + [f"- {g['title']} – {g['url']} · {g['note']}" for g in src.get("research", [])]
     rows += ["", "## библиотеки skills", ""] + [f"- {g['title']} – {g['url']} · {g['note']}" for g in src["libraries"]]
     rows += ["", f"Скачано и сверено {src['fetched']}. Оригиналы для чтения агентом: `python3 relay.py guides` кладёт их в `guides/raw/`.", ""]
     write(GUIDES / "RULES.md", "\n".join(rows))

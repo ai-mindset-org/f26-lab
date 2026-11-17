@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>эстафета skills · AI Mindset</title>
-<meta name="description" content="Открытая эстафета: пять skills лежат на дорожках, участник берёт свободный, вносит одну правку по правилу из гайдов и передаёт дальше. Считается, сколько передач прошёл каждый skill.">
+<meta name="description" content="Открытая эстафета: пять skills лежат на дорожках, участник берёт свободный, его агент вносит одну правку по правилу из гайдов, человек читает разбор и передаёт дальше. Журнал пишет, кто действовал и через что.">
 <meta name="robots" content="noindex">
 <style>
 @font-face{font-family:'JetBrains Mono';src:url('fonts/jetbrains-mono.woff2') format('woff2');font-weight:100 800;font-style:normal;font-display:swap}
@@ -56,6 +56,8 @@ button.go,a.btn.go{background:var(--ink);color:var(--bg);border-color:var(--ink)
 button.go:hover,a.btn.go:hover{background:var(--acc);border-color:var(--acc)}
 button.quiet{border:0;border-bottom:1px solid var(--line);padding:2px 0;font-size:11.5px;color:var(--ink2)}
 button.quiet:hover{color:var(--ink);border-color:var(--ink)}
+a.quiet{color:var(--ink2);text-decoration:none;border-bottom:1px solid var(--line);padding:2px 0;font-size:11.5px}
+a.quiet:hover{color:var(--ink);border-color:var(--ink)}
 button[disabled]{opacity:.4;cursor:default}
 .blk{margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
 .lab{font-size:11px;color:var(--ink2);letter-spacing:.02em;margin:0 0 8px}
@@ -113,6 +115,10 @@ pre.skill{border:1px solid var(--line);background:var(--bg);padding:12px 14px;ma
 .leg h3 span{color:var(--ink2);font-weight:400}
 .trail{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;line-height:1.75;color:var(--ink2)}
 .trail b{font-weight:500;color:var(--ink)}
+.trail .sys,.trail .sys b{color:var(--ink3);font-weight:400}
+.trail>.sys:first-of-type{color:var(--ink2)}
+.trail u{text-decoration:none;color:var(--acc)}
+.trail button.quiet{margin-top:6px}
 details{margin-top:8px;font-size:12px}
 details summary{cursor:pointer;color:var(--ink2);list-style:none}
 details summary::before{content:'+ '}
