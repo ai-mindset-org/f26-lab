@@ -289,6 +289,9 @@ h1.h1s{font-size:clamp(24px,2.5vw,38px);margin:10px 0 4px}
 [data-skin=lms] body>.field,[data-skin=lms] .frame,[data-skin=lms] .stage,[data-skin=lms] .stage+.rail,[data-skin=lms] .top .brand,[data-skin=lms] .widebtn,[data-skin=lms] .dock,[data-skin=lms] h1.h1s{display:none!important}
 [data-skin=lms] .top{position:static;left:auto;right:auto;top:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:2px 0 14px;margin:0;font-family:var(--mono);font-size:11px}
 [data-skin=lms] .top #where{display:none}
+[data-skin=lms] #panel>h1,[data-skin=lms] #panel>p.why,[data-skin=lms] #panel>.kick{display:none}
+[data-skin=lms] #panel>.intro{margin-top:0;border-top:0;padding-top:0}
+[data-skin=lms] .top .ph{display:none}
 [data-skin=lms] .panel{position:static;left:auto;right:auto;top:auto;bottom:auto;overflow:visible;padding:0 0 12px}
 [data-skin=lms] .rail{position:relative;left:auto;right:auto;bottom:auto;margin:22px 0 14px}
 [data-skin=lms] .toast{right:8px;top:6px;font-family:var(--mono)}

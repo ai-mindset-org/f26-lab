@@ -109,8 +109,8 @@ export default function SkillRelayCard({ labId, className = '' }: SkillRelayCard
 
       <div className="px-3 pb-2">
         <p className="text-xs text-gray-600 leading-snug">
-          skill растёт по одному изменению: возьми его со стола, примени одно правило и передай
-          новой версией следующему
+          возьми skill и выбери одно правило: модель внесёт правку, ты проверишь и передашь
+          следующему. на всё пять минут
         </p>
       </div>
 
