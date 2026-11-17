@@ -1,5 +1,5 @@
 // прогон: один круг эстафеты по шагам. Сервер выполняет настоящие ходы на отдельном столе,
-// страница показывает три окна участников и журнал. Чужой текст попадает на страницу только как текст.
+// страница показывает один skill, троих участников и то, что произошло на шаге. Чужой текст попадает на страницу только как текст.
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
@@ -45,54 +45,72 @@
   }
   function how(e) { return e.via === 'агент' ? 'агент' + (e.agent ? ' ' + e.agent : '') : e.via; }
 
-  function card(c) {
-    if (!c) return h('div', { class: 'card' }, h('p', null, 'в руках пусто'));
-    return h('div', { class: 'card' },
-      h('h4', null, c.title + ' ', c.rule ? h('span', null, '· ' + c.rule) : null),
+  function chg(n) { return n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'изменение' : n % 10 > 1 && n % 10 < 5 && (n % 100 < 12 || n % 100 > 14) ? 'изменения' : 'изменений'); }
+  function ruleLine(c) { return c.rule ? h('div', { class: 'rl' }, h('span', { class: 'id' }, c.rule), h('b', null, c.rule_title || ''), kindTag(c.kind)) : null; }
+  function diffBox(c, max) {
+    var rows = (c.diff || []).filter(function (r) { return r.t.trim(); });
+    if (!rows.length || (c.errors || []).length) return null;
+    return h('div', { class: 'diff' }, rows.slice(0, max).map(function (r) { return h('div', { class: r.op === '-' ? 'del' : 'add' }, (r.op === '-' ? '− ' : '+ ') + r.t); }),
+      rows.length > max ? h('div', { class: 'etc' }, '… ещё строк: ' + (rows.length - max)) : null);
+  }
+  // один skill в центре: за ним идёт весь прогон
+  function skillBox(l) {
+    return [h('div', null, h('div', { class: 'nm' }, 'skill ' + two(l.n) + ' · за ним идёт прогон'), h('h3', null, l.title), h('p', null, l.what || '')),
+      h('div', { class: 'vv' }, h('div', { class: 'big' }, 'v' + l.laps), ribbon(l))];
+  }
+  // участник: кто он, через что работает, что у него сейчас
+  function person(w) {
+    var mine = w.lanes.filter(function (l) { return l.mine; })[0], hop = mine && held[mine.id] !== w.login && !first;
+    var st = mine ? [h('b', null, 'держит skill ' + two(mine.n)), ' · осталось ', h('em', { 'data-until': mine.until }, clock(mine.until - now()))] :
+      w.rest_until ? ['пауза ', h('em', { 'data-until': w.rest_until }, clock(w.rest_until - now())), w.legs ? ' · внесено: ' + chg(w.legs) : ''] :
+        w.auth ? 'на столе · свободен' : 'ещё не вошёл';
+    return h('div', { class: 'who' + (mine ? ' act' : '') + (hop ? ' hop' : '') + (S.focus === w.login ? ' foc' : '') },
+      h('div', { class: 'av' }, w.name.charAt(0)),
+      h('div', { class: 'wb' }, h('b', null, w.name), h('span', null, w.harness), h('p', { class: 'st' }, st), w.card ? h('p', { class: 'was' }, w.card.title) : null));
+  }
+  var STRIP = [['взять skill', 'он твой на пять минут'], ['одно изменение', 'до двенадцати строк по одному правилу'], ['проверка', 'текст и разбор'], ['новая версия', 'лежит на дорожке для следующего']];
+  function strip() { return h('div', { class: 'how' }, STRIP.map(function (x, i) { return h('div', { class: 'st' }, h('div', { class: 'n' }, two(i + 1)), window.ART.step(i), h('b', null, x[0]), x[1]); })); }
+  function what() {
+    var n = S.step, last = S.total - 1, w = S.windows.filter(function (x) { return x.login === S.focus; })[0], c = w && w.card;
+    if (n === last && S.chain.length) return [h('h4', null, 'круг закрыт: в skill ' + chg(S.chain.length)), S.chain.map(function (x) {
+      return h('div', { class: 'vrow' }, h('b', null, 'v' + x.n + ' · ' + x.runner), ruleLine({ rule: x.rule, rule_title: x.rule_title, kind: x.kind }), h('p', null, x.note));
+    })];
+    if (!c) return [h('p', null, n === 0 ? 'Пять skills лежат на дорожках. Каждый ждёт одного изменения.' : 'Все трое на столе. Skill свободен.'), strip()];
+    return [h('h4', null, w.name + ' · ' + c.title), ruleLine(c),
       c.note ? h('p', null, c.note) : null,
       c.tried ? h('p', null, h('b', null, 'примерил на: '), c.tried) : null,
+      (c.candidates || []).length ? h('p', { class: 'cl' }, 'агент видит, чего не хватает:') : null,
       (c.candidates || []).map(function (x) { return h('p', null, h('b', null, x.rule + ' · ' + x.title + '. '), x.why); }),
       (c.errors || []).map(function (x) { return h('p', { class: 'stop' }, h('b', null, 'стоп. '), x); }),
       (c.facts || []).map(function (f) { return h('p', { class: 'stop' }, (f.line ? 'строка ' + f.line + ' · ' : '') + f.rule + (f.excerpt ? ': «' + f.excerpt + '»' : '')); }),
-      c.diff && c.diff.length && !(c.errors || []).length ? h('div', { class: 'diff' }, c.diff.filter(function (r) { return r.t.trim(); }).slice(0, 5).map(function (r) { return h('div', { class: r.op === '-' ? 'del' : 'add' }, (r.op === '-' ? '− ' : '+ ') + r.t); })) : null,
+      diffBox(c, 8),
       c.verdict ? h('p', null, h('b', null, 'разбор: ' + c.verdict), c.by ? ' · ' + c.by : '') : null,
       c.comment ? h('p', null, c.comment) : null,
-      c.by && !c.verdict ? h('p', null, c.by) : null);
+      c.by && !c.verdict ? h('p', null, c.by) : null];
   }
-  function win(w) {
-    var mine = w.lanes.filter(function (l) { return l.mine; })[0];
-    var right = mine ? ['вносит изменение · ', h('em', { 'data-until': mine.until }, clock(mine.until - now()))] :
-      w.rest_until ? ['пауза ', h('em', { 'data-until': w.rest_until }, clock(w.rest_until - now()))] : (w.auth ? 'вход: ' + w.auth : 'входа нет');
-    return h('div', { class: 'win' + (mine ? ' act' : '') },
-      h('div', { class: 'bar' }, h('span', null, h('b', null, w.name), ' · ' + w.harness), h('span', null, right)),
-      h('div', { class: 'ls' }, w.lanes.map(function (l) {
-        var st = l.mine ? 'у тебя' : l.status === 'бежит' ? 'у ' + ({ 'Сова': 'Совы', 'Лис': 'Лиса', 'Ёж': 'Ежа' }[l.runner] || l.runner) : (l.why_not || '').indexOf('пауза') === 0 ? 'пауза' : 'свободен';
-        var hop = l.mine && held[l.id] !== w.login && !first;
-        return h('div', { class: 'wl' + (l.mine ? ' mine' : '') + (hop ? ' hop' : '') },
-          h('span', { class: 'no' }, two(l.n)), h('span', { class: 't' }, l.title, h('i', null, 'v' + l.laps)), h('span', { class: 'st' }, st));
-      })),
-      card(w.card));
+  function logRow(e, full) {
+    var d = new Date(e.at * 1000), id = e.at + e.who + e.what, fresh = !seen[id] && !first;
+    if (full) seen[id] = 1;
+    return h('div', { class: 'e' + (e.via === 'система' ? ' sys' : '') + (fresh ? ' new' : '') },
+      h('span', null, two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds())),
+      h('b', null, e.who),
+      h('span', null, e.what + (e.lane ? ' · ' + e.lane : '') + ' ', h('i', null, '· через: '), e.via === 'агент' ? h('u', null, how(e)) : h('i', null, how(e))));
   }
   function render() {
     var n = S.step, last = S.total - 1;
     $('ph').textContent = '{ шаг ' + two(n) + ' из ' + two(last) + ' }';
     $('title').replaceChildren(document.createTextNode(S.title), h('em', null, '.'));
     $('text').textContent = S.text;
-    $('kick').textContent = '{ один круг по шагам · каждое действие настоящее · разбор: ' + (S.model || 'по признакам, шаг отвечает сразу') + ' }';
+    $('kick').textContent = '{ один круг по шагам · каждое действие настоящее }';
     $('prev').disabled = busy || n === 0; $('next').disabled = busy || n === last;
     $('next').textContent = busy ? 'идёт шаг…' : n === last ? 'конец круга' : 'дальше →';
-    var l0 = S.windows[0].lanes[0];
-    fill($('ver'), h('div', { class: 'vt' }, h('b', null, 'skill 01 · ' + l0.title), h('span', null, l0.what || '')), ribbon(l0));
-    fill($('wins'), S.windows.map(win));
+    fill($('skill'), skillBox(S.windows[0].lanes[0]));
+    fill($('cast'), S.windows.map(person));
     S.windows.forEach(function (w) { w.lanes.forEach(function (l) { if (l.mine) held[l.id] = w.login; else if (held[l.id] === w.login) delete held[l.id]; }); });
-    fill($('log'), S.log.length ? S.log.map(function (e) {
-      var d = new Date(e.at * 1000), id = e.at + e.who + e.what, fresh = !seen[id] && !first;
-      seen[id] = 1;
-      return h('div', { class: 'e' + (e.via === 'система' ? ' sys' : '') + (fresh ? ' new' : '') },
-        h('span', null, two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds())),
-        h('b', null, e.who),
-        h('span', null, e.what + (e.lane ? ' · ' + e.lane : '') + ' ', h('i', null, '· через: '), e.via === 'агент' ? h('u', null, how(e)) : h('i', null, how(e))));
-    }) : h('div', { class: 'e sys' }, h('span', null, '·'), h('b', null, 'система'), h('span', null, 'стол ждёт: никто не вошёл')));
+    fill($('what'), what());
+    var none = h('div', { class: 'e sys' }, h('span', null, '·'), h('b', null, 'система'), h('span', null, 'стол ждёт: никто не вошёл'));
+    fill($('last'), S.log.length ? S.log.slice(0, 4).map(function (e) { return logRow(e, false); }) : none);
+    fill($('log'), S.log.length ? S.log.map(function (e) { return logRow(e, true); }) : none.cloneNode(true));
     $('jlab').textContent = 'журнал стола · записей ' + S.log.length + ' · свежие сверху';
     fill($('files'), (S.files || []).length ? S.files.map(function (f) { return h('div', null, f); }) : h('div', null, 'на этом шаге стол не менялся'));
     fill($('chain'), S.chain.length ? [h('div', { class: 'lab' }, 'лог версий дорожки 01 · от чьего лица и через что'), S.chain.slice().reverse().map(function (c) {

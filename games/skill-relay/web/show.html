@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>прогон · эстафета skills · AI Mindset</title>
-<meta name="description" content="Один круг эстафеты skills по шагам: три окна участников, skill переходит из окна в окно и растёт по одному изменению, журнал пишет, кто действовал и через что. Каждое действие настоящее и идёт на отдельном столе.">
+<meta name="description" content="Один круг эстафеты skills по шагам: один skill, трое участников, каждый вносит одно изменение, и skill получает новую версию. Каждое действие настоящее и идёт на отдельном столе.">
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="pages.css">
 <link rel="stylesheet" href="art.css">
 </head>
 <body data-field>
 <div class="frame"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
-<div class="top"><a class="brand" href="./" title="на стол"><b>AI Mindset</b><span class="x"> · f26</span> · эстафета skills</a><nav class="tabs"><a href="./">стол</a><a href="show" class="on">как это работает</a><a href="rules">правила</a><a href="./?view=log">журнал</a></nav><span class="ph" id="ph"></span></div>
+<div class="top"><a class="brand" href="./" title="на стол"><b>AI Mindset</b><span class="x"> · f26</span> · эстафета skills</a><nav class="tabs"><a href="./">стол</a><a href="show" class="on">как это работает</a><a href="try">попробовать</a><a href="rules">правила</a><a href="./?view=log">журнал</a></nav><span class="ph" id="ph"></span></div>
 <main class="page">
   <div class="head">
     <div>
@@ -31,19 +31,34 @@
     </div>
   </div>
   <div id="err"></div>
-  <div class="vline" id="ver"></div>
-  <div class="wins" id="wins"></div>
-  <div class="under">
+  <section class="scene">
+    <div class="skill" id="skill"></div>
+    <div class="cast" id="cast"></div>
+  </section>
+  <div class="under2">
     <div>
-      <div class="lab" id="jlab">журнал стола</div>
-      <div class="jr" id="log"></div>
+      <div class="lab">что произошло на этом шаге</div>
+      <div class="ev2" id="what"></div>
     </div>
     <div>
-      <div class="lab">что записано на этом шаге</div>
-      <div class="files" id="files"></div>
-      <div class="chain" id="chain"></div>
+      <div class="lab">последнее в журнале</div>
+      <div class="jr" id="last"></div>
     </div>
   </div>
+  <details class="deep" id="deep">
+    <summary>подробности шага: весь журнал, файлы стола, лог версий</summary>
+    <div class="under">
+      <div>
+        <div class="lab" id="jlab">журнал стола</div>
+        <div class="jr" id="log"></div>
+      </div>
+      <div>
+        <div class="lab">что записано на этом шаге</div>
+        <div class="files" id="files"></div>
+        <div class="chain" id="chain"></div>
+      </div>
+    </div>
+  </details>
 </main>
 <div class="rail" id="rail"></div>
 <script src="field.js" defer></script>

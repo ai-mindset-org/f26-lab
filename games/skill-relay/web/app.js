@@ -95,7 +95,7 @@
       S = d; skew = d.now - Date.now() / 1000; render();
       if (!RULES && !load.asked) { load.asked = 1; rules().then(function () { key = ''; render(); }, function () { }); }
     }, function (e) {
-      if (e.status === 401) { S = { mode: 'живой', lanes: [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', totals: {} }; render(); }
+      if (e.status === 401) { S = { mode: 'живой', lanes: [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', tailnet: (e.data || {}).tailnet || null, totals: {} }; render(); }
       else if (!S) fill($('panel'), h('div', { class: 'msg' }, 'Стол не отвечает. Страница открывается сервером эстафеты: python3 relay.py serve <стол> --demo'));
     });
   }
@@ -182,14 +182,17 @@
     var seats = (S.seats || []).map(function (s) {
       return h('button', { onclick: function () { api('POST', 'api/demo/login', { login: s.login }).then(load, out(box)); } }, s.name + (s.taken ? ' · уже был' : ''));
     });
+    var tail = S.tailnet ? [h('div', { class: 'row' }, h('button', { class: 'go', onclick: function () { api('POST', 'api/tailnet/login', {}).then(load, out(box)); } }, 'войти как ' + S.tailnet.name)),
+      h('p', { class: 's' }, 'Сервер узнал тебя по Tailscale: отдельная ссылка не нужна. На столе будет видно это имя.')] : null;
     return [
-      h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : 'вход по ссылке') + ' }'),
+      h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
       h('p', { class: 'why' }, 'Skill растёт по одному изменению. Каждый участник добавляет одно и за ' + span(S.lock) + ' коммитит: в дорожке лежит новая версия для следующего.'),
       S.lanes && S.lanes.length ? how() : null,
       S.mode === 'демо' ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сядь на место: в демо входа нет, пауза после взятия ' + span(S.hour)), h('div', { class: 'row' }, seats),
+        S.tailnet ? tail : null,
         h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show' }, 'как это работает: один круг по шагам'))] :
-        [S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
+        tail || [S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
           h('p', { class: 's' }, S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
       box,
       S.lanes && S.lanes.length ? [lanesBlock(true), trailBlock(6)] : null,
@@ -213,10 +216,10 @@
           h('button', { class: 'nm', onclick: function () { go('lane:' + l.id); } }, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
           h('p', { class: 'what' }, l.what),
           ribbon(l),
-          h('span', { class: 'meta' }, 'ур. ' + l.level + ' · ' + l.theme + ' · ' + l.lines + ' строк' + (l.last_runner ? ' · последнее: ' + (KN[l.last_kind] || l.last_rule) + ', ' + l.last_runner : '') +
+          h('span', { class: 'meta', title: 'уровень ' + l.level + ' · тема: ' + l.theme + ' · ' + l.lines + ' строк' }, (l.last_runner ? 'последнее: ' + (KN[l.last_kind] || l.last_rule) + ', ' + l.last_runner : 'базовая версия') +
             (l.status !== 'бежит' && l.idle_since ? ' · свободен ' + ago(now() - l.idle_since) : ''))),
         h('div', { class: 'side' },
-          h('span', { class: 'ver', title: 'сколько изменений принято в этот skill' }, 'v' + l.laps, h('i', null, l.laps + ' ' + chg(l.laps))),
+          h('span', { class: 'ver', title: 'сколько изменений принято в этот skill: ' + l.laps }, 'v' + l.laps),
           h('span', { class: 'act' }, act)));
     })), box];
   }

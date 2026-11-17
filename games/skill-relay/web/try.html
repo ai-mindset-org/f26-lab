@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>попробовать · эстафета skills · AI Mindset</title>
+<meta name="description" content="Песочница эстафеты skills: вставь свой SKILL.md или возьми базовый, выбери одно правило, модель вносит одно изменение до двенадцати строк. Видна разница, решение за тобой: оставить версию или откатить. Стол при этом не меняется.">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="pages.css">
+<link rel="stylesheet" href="art.css">
+</head>
+<body data-field>
+<div class="frame"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
+<div class="top"><a class="brand" href="./" title="на стол"><b>AI Mindset</b><span class="x"> · f26</span> · эстафета skills</a><nav class="tabs"><a href="./">стол</a><a href="show">как это работает</a><a href="try" class="on">попробовать</a><a href="rules">правила</a><a href="./?view=log">журнал</a></nav><span class="ph">{ песочница }</span></div>
+<main class="page">
+  <div class="kick">{ песочница · стол не меняется · версии живут в этой вкладке }</div>
+  <p class="m">одно правило к твоему skill<em>.</em></p>
+  <p class="s">Вставь свой SKILL.md или возьми базовый. Выбери правило. Модель вносит одно изменение, ты видишь разницу и решаешь: оставить или откатить. Потом следующее правило. Так skill растёт по версии за раз.</p>
+  <div class="try">
+    <section>
+      <div class="lab"><b>1 · skill</b></div>
+      <div class="chips" id="kit"></div>
+      <textarea id="text" spellcheck="false" aria-label="текст SKILL.md" placeholder="---&#10;name: my-skill&#10;description: что делает и когда брать&#10;---&#10;&#10;# название&#10;&#10;## шаги"></textarea>
+      <div class="meta" id="meta"></div>
+      <div class="lab" style="margin-top:26px"><b>2 · одно правило</b></div>
+      <div class="chips" id="hints"></div>
+      <div class="kindrow" id="kinds"></div>
+      <div class="rlist" id="rules"></div>
+      <div class="row"><button class="go" id="apply" disabled>выбери правило</button></div>
+      <p class="hint" id="model"></p>
+    </section>
+    <section>
+      <div class="lab"><b>3 · что изменилось</b></div>
+      <div class="tline" id="ribbon"></div>
+      <div id="result"></div>
+      <div class="lab" style="margin-top:28px"><b>версии в песочнице</b></div>
+      <div class="ev2 vers" id="versions"></div>
+    </section>
+  </div>
+</main>
+<script src="field.js" defer></script>
+<script src="art.js" defer></script>
+<script src="try.js" defer></script>
+</body>
+</html>

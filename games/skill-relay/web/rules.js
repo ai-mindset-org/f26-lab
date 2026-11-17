@@ -47,7 +47,44 @@
           h('p', null, h('b', null, 'вопрос. '), x.ask),
           h('p', null, h('b', null, 'изменение. '), x.fix),
           x.why ? h('p', { class: 'why' }, h('b', null, 'практика. '), x.why) : null,
-          refs(x.src)));
+          example(x),
+          refs(x.src),
+          h('div', { class: 'refs' }, h('a', { class: 'q', href: 'try?rule=' + x.id }, 'применить к своему skill →'))));
+    }
+    // пример правила: строка «было» и строки «стало»
+    function example(x) {
+      if (!x.ex) return null;
+      return h('div', { class: 'ex' }, h('div', { class: 'exl' }, 'пример · ' + ((PT[x.part] || {}).title || '')),
+        x.ex.was.map(function (t) { return h('div', { class: 'del' }, '− ' + t); }),
+        x.ex.now.map(function (t) { return h('div', { class: 'add' }, '+ ' + t); }));
+    }
+    var PT = {};
+    (d.parts || []).forEach(function (x) { PT[x.id] = x; });
+    function chip(x) { return h('a', { class: 'rchip', href: '#' + x.id, title: x.title }, x.id); }
+    // система: пять принципов, карта файла, путь одного правила
+    function system() {
+      var demo = d.rules.filter(function (x) { return x.id === 'G-09'; })[0] || d.rules[0];
+      return [
+        h('h2', { id: 'system' }, 'как устроена система'),
+        h('p', { class: 's' }, 'Три слоя. Принципы отвечают, почему skill меняют по одному шагу. Карта показывает, в какой части файла живёт каждое правило. Путь правила показывает, как одно правило превращается в новую версию.'),
+        h('div', { class: 'lab sys' }, h('b', null, '1 · пять принципов'), ' · из работ про то, как улучшают инструкции для агентов'),
+        h('div', { class: 'princ' }, (d.principles || []).map(function (x, i) {
+          return h('div', { class: 'pc', id: x.id }, h('i', null, '0' + (i + 1)), h('b', null, x.title), h('span', null, x.text), h('em', null, 'в игре: ' + x.game), refs(x.src));
+        })),
+        h('div', { class: 'lab sys' }, h('b', null, '2 · где правило лежит в SKILL.md'), ' · номер ведёт к правилу'),
+        h('div', { class: 'fmap' }, (d.parts || []).map(function (x) {
+          return h('div', { class: 'fp' + (x.id === 'whole' ? ' all' : '') },
+            h('pre', null, x.line),
+            h('div', { class: 'ft' }, h('b', null, x.title), h('span', null, x.text)),
+            h('div', { class: 'fr' }, d.rules.filter(function (r) { return r.part === x.id; }).map(chip)));
+        })),
+        h('div', { class: 'lab sys' }, h('b', null, '3 · как одно правило применяется'), ' · на примере ' + demo.id),
+        h('div', { class: 'path' },
+          h('div', { class: 'ps' }, h('i', null, '01'), h('b', null, 'вопрос к тексту'), h('span', null, demo.ask)),
+          h('div', { class: 'ps' }, h('i', null, '02'), h('b', null, 'одно изменение'), example(demo)),
+          h('div', { class: 'ps' }, h('i', null, '03'), h('b', null, 'проверка'), h('span', null, 'Сервер ищет в тексте личное и секреты, считает строки: до ' + d.limits.changed + ' за раз. Разбор смотрит, применено ли правило и остался ли skill общим.')),
+          h('div', { class: 'ps' }, h('i', null, '04'), h('b', null, 'оставить или откатить'), h('span', null, 'Принятое изменение становится версией v+1. Следующий берёт её и применяет своё правило.'),
+            h('a', { class: 'btn', href: 'try?rule=' + demo.id }, 'попробовать на своём skill →')))];
     }
     function block(x, why) {
       return h('div', { class: 'rule', id: x.id },
@@ -63,12 +100,14 @@
       h('h1', null, 'одно изменение', h('em', null, '.')),
       h('p', { class: 's' }, 'Берёшь skill, добавляешь одно и коммитишь за пять минут: в дорожке лежит новая версия. Одно изменение бывает семи видов. У каждого вида два–четыре правила: вопрос к тексту skill, само изменение и практика из первоисточника или замера. За раз меняется до ' + d.limits.changed + ' строк.'),
       h('div', { class: 'nav' },
+        h('a', { class: 'q', href: '#system' }, 'как устроена система'),
         h('a', { class: 'q', href: '#kinds' }, 'виды изменения · ' + (d.kinds || []).length),
         h('a', { class: 'q', href: '#settings' }, 'настройка skill в харнессе · ' + d.settings.length),
         h('a', { class: 'q', href: '#evidence' }, 'что показывают замеры · ' + d.evidence.length),
         h('a', { class: 'q', href: '#sources' }, 'гайды и библиотеки'),
-        h('a', { class: 'q', href: 'show' }, 'прогон по шагам'),
-        h('a', { class: 'q', href: './' }, 'к дорожкам')),
+        h('a', { class: 'q', href: 'try' }, 'попробовать на своём skill')),
+      system(),
+      h('h2', { id: 'kinds-h' }, 'семь видов изменения'),
       h('div', { class: 'kinds', id: 'kinds' }, (d.kinds || []).map(function (k) {
         var n = d.rules.filter(function (x) { return x.kind === k.id; }).length;
         return h('a', { class: 'kcard', href: '#k-' + k.id }, window.ART.kind(k.id), h('b', null, k.add), h('span', null, k.text), h('i', null, n + ' ' + (n === 1 ? 'правило' : n < 5 ? 'правила' : 'правил')));

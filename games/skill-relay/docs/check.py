@@ -222,6 +222,38 @@ def main():
             w0 = sh["windows"][0]["lanes"][0]
             say("у дорожки видны задача и лента версий с видом изменения", bool(w0.get("what")) and [v["kind"] for v in w0["versions"]] == ["example"], str(w0)[:200])
             say("прогон идёт на отдельном столе", a.call("GET", "/api/state")[1]["totals"]["laps"] == laps_main and (table / ".show" / "state.json").exists())
+            sova = [x for x in a.call("POST", "/api/show/go", {"to": 2})[1]["windows"] if x["login"] == "sova"][0]
+            sh = a.call("GET", "/api/show")[1]
+            say("прогон говорит странице, на чью карточку смотреть, и какого вида изменение", sh.get("focus") == "sova" and sova["card"].get("kind") == "example"
+                and bool(sova["card"].get("rule_title")), str(sova["card"])[:200])
+            # ---------- вкладки, система правил, песочница ----------
+            print("вкладки, система правил, песочница")
+            pages = {}
+            for x in ("", "show", "try", "rules"):
+                pages[x] = str(a.call("GET", "/" + x)[1])
+            say("с любой страницы есть вкладки на стол, прогон, песочницу, правила и журнал",
+                all(all(f'href="{t}"' in body for t in ("./", "show", "try", "rules", "./?view=log")) for body in pages.values()), str({k: len(v) for k, v in pages.items()}))
+            say("книга отдаёт пять принципов и карту файла, у каждого правила есть место в файле и пример",
+                len(rb.get("principles", [])) == 5 and len(rb.get("parts", [])) == 9
+                and all(r.get("part") in {x["id"] for x in rb["parts"]} and r["ex"]["was"] and r["ex"]["now"] for r in rb["rules"]))
+            kit = a.call("GET", "/api/try/kit")[1]
+            base = kit["skills"][0]["text"]
+            events = len(a.call("GET", "/api/log?n=500")[1]["events"])
+            code, lk, _ = a.call("POST", "/api/try/look", {"text": base})
+            say("песочница видит без модели, чего не хватает skill", code == 200 and len(kit["skills"]) == 5 and len(lk["candidates"]) == 3 and not lk["private"] and lk["lines"] > 20, str(lk)[:200])
+            code, ap, _ = a.call("POST", "/api/try/apply", {"text": base, "rule": lk["candidates"][0]["rule"]})
+            say("песочница вносит одно изменение до двенадцати строк и отдаёт разницу", code == 200 and ap["ok"] and 0 < ap["plus"] <= 12 and ap["text"] != base
+                and ap["kind"] and ap["diff"], str(ap)[:300])
+            code, ap2, _ = a.call("POST", "/api/try/apply", {"text": ap["text"], "rule": "G-08"})
+            say("второе правило ложится поверх первого: версии растут по одной", code == 200 and ap2["ok"] and ap2["text"] != ap["text"], str(ap2)[:200])
+            code, bad, _ = a.call("POST", "/api/try/apply", {"text": base + "\nпиши на ivan@primer.example\n", "rule": "G-08"})
+            say("личное в тексте песочница останавливает до отправки модели", code == 200 and not bad["ok"] and bad["facts"] and "text" not in bad, str(bad)[:200])
+            say("песочница не трогает стол и журнал", a.call("GET", "/api/state")[1]["totals"]["laps"] == laps_main
+                and len(a.call("GET", "/api/log?n=500")[1]["events"]) == events)
+            t0 = time.time()
+            code, an, _ = a.call("GET", "/api/analysis?fast=1&lane=" + a.call("GET", "/api/state")[1]["lanes"][0]["id"])
+            say("быстрый разбор отвечает сразу, модель страницу не держит", code in (200, 409) and time.time() - t0 < 3, f"{code} · {time.time() - t0:.1f} с")
+            say("без флага tailnet заголовок Tailscale ничего не даёт", a.call("GET", "/api/whoami", headers={"Tailscale-User-Login": "x@primer.example"})[1]["seen"] is False)
         finally:
             srv.terminate()
             srv.wait(5)
@@ -235,6 +267,30 @@ def main():
             time.sleep(16)
             s = Client(pt).call("GET", "/api/state")[1]
             say("боты бегут сами: передач стало больше", s["totals"]["laps"] > 4, str(s["totals"]))
+        finally:
+            srv.terminate()
+            srv.wait(5)
+        # ---------- командный вход по Tailscale ----------
+        print("командный вход по Tailscale")
+        table4 = tmp / "team"
+        subprocess.run([sys.executable, RELAY, "init", str(table4)], env=env, capture_output=True)
+        pt = port()
+        srv = start([str(table4), "--live", "--tailnet", "--port", str(pt)], dict(env, RELAY_SESSION_SECRET="t" * 40))
+        try:
+            c = Client(pt)
+            tail = {"Tailscale-User-Login": "Sova.Lesnaya@primer.example", "Tailscale-User-Name": "=?utf-8?q?=D0=A1=D0=BE=D0=B2=D0=B0?="}
+            code, st, _ = c.call("GET", "/api/state", headers=tail)
+            say("без сессии стол закрыт, но сервер узнаёт человека из tailnet", code == 401 and (st.get("tailnet") or {}).get("name") == "Сова", str(st)[:200])
+            say("без заголовка Tailscale вход не срабатывает", Client(pt).call("POST", "/api/tailnet/login", {})[0] == 409)
+            code, d, _ = c.call("POST", "/api/tailnet/login", {}, headers=tail)
+            me = c.call("GET", "/api/state")[1]
+            say("вход по Tailscale даёт сессию и место в составе", code == 200 and me["viewer"]["login"] == "sova-lesnaya" and me["viewer"]["auth"] == "Tailscale", str(me.get("viewer")))
+            roster = (table4 / "roster.json").read_text(encoding="utf-8")
+            say("в составе лежит отпечаток почты, самой почты нет", "primer.example" not in roster and '"tail"' in roster)
+            c.call("POST", "/api/tailnet/login", {}, headers=tail)
+            say("повторный вход не плодит людей", roster.count('"login"') == (table4 / "roster.json").read_text(encoding="utf-8").count('"login"'))
+            code, tk, _ = c.call("POST", "/api/take", {"lane": me["lanes"][0]["id"]})
+            say("вошедший по Tailscale берёт skill", code == 200, str(tk)[:200])
         finally:
             srv.terminate()
             srv.wait(5)

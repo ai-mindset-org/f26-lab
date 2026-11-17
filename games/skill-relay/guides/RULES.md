@@ -13,6 +13,28 @@
 | добавить проверку | Способ понять, что получилось: проверка с ответом «сошлось или нет», проверочная задача. | G-10, G-15 |
 | убрать лишнее | Меньше текста при том же смысле: убрать известное агенту, оставить одно слово на понятие. | G-02, G-11 |
 
+# пять принципов изменения skill
+
+- **одно изменение за раз.** Если за круг меняется одно, видно, что именно помогло или сломало. Два изменения сразу нельзя ни оценить, ни откатить по отдельности. В игре: один коммит несёт одно изменение по одному правилу, до 12 строк.
+- **дописывать поверх.** Когда инструкцию каждый раз переписывают целиком, детали стираются: авторы ACE называют это схлопыванием контекста. Точечные добавки сохраняют накопленное. В игре: остальной текст skill остаётся нетронутым, разбор проверяет «остальное цело».
+- **изменение растёт из наблюдения.** Правка, выведенная из следа реального прогона, точнее правки по догадке: GEPA и текстовые градиенты строят изменение из разбора ошибок. В игре: разбор показывает три места, где skill слабее всего; грабля пишется из живой примерки.
+- **оставить или откатить.** Новая версия остаётся, только если на тех же задачах стало лучше. Если хуже, возвращается прошлая принятая версия. В игре: проверка текста и разбор перед коммитом; каждая версия лежит в логе, прошлую можно взять обратно.
+- **версии и защищённое ядро.** У skill есть части, которые изменение не трогает: что он делает и для чего. Каждая принятая правка становится новой версией с записью, кто и зачем. В игре: имя и раздел параметров не меняются; у дорожки лента версий с автором и агентом.
+
+# где правило лежит в SKILL.md
+
+| часть файла | что в ней | правила |
+|---|---|---|
+| шапка | Агент видит её всегда и по ней решает, брать ли skill. | G-01, G-14 |
+| параметры | Умолчания общие. Личные значения остаются у человека. | G-04, R-01 |
+| шаги | Порядок работы: вход, действие, выход. | G-03, G-05, G-09, G-16, G-18 |
+| формат | Как выглядит результат. | G-06 |
+| пример | Один вход и один выход. | G-07 |
+| грабли | Ошибки из живых прогонов. | G-08 |
+| проверка | Сверка результата и проверочные задачи. | G-10, G-15 |
+| границы | Чего skill не делает и что делать, когда не получилось. | G-17 |
+| весь текст | Правила, которые чистят skill целиком. | G-02, G-11, G-12, G-13 |
+
 # добавить протокол
 
 Порядок действий: шаг с входом и выходом, чек-лист, остановка перед шагом с последствиями.
@@ -25,6 +47,12 @@
 
 **Практика.** Гайд Anthropic называет это степенью свободы: на узком мосту нужны точные шаги, в открытом поле хватает направления.
 
+```
+было:  Обнови таблицу как удобно.
+стало: Запусти ровно: python scripts/update.py --dry-run
+стало: Флаги не меняй: без --dry-run строки перезапишутся.
+```
+
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
 
 ## G-05 · шаги с явным входом и выходом
@@ -34,6 +62,12 @@
 **Изменение.** Перепиши одно расплывчатое место в шаг: глагол, над чем работает, что получается на выходе.
 
 **Практика.** Skill хранит процедуру: порядок действий, который агент повторит на новой задаче. Описание без шагов агент пересказывает и пропускает.
+
+```
+было:  2. Обработай данные.
+стало: 2. Вход: таблица из шага 1. Убери пустые строки и дубли.
+стало:    Выход: чистая таблица и число убранных строк.
+```
 
 Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [OpenAI Codex · Build skills](https://developers.openai.com/codex/skills)
 
@@ -45,6 +79,14 @@
 
 **Практика.** Чек-лист держит агента на длинной работе: видно, что пройдено, и есть куда вернуться.
 
+```
+было:  1. Собери источники. 2. Сверь даты. 3. Напиши отчёт.
+стало: - [ ] 1. Собери источники
+стало: - [ ] 2. Сверь даты
+стало: - [ ] 3. Напиши отчёт
+стало: Ставь [x] и иди дальше, только когда шаг закрыт.
+```
+
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
 
 ## G-18 · шаг с последствиями ждёт слова человека
@@ -54,6 +96,11 @@
 **Изменение.** Пометь один шаг с последствиями: что агент показывает человеку и какого слова ждёт. Права на инструменты называй узко: команда и её рамка.
 
 **Практика.** Claude Code даёт таким skills ручной запуск (disable-model-invocation) и узкие права в allowed-tools, Codex отключает неявный запуск через allow_implicit_invocation. Обзор Snyk 10 000 популярных skills: больше 64% подталкивают агента к небезопасным действиям.
+
+```
+было:  5. Отправь письмо заказчику.
+стало: 5. Покажи черновик письма. Отправляй после слова «отправляй».
+```
 
 Источник: [Claude Code · Extend Claude with skills](https://code.claude.com/docs/en/skills) · [OpenAI Codex · Build skills](https://developers.openai.com/codex/skills) · [Snyk · Re-Assessing the Security of the Agent Skill Ecosystem](https://research.snyk.io/blog/skill-analysis/)
 
@@ -69,6 +116,11 @@
 
 **Практика.** Перечень равных вариантов заставляет агента выбирать наугад. Гайды дают один путь по умолчанию и короткое условие для запасного.
 
+```
+было:  Формат: список, таблица или абзац, как лучше.
+стало: Формат по умолчанию: список до пяти пунктов. Таблица, только если сравниваются три варианта и больше.
+```
+
 Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
 ## G-12 · без дат и «сейчас»
@@ -78,6 +130,11 @@
 **Изменение.** Замени привязку ко времени на условие («если в инструменте есть …») или вынеси старый способ в отдельную строку «раньше делали так».
 
 **Практика.** Привязка ко времени устаревает молча. Старый способ гайд держит отдельным блоком «раньше делали так».
+
+```
+было:  Сейчас лучше работает новая версия API, старая отключена с весны.
+стало: Версия API стоит в разделе «параметры». Прежний способ описан в references/old.md.
+```
 
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
@@ -89,6 +146,12 @@
 
 **Практика.** Тело skill грузится целиком при включении. Гайды держат его до 500 строк и около 5000 токенов, редкое выносят в файлы, которые агент открывает по условию.
 
+```
+было:  Сорок строк про редкий формат файла стоят посреди шагов.
+стало: Файл в редком формате: открой references/formats.md.
+стало: В теле остаётся ядро, которое нужно в каждом запуске.
+```
+
 Источник: [agentskills.io · Specification](https://agentskills.io/specification) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
 ## R-01 · параметры общие, личное остаётся дома
@@ -98,6 +161,12 @@
 **Изменение.** Вынеси одно зашитое значение в параметр с умолчанием. Свои значения держи у себя в params.md рядом с копией skill: в эстафету они не возвращаются.
 
 **Практика.** Стандарт skills переносим между харнессами. Общий текст с параметрами работает у следующего бегуна, зашитые значения ломаются на первой чужой задаче и выносят личное наружу.
+
+```
+было:  Пиши в моём стиле, как в отчёте для отдела на прошлой неделе.
+стало: ## параметры
+стало: тон: деловой (умолчание). Свои значения лежат в params.md рядом со skill.
+```
 
 Источник: правило эстафеты · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
 
@@ -113,6 +182,11 @@
 
 **Практика.** В общем списке агент видит только name и description и по ним решает, брать ли skill. Стандарт даёт описанию до 1024 знаков, Claude Code обрезает его в списке на 1536 знаках вместе с when_to_use: главный случай стоит первым.
 
+```
+было:  description: Помогает с текстами.
+стало: description: Сжимает длинный текст в саммари под читателя. Бери, когда просят «коротко», «суть» или приносят расшифровку.
+```
+
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Optimizing skill descriptions](https://agentskills.io/skill-creation/optimizing-descriptions) · [Claude Code · Extend Claude with skills](https://code.claude.com/docs/en/skills) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
 
 ## G-14 · одна работа на skill
@@ -123,6 +197,11 @@
 
 **Практика.** SkillsBench: задачи с одним–тремя skills прибавляют 18–19 пунктов, с четырьмя и больше 10. Узкий skill точнее включается и реже спорит с соседями.
 
+```
+было:  description: Пишет саммари, переводит, правит опечатки и рассылает результат.
+стало: description: Пишет саммари под читателя. Перевод и рассылка сюда не входят.
+```
+
 Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [OpenAI Codex · Build skills](https://developers.openai.com/codex/skills) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
 
 ## G-17 · границы и запасной ход
@@ -132,6 +211,13 @@
 **Изменение.** Добавь строку «не бери, если …» с одним-двумя случаями и строку запасного хода: что делать, когда основной путь не подходит.
 
 **Практика.** Разбор провалов в SkillsBench: skill вредит, когда навязывает тяжёлый порядок, вытесняет более сильный обычный ход или ведёт к инструменту, который агент не может отладить. Общая причина одна: единственный «правильный» путь без границ применимости и лёгкого запасного.
+
+```
+было:  (границ нет: агент додумывает сам)
+стало: ## никогда
+стало: - Не дописывай то, чего нет в тексте.
+стало: Текст обрезан: скажи об этом и остановись.
+```
 
 Источник: [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
 
@@ -147,6 +233,13 @@
 
 **Практика.** Заготовку агент заполняет точнее, чем следует формату, описанному словами. Строгий шаблон нужен там, где результат читает программа или другой человек.
 
+```
+было:  Верни результат в удобном виде.
+стало: О чём: одна фраза.
+стало: Пункты: до пяти, у каждого опора на источник.
+стало: Чего нет: одна строка.
+```
+
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
 
 ## G-07 · пример «вход → выход»
@@ -156,6 +249,13 @@
 **Изменение.** Добавь один пример на 4–8 строк на выдуманных данных. Он должен показывать трудное место, которое шагами описать сложно.
 
 **Практика.** Пара «вход → выход» задаёт стиль и глубину точнее описания. Примеры пишутся на выдуманных данных.
+
+```
+было:  (раздела с примером нет)
+стало: ## пример
+стало: Вход: расшифровка встречи на 40 минут.
+стало: Выход: «О чём: команда переносит запуск на две недели».
+```
 
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
 
@@ -171,6 +271,12 @@
 
 **Практика.** Гайд agentskills.io называет раздел с граблями самым ценным в skill: это поправки к ошибкам, которые агент делает без подсказки. Запись появляется сразу после живой ошибки.
 
+```
+было:  (раздела с граблями нет)
+стало: ## грабли
+стало: - Из таблицы на девять строк в саммари попало шесть. Сверяй число строк на входе и на выходе.
+```
+
 Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
 
 ## G-16 · объясни зачем
@@ -180,6 +286,11 @@
 **Изменение.** Замени одно голое требование на требование с причиной: что сломается, если его нарушить.
 
 **Практика.** skill-creator: причина работает сильнее нажима. Требование с объяснением модель переносит на новый случай, голое «всегда» выполняет буквально.
+
+```
+было:  ВСЕГДА читай текст до конца!!!
+стало: Прочитай текст до конца: выводы часто стоят в последней трети.
+```
 
 Источник: [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
 
@@ -195,6 +306,11 @@
 
 **Практика.** Петля «сделал, проверил, исправил» в гайде Anthropic названа главным способом поднять качество. Проверка отвечает «сошлось» или «нет».
 
+```
+было:  Отдай результат.
+стало: Сверь число пунктов с источником. Не сошлось: исправь и сверь заново. Сошлось: отдай.
+```
+
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
 
 ## G-15 · три проверочные задачи
@@ -204,6 +320,14 @@
 **Изменение.** Добавь или уточни одну проверочную задачу: запрос человека и признаки хорошего результата.
 
 **Практика.** Гайд Anthropic: 10–20 запросов на включение с целью 90% срабатываний и запросы, на которых skill молчит. В SkillsBench skill, написанный агентом и оставленный без проверки, дал минус 8–11 пунктов к работе без skill.
+
+```
+было:  (проверочных задач нет)
+стало: ## проверочные задачи
+стало: 1. «Сожми статью в пять пунктов» → пять пунктов с опорой.
+стало: 2. «Что решили?», а решений в тексте нет → сказано, что решений нет.
+стало: 3. «Переведи текст» → skill не включается.
+```
 
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Evaluating skill output quality](https://agentskills.io/skill-creation/evaluating-skills) · [agentskills.io · Optimizing skill descriptions](https://agentskills.io/skill-creation/optimizing-descriptions) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
 
@@ -219,6 +343,11 @@
 
 **Практика.** Замер SkillsBench на 87 задачах: компактные skills прибавляют 19 пунктов к доле решённых задач, исчерпывающая документация 0,7 пункта.
 
+```
+было:  Саммари это краткое изложение текста. Сначала внимательно прочитай текст.
+стало: Пункт попадает в саммари, если без него читатель примет другое решение.
+```
+
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
 
 ## G-11 · один термин на одно понятие
@@ -228,6 +357,11 @@
 **Изменение.** Выбери одно слово для понятия, у которого в тексте два или три имени, и замени остальные.
 
 **Практика.** Разные слова для одного понятия агент читает как разные понятия.
+
+```
+было:  Собери саммари. Проверь выжимку. Отдай конспект.
+стало: Собери саммари. Проверь саммари. Отдай саммари.
+```
 
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
@@ -339,6 +473,14 @@ Snyk, ноябрь 2026, 10 000 самых популярных skills двух 
 - SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670) – https://arxiv.org/abs/2602.12670 · 87 задач, 18 связок модели и харнесса, парное сравнение с skills и без
 - Snyk · Re-Assessing the Security of the Agent Skill Ecosystem – https://research.snyk.io/blog/skill-analysis/ · 10 000 популярных skills двух каталогов, ноябрь 2026
 - Agent Skills in the Wild · An Empirical Study of Security Vulnerabilities at Scale (arXiv 2601.10338) – https://arxiv.org/abs/2601.10338 · 31 132 skills, автоматический разбор шаблонов
+- Agentic Context Engineering · Evolving Contexts for Self-Improving Language Models (ICLR 2026) – https://arxiv.org/abs/2510.04618 · контекст как растущий плейбук: точечные добавки вместо переписывания, плюс 10,6% на агентных задачах
+- GEPA · Reflective Prompt Evolution – https://gepa-ai.github.io/gepa/guides/ · изменение предлагается по следам прогона и остаётся, если на тех же примерах счёт вырос
+- Automatic Prompt Optimization with «Gradient Descent» and Beam Search (EMNLP 2023) – https://aclanthology.org/2023.emnlp-main.494.pdf · ошибки на пачке примеров превращаются в описание изъяна, по нему делается правка
+- Authoring Agent Skills: A Software-Engineering Approach (arXiv 2607.25032) – https://arxiv.org/html/2607.25032v1 · сначала проверочные задачи и замер без skill, затем минимум инструкций; два экземпляра модели: один пишет, второй проверяет с чистого листа
+- agent-skills-creator · evaluation and iteration – https://github.com/mblode/agent-skills/blob/main/skills/agent-skills-creator/references/evaluation-and-iteration.md · цикл улучшения: одна правка за круг, иначе регресс нельзя приписать; правка остаётся, только если выросли обе выборки
+- Skill-V · Verifiable Self-Evolving Skill Library (arXiv 2610.11781) – https://arxiv.org/html/2610.11781 · skill как проверяемый контракт: правка не должна ухудшать согласие с накопленными прогонами, принятая становится новой версией
+- SelfEvoSkill · Paired Execution Audits for Skill Revision (arXiv 2606.14239) – https://arxiv.org/html/2606.14239 · парный прогон со skill и без; вердикт «навредил» отклоняет кандидата и возвращает последнюю принятую версию
+- Dynamic Agent Skills · A Lifecycle Survey and Taxonomy of Evolving Skill Libraries (arXiv 2607.10113) – https://arxiv.org/html/2607.10113v1 · обзор жизненного цикла библиотек skills и набор операций над ними: добавить, уточнить, слить, разделить, сократить
 
 ## библиотеки skills
 
