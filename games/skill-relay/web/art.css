@@ -107,3 +107,37 @@ details.own[open]>summary{color:var(--ink);margin-bottom:6px}
 .chips .cl{flex-basis:100%;margin-top:4px}
 .chips em.lv{font-style:normal;color:var(--acc);margin-right:5px}
 @media (max-width:900px){.sch{grid-template-columns:repeat(4,minmax(0,1fr))}.sch.mini{grid-template-columns:repeat(8,9px)}}
+
+/* история дорожки, журнал версий, свой skill */
+.leg.cur{border-left-color:var(--acc)}
+.leg .sch{margin:10px 0 4px;max-width:640px}
+.trail .ev.open{cursor:pointer}
+.trail .ev.open:hover b,.trail .ev.open:hover span{color:var(--ink)}
+.trail .ev .why{display:block;color:var(--ink2);font-size:11px;line-height:1.5;margin-top:1px}
+.vr .nd[role=button]{cursor:pointer}
+.vr .nd[role=button]:hover span{border-color:var(--acc)}
+details.addown textarea{margin-top:10px}
+#holder b{font-weight:600;color:var(--ink)}
+/* карточка правила с примером «было → стало»: общая для стола, истории и книги правил */
+.ex{margin-top:8px;border-left:2px solid var(--ink3);padding:3px 0 3px 10px;font-size:11.5px;line-height:1.55}
+.ex .exl{font-size:10.5px;color:var(--ink3);letter-spacing:.03em;margin-bottom:2px}
+.ex div{white-space:pre-wrap;overflow-wrap:anywhere}
+.ex .del{color:var(--ink2);text-decoration:line-through}
+.ex .add{color:var(--ink)}
+.rule p.why{color:var(--ink)}
+.rule p.why b{color:var(--acc)}
+.rule h3 .kind{margin-left:6px;vertical-align:-3px;font-weight:400}
+.leg .rule{margin-top:6px}
+/* главная: выбор одного из нескольких skills карточками */
+.lanes.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border-top:0}
+.lanes.cards.n2,.lanes.cards.n4{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lanes.cards.n1{grid-template-columns:minmax(0,1fr)}
+.lanes.cards .ln{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);padding:14px 14px 12px;background:var(--bg)}
+.lanes.cards .ln.mine{border-color:var(--acc)}
+.lanes.cards .ln:hover{border-color:var(--ink3)}
+.lanes.cards .ln .bd{flex:1}
+.lanes.cards .ln .nm{font-size:14px;font-weight:600;line-height:1.3}
+.lanes.cards .ln .side{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;min-width:0;border-top:1px solid var(--line);padding-top:10px}
+.lanes.cards .ln .ver{font-size:18px}
+.lanes.cards .ln .act{text-align:right}
+@media (max-width:1180px){.lanes.cards,.lanes.cards.n2,.lanes.cards.n4{grid-template-columns:minmax(0,1fr)}}

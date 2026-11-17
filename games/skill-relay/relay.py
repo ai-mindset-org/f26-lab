@@ -40,17 +40,19 @@ import urllib.request
 from email.header import decode_header
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 HERE = Path(__file__).resolve().parent
 SKILLS = HERE / "skills"
 CASES = HERE / "cases"  # кейсы по мотивам самых ставимых skills
-PACKS = {"base": SKILLS, "popular": CASES}
+STARTER = HERE / "starter"  # три простых текстовых skills: голос, исследование по материалам, оценка текста
+PACKS = {"base": SKILLS, "popular": CASES, "text": STARTER}
 WEB = HERE / "web"
 GUIDES = HERE / "guides"
 LOGIN = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
 SKILL_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 MAX_LINES, MAX_CHARS, MAX_CHANGED, MAX_REVIEWS = 180, 14000, 12, 3
+MAX_LANES, MAX_ADDED = 12, 2  # дорожек на столе и своих skills от одного участника
 HOUR_LIVE, LOCK_LIVE = 3600, 300  # одно изменение коммитится за пять минут
 TICKET_TTL, SESSION_TTL = 900, 30 * 24 * 3600
 MODEL_DEFAULT = "anthropic/claude-sonnet-5.5"
@@ -510,7 +512,7 @@ def skill_meta(text):
 
 
 def kit(pack="base"):
-    """skills набора по уровням: base – пять базовых, popular – кейсы по мотивам самых ставимых, all – оба набора"""
+    """skills набора по уровням: base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых, all – все наборы"""
     if pack != "all" and pack not in PACKS:
         raise Refuse(f"набора «{pack}» нет: есть {', '.join(PACKS)}")
     out = []
@@ -602,12 +604,13 @@ class Table:
         meta = json.loads((d / f"{n:03d}.json").read_text(encoding="utf-8"))
         return meta, (d / f"{n:03d}.md").read_text(encoding="utf-8")
 
-    def event(self, who, what, lane="", kind="", via="", agent=""):
-        """журнал стола: кто, от чьего лица и через что. who = логин или «система»"""
+    def event(self, who, what, lane="", kind="", via="", agent="", **more):
+        """журнал стола: кто, от чьего лица и через что. who = логин или «система»; more = поля версии: v, rule, plus, minus, note"""
         via = via or ("система" if who in ("система", "стол") else "страница")
         row = {"at": int(time.time()), "who": who, "what": what, "lane": lane, "kind": kind, "via": via}
         if agent:
             row["agent"] = agent
+        row.update({k: v for k, v in more.items() if v not in ("", None)})
         self.st.setdefault("trail", []).append(row)
         self.st["trail"] = self.st["trail"][-400:]
         stamp = datetime.datetime.fromtimestamp(row["at"]).strftime("%Y-%m-%d %H:%M:%S")
@@ -620,6 +623,13 @@ class Table:
     def name(self, login):
         p = self.person(login=login)
         return (p or {}).get("name") or login
+
+    def authors(self, lid):
+        """кто внёс каждую версию дорожки, логины по порядку; у стола без этого списка он один раз собирается из файлов версий"""
+        lane = self.st["lanes"][lid]
+        if len(lane.setdefault("authors", [])) != lane["laps"]:
+            lane["authors"] = [self.leg(lid, n)[0].get("runner", "") for n in range(1, lane["laps"] + 1)]
+        return lane["authors"]
 
 
 DEMO_PEOPLE = [("sova", "Сова", "Claude Code", "уверенный"), ("lis", "Лис", "Codex", "уверенный"), ("ezh", "Ёж", "чат в браузере", "начинающий"),
@@ -913,17 +923,56 @@ class Game:
             write(d / "legs" / f"{n:03d}.md", dr["text"])
             write(d / "legs" / f"{n:03d}.json", json.dumps(meta, ensure_ascii=False, indent=1))
             write(d / "SKILL.md", dr["text"])
+            who = self.t.authors(lid)
             lane.update(laps=n, lock=None, last_runner=login, freed=int(time.time()))
             lane.setdefault("applied", []).append(dr["rule"])
+            who.append(login)
             r = self.t.st["runners"].setdefault(login, {})
             r["legs"] = r.get("legs", 0) + 1
             self.t.event(login, f"версия v{n} записана · {dr['rule']} · {cut(dr['note'], 70)}", lid, kind="give", via=via,
-                         agent=dr.get("agent", "") if via != "страница" else "")
+                         agent=dr.get("agent", "") if via != "страница" else "", v=n, rule=dr["rule"], plus=dr["plus"], minus=dr["minus"],
+                         note=cut(dr["note"], 240))
             relay_md(self.t, lid)
             self.t.save()
             if self.use_git:
                 self.commit(f"v{n} · {lid} · {dr['rule']} · {login}")
             return meta
+
+    def add_lane(self, login, raw, via="страница"):
+        """участник кладёт на стол свой SKILL.md новой дорожкой: та же проверка текста, имя из шапки, версия v0 с его именем"""
+        text = norm(raw).strip("\n") + "\n"
+        with GATE:
+            self.t.load()
+            st = self.t.st
+            if len(text.strip()) < 200:
+                raise Refuse("это короче skill: вставь SKILL.md целиком, с шапкой name и description")
+            found = facts(text)
+            if stops(found):
+                raise Refuse("проверка текста остановила skill:\n" + explain(stops(found)[:6]))
+            name = (frontmatter(text) or {}).get("name", "")
+            if name in st["lanes"] or any(l["skill"] == name for l in st["lanes"].values()):
+                raise Refuse(f"skill с именем {name} уже лежит на столе: поменяй name в шапке или возьми его дорожку")
+            if len(st["order"]) >= MAX_LANES:
+                raise Refuse(f"на столе уже {MAX_LANES} дорожек: больше стол не держит")
+            mine = sum(1 for l in st["lanes"].values() if l.get("added_by") == login)
+            if mine >= MAX_ADDED:
+                raise Refuse(f"от одного участника до {MAX_ADDED} своих skills: твои уже лежат")
+            now = int(time.time())
+            d = self.t.root / "lanes" / name
+            write(d / "SKILL.md", text)
+            write(d / "legs" / "000.md", text)
+            write(d / "legs" / "000.json", json.dumps({"n": 0, "runner": login, "rule": "", "note": "skill добавил участник", "digest": digest(text),
+                                                         "at": now, "added": True}, ensure_ascii=False))
+            st["lanes"][name] = {"skill": name, "heat": 1, "laps": 0, "lock": None, "last_runner": None, "applied": [], "authors": [], "fx": 0,
+                                 "added_by": login, "freed": now}
+            st["order"].append(name)
+            lines = len(text.split("\n")) - 1
+            self.t.event(login, f"добавил свой skill: {name} · {lines} строк", name, kind="add", via=via, plus=lines)
+            relay_md(self.t, name)
+            self.t.save()
+            if self.use_git:
+                self.commit(f"v0 · {name} · свой skill · {login}")
+            return {"ok": True, "lane": name, "lines": lines, "looks": [f for f in found if f["level"] != "стоп"][:6]}
 
     def drop(self, login, lid, via="страница"):
         with GATE:
@@ -954,25 +1003,31 @@ class Game:
             st, now = self.t.st, time.time()
             login = (viewer or {}).get("login")
             lanes = []
+            stale = any(len(l.get("authors") or []) != l["laps"] for l in st["lanes"].values())
             for i, lid in enumerate(st["order"], 1):
                 lane = st["lanes"][lid]
                 text = self.t.text(lid)
                 meta = skill_meta(text)
                 lk = lane.get("lock")
-                row = {"id": lid, "n": i, "skill": lane["skill"], "heat": lane["heat"], "title": meta["title"], "level": meta["level"],
+                who = self.t.authors(lid)
+                row = {"id": lid, "n": i, "skill": lane["skill"], "heat": lane["heat"], "title": meta["title"] or lane["skill"], "level": meta["level"],
                        "theme": meta["theme"], "laps": lane["laps"], "lines": len(text.split("\n")) - 1, "digest": digest(text),
                        "status": "бежит" if lk else "свободна", "last_rule": (lane.get("applied") or [""])[-1],
                        "last_runner": self.t.name(lane["last_runner"]) if lane.get("last_runner") else "",
-                       "what": meta["what"], "parts": parts_map(text), "versions": [{"n": k, "rule": r, "kind": kind_of(r)} for k, r in enumerate(lane.get("applied") or [], 1)][-12:]}
+                       "what": meta["what"], "parts": parts_map(text), "added_by": self.t.name(lane["added_by"]) if lane.get("added_by") else "",
+                       "versions": [{"n": k, "rule": r, "kind": kind_of(r), "by": self.t.name(who[k - 1]) if k <= len(who) else ""}
+                                    for k, r in enumerate(lane.get("applied") or [], 1)][-12:]}
                 row["last_kind"] = kind_of(row["last_rule"])
                 if lk:
-                    row.update(runner=self.t.name(lk["login"]), since=lk["since"], until=lk["until"], mine=lk["login"] == login,
+                    row.update(runner=self.t.name(lk["login"]), account=lk["login"], since=lk["since"], until=lk["until"], mine=lk["login"] == login,
                                doing=kind_of((lk.get("draft") or {}).get("rule", "")))
                 else:
                     row["idle_since"] = lane.get("freed") or st.get("created", 0)
                 if login:
                     row["why_not"] = self.why_not(login, lid)
                 lanes.append(row)
+            if stale:  # список авторов собран из файлов версий: записать, чтобы не читать их на каждый запрос
+                self.t.save()
             people = self.t.roster()["people"]
             out = {"mode": "демо" if self.demo else "живой", "title": self.t.root.name, "hour": self.hour, "lock": self.lock, "now": now,
                    "model": model_name() or "", "limits": {"lines": MAX_LINES, "changed": MAX_CHANGED, "reviews": MAX_REVIEWS},
@@ -987,6 +1042,8 @@ class Game:
                 out["seats"] = [{"login": p["login"], "name": p["name"], "taken": p["login"] in busy} for p in people if p.get("seat")]
             if viewer:
                 r = st["runners"].get(login, {})
+                own = sum(1 for l in st["lanes"].values() if l.get("added_by") == login)
+                out["add"] = {"left": max(0, min(MAX_ADDED - own, MAX_LANES - len(st["order"]))), "own": own, "max": MAX_ADDED, "lanes": MAX_LANES}
                 out["viewer"] = {"login": login, "name": viewer.get("name", login), "profile": viewer.get("profile") or {},
                                  "auth": viewer.get("auth") or r.get("auth", ""),
                                  "rest": self.rest_left(login), "rest_until": r.get("last_take", 0) + self.hour if r.get("last_take") else 0,
@@ -1051,17 +1108,26 @@ class Game:
             lane = self.t.st["lanes"].get(lid)
             if not lane:
                 raise Refuse("такой дорожки нет")
-            legs, prev = [], None
+            legs, prev, was = [], None, None
             for n in range(0, lane["laps"] + 1):
                 m, text = self.t.leg(lid, n)
-                row = dict(m, runner=self.t.name(m.get("runner", "")) if n else "кит", rule_title=RULES.get(m.get("rule", ""), {}).get("title", ""),
-                           kind=kind_of(m.get("rule", "")))
+                base_by = self.t.name(lane["added_by"]) if lane.get("added_by") else "кит"
+                row = dict(m, runner=self.t.name(m.get("runner", "")) if n else base_by, account=m.get("runner", "") if n else lane.get("added_by", ""),
+                           rule_title=RULES.get(m.get("rule", ""), {}).get("title", ""), kind=kind_of(m.get("rule", "")),
+                           part=RULES.get(m.get("rule", ""), {}).get("part", ""), lines=len(text.split("\n")) - 1)
+                parts = parts_map(text)
+                row["parts"] = parts
                 if prev is not None:
                     row["diff"] = changed_lines(prev, text)[2][:40]
-                prev = text
+                    row["fresh"] = [a["id"] for a, b in zip(parts, was) if (a["on"] and not b["on"]) or a["lines"] > b["lines"]]
+                prev, was = text, parts
                 legs.append(row)
-            out = {"id": lid, "skill": lane["skill"], "laps": lane["laps"], "text": self.t.text(lid), "legs": legs[-24:]}
+            out = {"id": lid, "skill": lane["skill"], "laps": lane["laps"], "text": self.t.text(lid), "legs": legs[-24:],
+                   "added_by": self.t.name(lane["added_by"]) if lane.get("added_by") else ""}
             lk = lane.get("lock")
+            if lk:
+                out["holder"] = {"name": self.t.name(lk["login"]), "account": lk["login"], "since": lk["since"], "until": lk["until"],
+                                 "rule": (lk.get("draft") or {}).get("rule", ""), "auth": self.t.st["runners"].get(lk["login"], {}).get("auth", "")}
             if lk and viewer and lk["login"] == viewer["login"]:
                 out["mine"] = {"until": lk["until"], "since": lk["since"], "token": lk["token"], "reviews_left": MAX_REVIEWS - lk["reviews"],
                                "draft": lk.get("draft")}
@@ -1440,7 +1506,7 @@ def try_apply(text, rule, budget):
     if not new:
         name = (frontmatter(text) or {}).get("name", "")
         for x in patches().get(name, []):
-            if x["rule"] == rule and x["find"] in text:
+            if x["rule"] == rule and x["find"] in text and x["replace"] not in text:  # уже внесённая заготовка второй раз не ложится
                 new, note, by = text.replace(x["find"], x["replace"], 1), x["note"], "заготовка без модели" + (": " + why if why else "")
                 break
     if not new:
@@ -1460,6 +1526,43 @@ def try_apply(text, rule, budget):
         errors.append("в изменении нашлось личное или секрет: откатил")
     return {"ok": not errors, "errors": errors, "facts": bad[:8], "text": "" if errors else new, "diff": rows[:40], "minus": minus, "plus": plus,
             "note": note, "by": by, "rule": rule, "rule_title": r["title"], "kind": kind_of(rule), "lines": new.count("\n")}
+
+
+OIDC_META = {}
+
+
+def oidc_conf():
+    """единый вход по OpenID Connect: адрес провайдера, id и секрет приложения. Без всех трёх вход выключен"""
+    iss = os.environ.get("RELAY_OIDC_ISSUER", "").rstrip("/")
+    cid, sec = os.environ.get("RELAY_OIDC_CLIENT_ID", ""), os.environ.get("RELAY_OIDC_CLIENT_SECRET", "")
+    if not (iss and cid and sec):
+        return None
+    return {"issuer": iss, "id": cid, "secret": sec, "scope": os.environ.get("RELAY_OIDC_SCOPE", "openid profile"),
+            "name": os.environ.get("RELAY_OIDC_NAME", "AI Mindset ID"), "open": os.environ.get("RELAY_OIDC_OPEN", "") == "1"}
+
+
+def oidc_http(url, form=None, bearer=""):
+    req = urllib.request.Request(url, data=urlencode(form).encode() if form else None, headers={"Accept": "application/json"})
+    if bearer:
+        req.add_header("Authorization", "Bearer " + bearer)
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def oidc_meta(conf):
+    if conf["issuer"] not in OIDC_META:
+        OIDC_META[conf["issuer"]] = oidc_http(conf["issuer"] + "/.well-known/openid-configuration")
+    return OIDC_META[conf["issuer"]]
+
+
+def oidc_person(claims):
+    """кто пришёл от провайдера: постоянный id, имя, ник и tg_id, если провайдер его отдаёт"""
+    custom = claims.get("custom_data") if isinstance(claims.get("custom_data"), dict) else {}
+    tg = ((claims.get("identities") or {}).get("telegram") or {}) if isinstance(claims.get("identities"), dict) else {}
+    tg_id = str(claims.get("tg_id") or custom.get("tg_id") or tg.get("userId") or "")
+    nick = str(claims.get("tg_username") or custom.get("tg_username") or claims.get("username") or "").lstrip("@").lower()
+    return {"sub": str(claims.get("sub") or ""), "tg_id": tg_id if re.match(r"^[1-9][0-9]{4,15}$", tg_id) else "", "username": nick,
+            "name": cut(" ".join(str(claims.get("name") or nick or "").split()), 40)}
 
 
 def lan_ip():
@@ -1482,6 +1585,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
     table = Table(root)
     table.load()
     game = Game(table, hour, lock, demo, use_git)
+    oidc = oidc_conf()
     session_secret = os.environ.get("RELAY_SESSION_SECRET", "")
     mint_secret = os.environ.get("RELAY_MINT_SECRET", "")
     if demo:
@@ -1535,6 +1639,27 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
             login = username if LOGIN.match(username or "") else f"id{tg_id}"
             data = table.roster()
             p = {"login": login, "tg_id": str(tg_id), "name": name or login, "profile": {}}
+            data["people"].append(p)
+            table.save_roster(data)
+            return p
+
+    def oidc_admit(who):
+        """человек от единого входа: свой, если он есть в составе по tg_id или нику; с открытым составом новый дописывается"""
+        with GATE:
+            data = table.roster()
+            p = next((x for x in data["people"] if x.get("oidc") == who["sub"]), None) \
+                or (next((x for x in data["people"] if who["tg_id"] and str(x.get("tg_id", "")) == who["tg_id"]), None)) \
+                or (next((x for x in data["people"] if who["username"] and x.get("login") == who["username"]), None))
+            if p:
+                if p.get("oidc") != who["sub"]:
+                    p["oidc"] = who["sub"]
+                    table.save_roster(data)
+                return p
+            if not (open_roster or oidc["open"]):
+                return None
+            login = who["username"] if LOGIN.match(who["username"] or "") and not any(x.get("login") == who["username"] for x in data["people"]) \
+                else "u-" + hashlib.sha256(who["sub"].encode()).hexdigest()[:8]
+            p = {"login": login, "tg_id": who["tg_id"], "name": who["name"] or login, "oidc": who["sub"], "profile": {}}
             data["people"].append(p)
             table.save_roster(data)
             return p
@@ -1626,6 +1751,34 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
             u = urlparse(self.path)
             q = {k: v[0] for k, v in parse_qs(u.query).items()}
             try:
+                if u.path == "/auth/oidc/login":
+                    if not oidc:
+                        return self.out(404, "единый вход здесь не включён", "text/plain; charset=utf-8")
+                    state, verifier = secrets.token_urlsafe(18), secrets.token_urlsafe(48)
+                    keep = jwt_sign({"aud": "relay-oidc", "s": state, "v": verifier, "exp": int(time.time()) + 600}, session_secret)
+                    url = oidc_meta(oidc)["authorization_endpoint"] + "?" + urlencode({
+                        "client_id": oidc["id"], "redirect_uri": base + "/auth/oidc/callback", "response_type": "code", "scope": oidc["scope"], "state": state,
+                        "code_challenge": b64(hashlib.sha256(verifier.encode()).digest()), "code_challenge_method": "S256"})
+                    return self.out(302, "", "text/plain", {"Location": url, "Set-Cookie": f"relay_oidc={keep}; Path=/auth/oidc; HttpOnly; SameSite=Lax; Max-Age=600" + ("; Secure" if secure else "")})
+                if u.path == "/auth/oidc/callback":
+                    if not oidc:
+                        return self.out(404, "единый вход здесь не включён", "text/plain; charset=utf-8")
+                    raw = next((part.strip()[len("relay_oidc="):] for part in self.headers.get("Cookie", "").split(";") if part.strip().startswith("relay_oidc=")), "")
+                    kept = jwt_verify(raw, session_secret, "relay-oidc")
+                    if not kept or not q.get("code") or not hmac.compare_digest(kept["s"], q.get("state", "")):
+                        return self.out(403, "вход не завершён: начни его заново со страницы стола", "text/plain; charset=utf-8")
+                    try:
+                        meta = oidc_meta(oidc)
+                        tok = oidc_http(meta["token_endpoint"], {"grant_type": "authorization_code", "code": q["code"], "redirect_uri": base + "/auth/oidc/callback",
+                                                                  "client_id": oidc["id"], "client_secret": oidc["secret"], "code_verifier": kept["v"]})
+                        who = oidc_person(oidc_http(meta["userinfo_endpoint"], bearer=tok["access_token"]))  # ответ взят у провайдера напрямую по TLS
+                    except Exception as e:
+                        return self.out(502, "провайдер входа не ответил: " + cut(e, 80), "text/plain; charset=utf-8")
+                    p = oidc_admit(who) if who["sub"] else None
+                    if not p:
+                        return self.out(403, "тебя нет в составе этой эстафеты: напиши ведущему", "text/plain; charset=utf-8")
+                    game.enter(p["login"], oidc["name"])
+                    return self.out(302, "", "text/plain", {"Location": "/", "Set-Cookie": session_cookie(p, oidc["name"])})
                 if u.path == "/auth/complete":
                     data = jwt_verify(q.get("token", ""), session_secret, "relay-login")
                     with GATE:
@@ -1658,10 +1811,12 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         tail = {"name": (known or who)["name"]}
                     if not viewer and not demo:
                         # стол виден до входа: дорожки и версии без имён участников
-                        keep = ("id", "n", "skill", "heat", "title", "level", "theme", "laps", "lines", "status", "what", "versions", "last_rule", "last_kind", "idle_since", "until", "parts")
-                        brief = [dict({k: x[k] for k in keep if k in x}, last_runner="участник" if x.get("last_runner") else "", runner="участник" if x.get("runner") else "")
+                        keep = ("id", "n", "skill", "heat", "title", "level", "theme", "laps", "lines", "status", "what", "last_rule", "last_kind", "idle_since", "since", "until", "parts")
+                        brief = [dict({k: x[k] for k in keep if k in x}, last_runner="участник" if x.get("last_runner") else "", runner="участник" if x.get("runner") else "",
+                                      added_by="участник" if x.get("added_by") else "", versions=[dict(v, by="участник" if v.get("by") else "") for v in x.get("versions", [])])
                                  for x in game.public(None)["lanes"]]
                         return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", ""), "tailnet": tail,
+                                              "sso": {"url": "auth/oidc/login", "name": oidc["name"]} if oidc else None,
                                               "lock": game.lock, "hour": game.hour, "lanes": brief})
                     return self.out(200, dict(game.public(viewer), tailnet=tail))
                 if u.path == "/api/rules":
@@ -1795,6 +1950,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                 if u.path == "/api/drop":
                     game.drop(viewer["login"], lid)
                     return self.out(200, {"ok": True})
+                if u.path == "/api/lane/add":
+                    return self.out(200, game.add_lane(viewer["login"], str(d.get("text", ""))[:MAX_CHARS * 2]))
                 return self.out(404, {"error": "нет такого адреса"})
             except Refuse as e:
                 code = {"415": 415, "413": 413, "400": 400}.get(str(e), 409)
@@ -1915,7 +2072,7 @@ def main(argv=None):
     ap.add_argument("--seats", type=int, default=6)
     ap.add_argument("--bots", type=int, default=5)
     ap.add_argument("--hour", type=int, help="длина паузы в секундах")
-    ap.add_argument("--pack", default="base", choices=sorted(PACKS), help="набор skills для init: base – пять базовых, popular – кейсы по мотивам самых ставимых")
+    ap.add_argument("--pack", default="base", choices=sorted(PACKS), help="набор skills для init: base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых")
     ap.add_argument("--lock", type=int, help="сколько секунд палочка держится за бегуном")
     ap.add_argument("--public-url", default=os.environ.get("RELAY_PUBLIC_URL", ""))
     ap.add_argument("--login")

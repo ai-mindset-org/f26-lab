@@ -240,7 +240,7 @@ def main():
             base = kit["skills"][0]["text"]
             events = len(a.call("GET", "/api/log?n=500")[1]["events"])
             code, lk, _ = a.call("POST", "/api/try/look", {"text": base})
-            say("песочница видит без модели, чего не хватает skill", code == 200 and len(kit["skills"]) == 10 and len(lk["candidates"]) == 3 and not lk["private"] and lk["lines"] > 20, str(lk)[:200])
+            say("песочница видит без модели, чего не хватает skill", code == 200 and len(kit["skills"]) == 13 and len(lk["candidates"]) == 3 and not lk["private"] and lk["lines"] > 20, str(lk)[:200])
             pop = [x for x in kit["skills"] if x.get("pack") == "popular"]
             say("в песочнице два набора: пять базовых и пять кейсов по мотивам популярных, у кейса есть источник",
                 len(pop) == 5 and [x["level"] for x in pop] == [1, 2, 3, 4, 5] and all((x.get("source") or {}).get("repo") for x in pop), str([x["name"] for x in pop]))
@@ -274,6 +274,58 @@ def main():
         finally:
             srv.terminate()
             srv.wait(5)
+        # ---------- набор text, авторы версий, свой skill ----------
+        print("три текстовых skills, авторы версий, свой skill")
+        table5 = tmp / "text"
+        r = subprocess.run([sys.executable, RELAY, "init", str(table5), "--demo", "--pack", "text"], env=env, capture_output=True, text=True)
+        pt = port()
+        srv = start([str(table5), "--demo", "--port", str(pt), "--hour", "2"], env)
+        try:
+            g1, g2 = Client(pt), Client(pt)
+            g1.call("POST", "/api/demo/login", {"login": "gost1"})
+            g2.call("POST", "/api/demo/login", {"login": "gost2"})
+            st = g1.call("GET", "/api/state")[1]
+            say("набор text: три простых текстовых skills уровней 1–3, свой skill добавить можно",
+                r.returncode == 0 and [x["id"] for x in st["lanes"]] == ["tone-of-voice", "research-brief", "text-review"]
+                and [x["level"] for x in st["lanes"]] == [1, 2, 3] and st["add"]["left"] == 2, str(st.get("add")) + r.stderr[-200:])
+            g1.call("POST", "/api/take", {"lane": "tone-of-voice"})
+            base5, laps0 = g1.call("GET", "/api/lane?id=tone-of-voice")[1]["text"], st["lanes"][0]["laps"]  # демо-стол начинает с версий от ботов
+            rule5 = next(x for x in json.loads((HERE / "demo" / "patches.json").read_text(encoding="utf-8"))["tone-of-voice"] if x["find"] in base5 and x["replace"] not in base5)["rule"]
+            code, ap, _ = g1.call("POST", "/api/try/apply", {"text": base5, "rule": rule5})
+            code, ck, _ = g1.call("POST", "/api/check", {"lane": "tone-of-voice", "text": ap.get("text", ""), "rule": rule5, "note": ap.get("note", ""), "tried": "правило применено со страницы", "next": ""})
+            code, ps, _ = g1.call("POST", "/api/pass", {"lane": "tone-of-voice", "anyway": True})
+            g2.call("POST", "/api/take", {"lane": "research-brief"})
+            st = g1.call("GET", "/api/state")[1]
+            l1, l2 = st["lanes"][0], st["lanes"][1]
+            last = l1["versions"][-1] if l1["versions"] else {}
+            say("правило со страницы даёт следующую версию, у каждой версии стоит имя автора", code == 200 and ps.get("n") == laps0 + 1 and last.get("n") == laps0 + 1 and last.get("rule") == rule5
+                and last.get("by") == "Гость 1" and all(v.get("by") for v in l1["versions"]) and l1["last_runner"] == "Гость 1", str(l1.get("versions")) + str(ck.get("errors")))
+            say("у занятой дорожки видно, кто её правит: имя и аккаунт", l2["status"] == "бежит" and l2.get("runner") == "Гость 2" and l2.get("account") == "gost2", str({k: l2.get(k) for k in ("status", "runner", "account")}))
+            hist = g2.call("GET", "/api/lane?id=tone-of-voice")[1]
+            v1 = hist["legs"][-1]
+            say("история дорожки: у версии автор, правило, фраза, разница строк и часть skill, которая выросла",
+                v1["runner"] == "Гость 1" and v1["account"] == "gost1" and v1["rule"] == rule5 and v1["part"] in v1["fresh"]
+                and len(v1["parts"]) == 8 and v1["plus"] == ap["plus"] > 0 and len(v1["note"]) > 20 and any(x["op"] == "+" for x in v1["diff"]), str({k: v1.get(k) for k in ("runner", "rule", "part", "fresh", "plus")}))
+            ev = [e for e in g1.call("GET", "/api/log?n=50")[1]["events"] if e["kind"] == "give"][0]
+            say("журнал: в записи версии кто, какая дорожка, правило, фраза и число строк",
+                ev["who"] == "Гость 1" and ev["lane"] == "tone-of-voice" and ev.get("v") == laps0 + 1 and ev.get("rule") == rule5 and ev.get("plus") == ap["plus"] and ev.get("minus") == 0 and ev.get("note"), str(ev)[:240])
+            own = "---\nname: letter-reply\ndescription: Пишет ответ на входящее письмо по тезисам человека. Бери, когда человек просит «ответь на письмо» или приносит письмо и пару тезисов.\n---\n\n# ответ на письмо\n\n## шаги\n\n1. Прочитай письмо и выпиши, о чём просят и к какому сроку.\n2. Расставь тезисы человека по порядку вопросов письма.\n3. Покажи черновик человеку и дождись его слова.\n"
+            code, ad, _ = g2.call("POST", "/api/lane/add", {"text": own})
+            st = g1.call("GET", "/api/state")[1]
+            h0 = g1.call("GET", "/api/lane?id=letter-reply")[1]["legs"][0] if code == 200 else {}
+            say("участник кладёт свой skill новой дорожкой: версия v0 с его именем, запись в журнале", code == 200 and ad["lane"] == "letter-reply" and len(st["lanes"]) == 4
+                and st["lanes"][3]["added_by"] == "Гость 2" and h0.get("added") and h0.get("runner") == "Гость 2"
+                and any(e["kind"] == "add" and e["lane"] == "letter-reply" for e in g1.call("GET", "/api/log?n=50")[1]["events"]), str(ad)[:200])
+            dup = g1.call("POST", "/api/lane/add", {"text": own})
+            leak = g1.call("POST", "/api/lane/add", {"text": own.replace("letter-reply", "letter-two") + "\nвопросы на ivan@primer.example\n"})
+            say("свой skill проходит ту же проверку: повтор имени и личное в тексте не пускаются", dup[0] == 409 and "уже лежит" in dup[1]["error"] and leak[0] == 409 and "почта" in leak[1]["error"]
+                and len(g1.call("GET", "/api/state")[1]["lanes"]) == 4, str(dup[1])[:120] + str(leak[1])[:120])
+            time.sleep(2.2)
+            code, tk, _ = g1.call("POST", "/api/take", {"lane": "letter-reply"})
+            say("добавленный skill берут как любой другой", code == 200 and tk.get("ok"), str(tk)[:160])
+        finally:
+            srv.terminate()
+            srv.wait(5)
         # ---------- боты ----------
         print("бегуны-боты")
         table2 = tmp / "bots"
@@ -299,7 +351,8 @@ def main():
             code, st, _ = c.call("GET", "/api/state", headers=tail)
             say("без сессии стол закрыт, но сервер узнаёт человека из tailnet", code == 401 and (st.get("tailnet") or {}).get("name") == "Сова", str(st)[:200])
             say("стол виден до входа: дорожки и версии без имён участников",
-                len(st.get("lanes") or []) == 5 and all(x.get("title") and len(x.get("parts") or []) == 8 and x.get("last_runner", "") in ("", "участник") for x in st["lanes"]), str(st.get("lanes"))[:200])
+                len(st.get("lanes") or []) == 5 and all(x.get("title") and len(x.get("parts") or []) == 8 and x.get("last_runner", "") in ("", "участник")
+                                                    and "account" not in x and all(v.get("by", "") in ("", "участник") for v in x.get("versions", [])) for x in st["lanes"]), str(st.get("lanes"))[:200])
             say("без заголовка Tailscale вход не срабатывает", Client(pt).call("POST", "/api/tailnet/login", {})[0] == 409)
             code, d, _ = c.call("POST", "/api/tailnet/login", {}, headers=tail)
             me = c.call("GET", "/api/state")[1]
@@ -315,6 +368,70 @@ def main():
         finally:
             srv.terminate()
             srv.wait(5)
+        # ---------- единый вход: провайдер OpenID Connect ----------
+        print("единый вход")
+        import base64, hashlib, threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        from urllib.parse import parse_qs, urlparse
+        ip = port()
+        seen = {}
+
+        class Idp(BaseHTTPRequestHandler):  # учебный провайдер: выдаёт код, проверяет PKCE и секрет приложения, отдаёт человека
+            def log_message(self, *a):
+                pass
+
+            def send(self, data):
+                raw = json.dumps(data).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+
+            def do_GET(self):
+                if self.path.startswith("/oidc/.well-known/openid-configuration"):
+                    return self.send({k + "_endpoint": f"http://127.0.0.1:{ip}/oidc/{v}" for k, v in (("authorization", "auth"), ("token", "token"), ("userinfo", "me"))})
+                if self.path.startswith("/oidc/me"):
+                    ok = self.headers.get("Authorization") == "Bearer at-" + seen.get("who", "")
+                    return self.send({"sub": "sub-" + seen["who"], "name": "Сова Лесная", "username": seen["who"], "custom_data": {"tg_id": seen.get("tg", "")}} if ok else {})
+                self.send({})
+
+            def do_POST(self):
+                f = {k: v[0] for k, v in parse_qs(self.rfile.read(int(self.headers.get("Content-Length") or 0)).decode()).items()}
+                good = f.get("client_secret") == "s3" and f.get("code") == "code-1" and \
+                    base64.urlsafe_b64encode(hashlib.sha256(f.get("code_verifier", "").encode()).digest()).rstrip(b"=").decode() == seen.get("challenge")
+                self.send({"access_token": "at-" + seen["who"], "token_type": "Bearer"} if good else {"error": "invalid_grant"})
+
+        idp = ThreadingHTTPServer(("127.0.0.1", ip), Idp)
+        threading.Thread(target=idp.serve_forever, daemon=True).start()
+        table6 = tmp / "sso"
+        subprocess.run([sys.executable, RELAY, "init", str(table6), "--pack", "text"], env=env, capture_output=True)
+        (table6 / "roster.json").write_text(json.dumps({"people": [{"login": "sova", "tg_id": "700001", "name": "Сова", "profile": {}}]}, ensure_ascii=False), encoding="utf-8")
+        pt = port()
+        srv = start([str(table6), "--live", "--port", str(pt)], dict(env, RELAY_SESSION_SECRET="s" * 40, RELAY_OIDC_ISSUER=f"http://127.0.0.1:{ip}/oidc",
+                                                                   RELAY_OIDC_CLIENT_ID="relay", RELAY_OIDC_CLIENT_SECRET="s3"))
+        try:
+            def sign_in(who, tg, state=None):
+                c = Client(pt)
+                code, _, loc = c.call("GET", "/auth/oidc/login")
+                qs = {k: v[0] for k, v in parse_qs(urlparse(loc or "").query).items()}
+                seen.update(who=who, tg=tg, challenge=qs.get("code_challenge"))
+                return c, code, qs, c.call("GET", "/auth/oidc/callback?code=code-1&state=" + (state or qs.get("state", "")))
+            code, st, _ = Client(pt).call("GET", "/api/state")
+            say("до входа стол называет единый вход", code == 401 and (st.get("sso") or {}).get("url") == "auth/oidc/login", str(st.get("sso")))
+            c, code, qs, back = sign_in("sova-lesnaya", "700001")
+            say("вход уводит к провайдеру с кодом проверки, адресом возврата и состоянием", code == 302 and qs.get("client_id") == "relay" and qs.get("code_challenge_method") == "S256"
+                and qs.get("redirect_uri", "").endswith("/auth/oidc/callback") and len(qs.get("state", "")) > 16, str(qs)[:200])
+            code, me, _ = c.call("GET", "/api/state")
+            say("человек из состава входит через единый вход: сессия стоит, способ входа записан", back[0] == 302 and code == 200 and me["viewer"]["login"] == "sova"
+                and me["viewer"]["auth"] == "AI Mindset ID", str(back[:2])[:160] + str(me.get("viewer"))[:120])
+            say("чужое состояние вход не завершает", sign_in("sova-lesnaya", "700001", state="x" * 24)[3][0] == 403)
+            c2, _, _, back2 = sign_in("lis-ryzhiy", "700002")
+            say("человека не из состава единый вход не пускает", back2[0] == 403 and c2.call("GET", "/api/state")[0] == 401, str(back2[:2])[:160])
+        finally:
+            srv.terminate()
+            srv.wait(5)
+            idp.shutdown()
         # ---------- живой режим ----------
         print("живой режим")
         table3 = tmp / "live"

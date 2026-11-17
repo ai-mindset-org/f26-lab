@@ -53,7 +53,7 @@
           h('em', { class: 'lv' }, x.level), x.title);
       })] : null;
     };
-    fill($('kit'), grp('popular', 'популярные skills, уровни 1–5:'), grp('base', 'базовые:'), h('button', { class: 'chip', onclick: function () { setText(''); $('text').focus(); } }, 'очистить'));
+    fill($('kit'), grp('text', 'простые текстовые:'), grp('popular', 'популярные skills, уровни 1–5:'), grp('base', 'базовые:'), h('button', { class: 'chip', onclick: function () { setText(''); $('text').focus(); } }, 'очистить'));
   }
   function setText(t) {
     $('text').value = t; st.v0 = t; st.versions = []; st.pending = null; st.error = null;

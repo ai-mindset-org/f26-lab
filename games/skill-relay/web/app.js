@@ -34,6 +34,7 @@
   var q = new URLSearchParams(location.search);
   var S = null, RULES = null, SRC = null, view = q.get('view') || 'auto', key = '', skew = 0, glyph = q.get('ball') !== 'solid', still = q.get('still') === '1';
   var leg = null; // забег: {lane, base, text, rule, analysis, result}
+  var focusV = 0, HIT = [], hover = ''; // версия, открытая в истории дорожки; шарики стадиона и тот, что под курсором
   if ((q.get('theme') || LS.get('relay.theme')) === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
   function api(method, path, body) {
@@ -76,11 +77,25 @@
   var A = window.ART;
   function chg(n) { return n % 10 === 1 && n % 100 !== 11 ? 'изменение' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'изменения' : 'изменений'; }
   function kindTag(k) { return k && KN[k] ? h('span', { class: 'kind tag', title: KA[k] }, A.kind(k), KN[k]) : null; }
+  var PT = { head: 'шапка', params: 'параметры', steps: 'шаги', format: 'формат вывода', example: 'пример', rakes: 'грабли', check: 'проверка', border: 'границы', whole: 'весь текст' };
+  function ruleCard(r, link) {
+    if (!r) return null;
+    return h('div', { class: 'rule pic' }, h('div', { class: 'fig' }, A.rule(r.id)), h('div', null,
+      h('h3', null, h('span', { class: 'id' }, r.id), r.title, ' ', kindTag(r.kind)),
+      h('p', null, h('b', null, 'вопрос. '), r.ask), h('p', null, h('b', null, 'изменение. '), r.fix),
+      r.why ? h('p', { class: 'why' }, h('b', null, 'практика. '), r.why) : null,
+      r.ex ? h('div', { class: 'ex' }, h('div', { class: 'exl' }, 'пример · ' + (PT[r.part] || '')),
+        r.ex.was.map(function (t) { return h('div', { class: 'del' }, '− ' + t); }), r.ex.now.map(function (t) { return h('div', { class: 'add' }, '+ ' + t); })) : null,
+      link ? h('p', null, h('a', { href: 'rules#' + r.id, target: '_blank', rel: 'noopener' }, 'источники правила и вся система отдельным окном ↗')) : null));
+  }
   // лента версий: v0, знак вида у каждой принятой версии, пунктирный узел у того, кто сейчас вносит изменение
   function ribbon(l) {
     var vs = l.versions || [], hidden = l.laps - vs.length;
     return h('div', { class: 'vr' }, h('span', { class: 'v0' }, hidden > 0 ? 'v0 …' : 'v0'),
-      vs.map(function (v, i) { return h('span', { class: 'nd' + (i === vs.length - 1 ? ' last' : ''), title: 'v' + v.n + ' · ' + (KN[v.kind] || '') + ' · ' + v.rule }, h('span', null, A.kind(v.kind) || '·')); }),
+      vs.map(function (v, i) {
+        return h('span', { class: 'nd' + (i === vs.length - 1 ? ' last' : ''), role: 'button', tabindex: 0, title: 'v' + v.n + (v.by ? ' · поправил ' + v.by : '') + ' · ' + (KN[v.kind] || '') + ' · ' + v.rule,
+          onclick: function () { openLane(l.id, v.n); }, onkeydown: function (e) { if (e.key === 'Enter') openLane(l.id, v.n); } }, h('span', null, A.kind(v.kind) || '·'));
+      }),
       l.status === 'бежит' ? [h('span', { class: 'nd next', title: 'идёт изменение' }, h('span', null, '+')),
         h('span', { class: 'cur' }, (l.mine ? 'у тебя' : l.runner) + (l.doing ? ' · ' + KN[l.doing] : '') + ' · ', until(l.until))] : null);
   }
@@ -88,6 +103,8 @@
   function until(ts, cls) { return h('em', { 'data-until': ts, class: cls || '' }, clock(ts - now())); }
   function out(box) { return function (e) { fill(box, h('div', { class: 'msg' }, e.message)); }; }
   function laneOf(id) { return (S.lanes || []).filter(function (l) { return l.id === id; })[0]; }
+  function openLane(id, v) { if (S.locked) return toast('войди, чтобы открыть версии skill'); focusV = v || 0; go('lane:' + id); }
+  function lines(n) { return n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'строка' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'строки' : 'строк'); }
 
   // ---------- загрузка ----------
   function load() {
@@ -95,7 +112,7 @@
       S = d; skew = d.now - Date.now() / 1000; render();
       if (!RULES && !load.asked) { load.asked = 1; rules().then(function () { key = ''; render(); }, function () { }); }
     }, function (e) {
-      if (e.status === 401) { S = { mode: 'живой', lanes: (e.data || {}).lanes || [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', tailnet: (e.data || {}).tailnet || null, lock: (e.data || {}).lock || 300, hour: (e.data || {}).hour || 3600, totals: {} }; render(); }
+      if (e.status === 401) { S = { mode: 'живой', lanes: (e.data || {}).lanes || [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', tailnet: (e.data || {}).tailnet || null, sso: (e.data || {}).sso || null, lock: (e.data || {}).lock || 300, hour: (e.data || {}).hour || 3600, totals: {} }; render(); }
       else if (!S) fill($('panel'), h('div', { class: 'msg' }, 'Стол не отвечает. Страница открывается сервером эстафеты: python3 relay.py serve <стол> --demo'));
     });
   }
@@ -134,7 +151,11 @@
   // короткая строка журнала: глагол и номер дорожки; полный текст события остаётся в подсказке и в файлах стола
   function brief(e) {
     var m, ln = laneOf(e.lane), no = ln ? ' · ' + two(ln.n) + ' ' + ln.title : '';
-    if (e.kind === 'give') { m = /(\d+)\D+?([GR]-\d+)/.exec(e.what); return m ? ['новая версия ', h('b', null, 'v' + m[1]), no, RULES && RULES[m[2]] ? [' · ', kindTag(RULES[m[2]].kind)] : ' · ' + m[2]] : e.what + no; }
+    if (e.kind === 'give') {
+      m = e.v ? [0, e.v, e.rule] : /(\d+)\D+?([GR]-\d+)/.exec(e.what);
+      return m ? ['новая версия ', h('b', null, 'v' + m[1]), no, RULES && RULES[m[2]] ? [' · ', kindTag(RULES[m[2]].kind)] : ' · ' + m[2], e.v ? ' · +' + (e.plus || 0) + ' / −' + (e.minus || 0) : ''] : e.what + no;
+    }
+    if (e.kind === 'add') return 'добавил свой skill' + no + (e.plus ? ' · ' + lines(e.plus) : '');
     if (e.kind === 'take') return 'взял skill' + no;
     if (e.kind === 'enter') return e.what;
     if (e.kind === 'stop') return 'стоп: проверка текста не пропустила' + no;
@@ -145,10 +166,13 @@
   }
   var QUIET = { review: 1, agent: 1, note: 1, open: 1 };
   function eventRow(e, full) {
-    var d = new Date(e.at * 1000);
-    return h('div', { class: 'ev' + (e.via === 'система' ? ' sys' : ''), title: e.what },
+    var d = new Date(e.at * 1000), ver = e.kind === 'give' || e.kind === 'add', r = RULES && e.rule ? RULES[e.rule] : null;
+    var body = full && !ver ? e.what + (e.lane ? ' · ' + e.lane : '') : brief(e);
+    return h('div', { class: 'ev' + (e.via === 'система' ? ' sys' : '') + (ver && e.lane ? ' open' : ''), title: ver && e.lane ? 'открыть версию в истории дорожки' : e.what,
+      onclick: ver && e.lane ? function () { openLane(e.lane, e.v || 0); } : null },
       h('span', { class: 'tm' }, two(d.getHours()) + ':' + two(d.getMinutes())), h('b', null, e.who),
-      h('span', null, full ? e.what + (e.lane ? ' · ' + e.lane : '') : brief(e), e.via && e.via !== 'страница' && e.via !== 'система' ? h('u', null, ' · ' + who(e)) : null));
+      h('span', null, body, e.via && e.via !== 'страница' && e.via !== 'система' ? h('u', null, ' · ' + who(e)) : null,
+        full && e.kind === 'give' && (r || e.note) ? h('span', { class: 'why' }, (r ? e.rule + ' · ' + r.title : '') + (r && e.note ? ' · ' : '') + (e.note || '')) : null));
   }
   function trailBlock(n) {
     if (!S.trail) return null;
@@ -186,15 +210,15 @@
     var tail = S.tailnet ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сервер узнал тебя по Tailscale · имя на столе можно поправить'),
       h('div', { class: 'row' }, nm, h('button', { class: 'go', onclick: function () { api('POST', 'api/tailnet/login', { name: nm.value }).then(load, out(box)); } }, 'войти'))] : null;
     return [
-      h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : 'вход по ссылке') + ' }'),
+      h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : S.sso ? 'единый вход' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
       h('p', { class: 'why' }, 'Skill растёт по одному изменению. Каждый участник добавляет одно и за ' + span(S.lock) + ' коммитит: в дорожке лежит новая версия для следующего.'),
       how(),
       S.mode === 'демо' ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сядь на место: в демо входа нет, пауза после взятия ' + span(S.hour)), h('div', { class: 'row' }, seats),
         S.tailnet ? tail : null,
         h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show' }, 'как это работает: один круг по шагам'))] :
-        tail || [S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
-          h('p', { class: 's' }, S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
+        tail || [S.sso ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.sso.url }, 'войти через ' + S.sso.name)) : S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
+          h('p', { class: 's' }, S.sso ? 'Единый вход AI Mindset: тот же аккаунт, что в других сервисах лабы. На столе будет видно твоё имя у каждой версии.' : S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
       box,
       S.lanes && S.lanes.length ? [lanesBlock(true), trailBlock(6)] : null,
       h('div', { class: 'keys' }, h('kbd', null, 'T'), 'тема ', h('kbd', null, 'G'), 'шар глифами или сплошной'),
@@ -205,33 +229,50 @@
   // ---------- дорожки ----------
   function lanesBlock(readonly) {
     var box = h('div');
-    return [h('div', { class: 'lanes' }, S.lanes.map(function (l) {
+    return [h('div', { class: 'lanes' + (S.lanes.length <= 4 ? ' cards n' + S.lanes.length : '') }, S.lanes.map(function (l) {
       var act;
       if (l.status === 'бежит') act = l.mine ? 'изменение у тебя' : 'в работе';
       else if (readonly) act = 'свободен';
       else if (l.why_not) act = h('span', { title: l.why_not }, l.why_not.indexOf('пауза') === 0 ? 'пауза' : 'свободен');
-      else act = h('button', { class: 'go', onclick: function () { api('POST', 'api/take', { lane: l.id }).then(function () { leg = null; return load(); }, out(box)); } }, 'взять');
+      else act = h('button', { class: 'go', onclick: function () { api('POST', 'api/take', { lane: l.id }).then(function () { leg = null; view = 'auto'; return load(); }, out(box)); } }, 'взять на ' + span(S.lock));
       return h('div', { class: 'ln' + (l.mine ? ' mine' : '') },
         h('span', { class: 'no' }, two(l.n)),
         h('div', { class: 'bd' },
-          h('button', { class: 'nm', onclick: function () { if (S.locked) return toast('войди, чтобы открыть версии skill'); go('lane:' + l.id); } }, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
+          h('button', { class: 'nm', onclick: function () { openLane(l.id); } }, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
           h('p', { class: 'what' }, l.what),
           ribbon(l),
           l.parts ? h('div', { class: 'lsch', title: 'части skill: шапка, параметры, шаги, формат, пример, грабли, проверка, границы' }, A.scheme(l.parts, { mini: true })) : null,
-          h('span', { class: 'meta', title: 'уровень ' + l.level + ' · тема: ' + l.theme + ' · ' + l.lines + ' строк' }, (l.last_runner ? 'v' + l.laps + ' поправил ' + l.last_runner + ' · ' + (KN[l.last_kind] || l.last_rule) : 'базовая версия') +
+          h('span', { class: 'meta', title: (l.level ? 'уровень ' + l.level + ' · тема: ' + l.theme + ' · ' : '') + lines(l.lines) }, (l.status === 'бежит' && !l.mine ? 'сейчас правит ' + l.runner + ' · ' : '') +
+            (l.last_runner ? 'v' + l.laps + ' поправил ' + l.last_runner + ' · ' + (KN[l.last_kind] || l.last_rule) : l.added_by ? 'skill добавил ' + l.added_by : 'базовая версия') +
             (l.status !== 'бежит' && l.idle_since ? ' · свободен ' + ago(now() - l.idle_since) : ''))),
         h('div', { class: 'side' },
           h('span', { class: 'ver', title: 'сколько изменений принято в этот skill: ' + l.laps }, 'v' + l.laps),
           h('span', { class: 'act' }, act)));
-    })), box];
+    })), box, readonly ? null : addBlock()];
+  }
+  // свой skill новой дорожкой: текст проходит ту же проверку, что и изменения
+  function addBlock() {
+    var a = S.add; if (!a) return null;
+    if (!a.left) return h('p', { class: 'cnt' }, a.own >= a.max ? 'Твоих skills на столе ' + a.own + ': это предел на участника.' : 'На столе ' + a.lanes + ' дорожек: новых стол не держит.');
+    var ta = h('textarea', { class: 'code', style: 'min-height:180px', spellcheck: 'false', placeholder: '---\nname: my-skill\ndescription: Что делает. Бери, когда…\n---\n\n# название\n\n## шаги\n1. …', 'aria-label': 'текст SKILL.md' });
+    var res = h('div');
+    var btn = h('button', { class: 'go', onclick: function () {
+      btn.disabled = true;
+      api('POST', 'api/lane/add', { text: ta.value }).then(function (d) {
+        toast('skill на столе: дорожка ' + d.lane); focusV = 0; key = ''; load();
+      }, function (e) { btn.disabled = false; fill(res, h('div', { class: 'msg' }, e.message)); });
+    } }, 'проверить и положить на стол');
+    return h('details', { class: 'own addown' }, h('summary', null, 'добавить свой skill новой дорожкой'),
+      h('p', { class: 's' }, 'Вставь SKILL.md целиком: шапка с name и description, дальше текст. Сервер проверит его на личное и секреты. Skill ляжет версией v0 с твоим именем, дальше его правят все. От участника до ' + a.max + ' skills.'),
+      ta, h('div', { class: 'row' }, btn), res);
   }
   function viewLanes() {
     var v = S.viewer, resting = v.rest > 0;
     return [
       h('div', { class: 'kick' }, '{ ' + v.name + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + (v.auth ? ' · вход: ' + v.auth : '') + ' · твоих версий ' + v.legs + ' }'),
-      resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, 'возьми ', h('em', null, 'skill')),
+      resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, S.lanes.length <= 4 ? 'выбери один из ' + ['', 'одного', 'двух', 'трёх', 'четырёх'][S.lanes.length] + ' ' : 'возьми ', h('em', null, S.lanes.length <= 4 && S.lanes.length > 1 ? 'skills' : 'skill')),
       h('p', { class: 's' }, resting ? 'Следующий skill можно взять, когда выйдет время. Дорожки, версии и правила можно читать.' :
-        'Задача одна: добавить в skill одно изменение и закоммитить за ' + span(S.lock) + '. После взятия ' + span(S.hour) + ' паузы на все дорожки.'),
+        'Взял: skill закреплён за тобой на ' + span(S.lock) + '. Применяешь одно правило и отдаёшь новой версией, дальше его берёт следующий. После взятия ' + span(S.hour) + ' паузы на все дорожки.'),
       lanesBlock(false), trailBlock(), links()
     ];
   }
@@ -316,10 +357,7 @@
       Array.prototype.forEach.call(cand.querySelectorAll('.cand'), function (b) { b.classList.toggle('sel', b.getAttribute('data-rule') === id); });
       Array.prototype.forEach.call(kindBox.querySelectorAll('button.kind'), function (b) { b.classList.toggle('sel', b.getAttribute('data-kind') === kind); });
       options(kind);
-      fill(ruleBox, r ? h('div', { class: 'rule pic' }, h('div', { class: 'fig' }, A.rule(r.id)), h('div', null,
-        h('h3', null, h('span', { class: 'id' }, r.id), r.title), h('p', null, h('b', null, 'вопрос. '), r.ask), h('p', null, h('b', null, 'изменение. '), r.fix),
-        r.why ? h('p', null, h('b', null, 'практика. '), r.why) : null,
-        h('p', null, h('a', { href: 'rules#' + r.id, target: '_blank', rel: 'noopener' }, 'правило, источники и настройка skills отдельным окном ↗')))) : null);
+      fill(ruleBox, ruleCard(r, true));
       sel.value = id || '';
       drawScheme(); applyBtn.textContent = r ? 'применить ' + r.id + ' · ' + r.title : 'применить правило';
     }
@@ -332,9 +370,9 @@
       kids.push(factsList(d.facts));
       if (d.ok || rv) kids.push(h('div', { class: 'cnt' }, 'сервер посчитал: −' + d.minus + ' / +' + d.plus + ' строк · разборов осталось ' + d.reviews_left), diffBlock(d.diff), reviewBlock(rv));
       if (d.ok && rv) {
-        var give = function (anyway) { return function () { api('POST', 'api/pass', { lane: leg.lane, anyway: anyway }).then(function (r) { toast('версия v' + r.n + ' лежит в дорожке'); leg = null; view = 'auto'; load(); }, function (e) { toast(e.message); }); }; };
+        var give = function (anyway) { return function () { api('POST', 'api/pass', { lane: leg.lane, anyway: anyway }).then(function (r) { toast('версия v' + r.n + ' с твоим именем лежит в дорожке'); focusV = r.n; view = 'lane:' + leg.lane; key = ''; leg = null; tabs(); load(); }, function (e) { toast(e.message); }); }; };
         kids.push(h('div', { class: 'row' },
-          rv.verdict === 'принять' ? h('button', { class: 'go', onclick: give(false) }, 'закоммитить ' + next) : h('button', { onclick: give(true) }, 'закоммитить ' + next + ' с замечанием'),
+          rv.verdict === 'принять' ? h('button', { class: 'go', onclick: give(false) }, 'отдать: закоммитить ' + next) : h('button', { onclick: give(true) }, 'отдать: закоммитить ' + next + ' с замечанием'),
           rv.verdict !== 'принять' ? h('span', { class: 'cnt' }, 'или исправь и проверь снова: следующий увидит замечание разбора') : null));
       }
       fill(res, kids);
@@ -358,14 +396,14 @@
     if (leg.result) setTimeout(function () { showResult(leg.result); }, 0);
     return [
       h('div', { class: 'kick' }, '{ дорожка ' + two(l.n) + ' · ' + l.skill + ' · сейчас v' + l.laps + ' }'),
-      h('p', { class: 'm' }, 'одно изменение → ' + next + ' · ', until(leg.until)),
+      h('p', { class: 'm' }, 'skill закреплён за тобой · ', until(leg.until)),
       h('div', { class: 'task' }, h('div', { class: 'lab' }, 'твоя задача'),
         h('p', null, h('b', null, l.title + '. '), l.what),
-        h('p', null, 'Добавь в этот skill одно и закоммить до конца срока: в дорожке будет лежать ' + next + '. Не успеешь: skill вернётся свободным, без изменения.')),
+        h('p', null, 'Он твой на ' + span(S.lock) + ', другим дорожка закрыта. Выбери правило, примени и отдай skill новой версией ' + next + ': тогда его возьмёт следующий. Не успеешь: skill вернётся свободным, без изменения.')),
       h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '1'), ' · выбери правило · оно ляжет в свою часть skill'), sch, cand, kindBox, h('div', { class: 'fld' }, sel), ruleBox),
       h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '2'), ' · примени · текст править не нужно'),
         h('div', { class: 'row' }, applyBtn, h('button', { class: 'quiet', onclick: drop }, 'вернуть без изменения')),
-        h('p', { class: 'cnt' }, 'Модель внесёт в skill одно изменение по выбранному правилу, до ' + S.limits.changed + ' строк. Ты увидишь разницу и разбор и нажмёшь «закоммитить»: в дорожке появится ' + next + ' с твоим именем.'),
+        h('p', { class: 'cnt' }, 'Модель внесёт в skill одно изменение по выбранному правилу, до ' + S.limits.changed + ' строк. Ты увидишь разницу и разбор и отдашь skill кнопкой «закоммитить»: в дорожке появится ' + next + ' с твоим именем.'),
         res),
       h('details', { class: 'own' }, h('summary', null, 'сделать изменение по-своему: задание агенту или правка руками'),
       h('div', { class: 'blk' }, h('div', { class: 'lab' }, 'изменение от агента или руками'),
@@ -399,29 +437,43 @@
   }
 
   // ---------- цепочка дорожки и книга правил ----------
+  function holderLine(l) {
+    if (!l || l.status !== 'бежит') return l && l.idle_since ? ['свободен ' + ago(now() - l.idle_since) + ' · следующую версию может внести любой'] : [];
+    return ['сейчас правит ', h('b', null, l.mine ? 'ты' : l.runner), l.account && l.account !== l.runner ? ' · аккаунт ' + l.account : '', l.doing ? ' · ' + KN[l.doing] : '', ' · осталось ', until(l.until)];
+  }
   function viewLane(id) {
-    var box = h('div', null, h('p', { class: 's' }, 'читаю версии…')), l = laneOf(id) || {};
-    api('GET', 'api/lane?id=' + encodeURIComponent(id)).then(function (d) {
+    var box = h('div', null, h('p', { class: 's' }, 'читаю версии…')), l = laneOf(id) || {}, want = focusV;
+    Promise.all([api('GET', 'api/lane?id=' + encodeURIComponent(id)), rules().then(null, function () { return null; })]).then(function (rr) {
+      var d = rr[0], open = want || d.laps;
       fill(box,
-        h('details', null, h('summary', null, 'skill сейчас · v' + d.laps + ' · ' + (l.lines || '') + ' строк'), h('pre', { class: 'skill' }, d.text)),
         d.legs.slice().reverse().map(function (g) {
-          if (!g.n) return h('div', { class: 'leg' }, h('h3', null, 'v0 ', h('span', null, '· базовая версия из кита')));
-          return h('div', { class: 'leg' },
-            h('h3', null, 'v' + g.n + ' · ' + g.runner + ' ', kindTag(g.kind), h('span', null, ' ' + g.rule + ' ' + g.rule_title + ' · −' + g.minus + ' / +' + g.plus + (g.noted ? ' · с замечанием разбора' : ''))),
-            h('div', { class: 'note' }, g.note),
-            h('div', { class: 'note' }, h('i', null, 'от чьего лица: '), g.runner + ' · прислал ' + who(g) + (g.auth ? ' · вход: ' + g.auth : '')),
-            h('details', null, h('summary', null, 'что изменилось и что сказал разбор'),
+          if (!g.n) return h('div', { class: 'leg', id: 'v-0' },
+            h('h3', null, 'v0 ', h('span', null, g.added ? '· skill добавил ' + g.runner : '· базовая версия из кита'), h('span', null, ' · ' + lines(g.lines))),
+            A.scheme(g.parts, {}));
+          return h('div', { class: 'leg' + (g.n === open ? ' cur' : ''), id: 'v-' + g.n },
+            h('h3', null, 'v' + g.n + ' · поправил ' + g.runner + ' ', kindTag(g.kind), h('span', null, ' −' + g.minus + ' / +' + g.plus + ' · стало ' + lines(g.lines) + (g.noted ? ' · с замечанием разбора' : ''))),
+            h('div', { class: 'note' }, h('i', null, 'правило: '), g.rule + ' · ' + g.rule_title),
+            h('div', { class: 'note' }, h('i', null, 'что и зачем: '), g.note),
+            A.scheme(g.parts, { fresh: g.fresh, hit: g.part }),
+            h('details', { open: g.n === open }, h('summary', null, 'что изменилось в тексте и что сказал разбор'),
+              diffBlock(g.diff),
+              RULES && RULES[g.rule] ? [h('div', { class: 'lab', style: 'margin-top:14px' }, 'правило, по которому сделана версия'), ruleCard(RULES[g.rule])] : null,
               g.tried ? h('div', { class: 'note' }, h('i', null, 'примерил на: '), g.tried) : null,
-              g.next ? h('div', { class: 'note' }, h('i', null, 'записка: '), g.next) : null,
-              diffBlock(g.diff), reviewBlock(g.review, true)));
-        }));
+              g.next ? h('div', { class: 'note' }, h('i', null, 'записка следующему: '), g.next) : null,
+              h('div', { class: 'note' }, h('i', null, 'от чьего лица: '), g.runner + (g.account && g.account !== g.runner ? ' · аккаунт ' + g.account : '') + ' · прислал ' + who(g) + (g.auth ? ' · вход: ' + g.auth : '')),
+              reviewBlock(g.review, true)));
+        }),
+        h('details', null, h('summary', null, 'skill сейчас целиком · v' + d.laps), h('pre', { class: 'skill' }, d.text)));
+      if (want) { var el = $('v-' + want); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }
     }, out(box));
+    focusV = 0;
     return [
       h('div', { class: 'kick' }, '{ дорожка ' + two(l.n || 0) + ' · ' + (l.skill || id) + ' · v' + (l.laps || 0) + ' }'),
       h('p', { class: 'm' }, l.title || id),
       h('p', { class: 's' }, l.what || ''),
+      h('p', { class: 'cnt', id: 'holder' }, holderLine(l)),
       l.versions ? h('div', { style: 'margin-top:14px' }, ribbon(l)) : null,
-      h('div', { class: 'lab', style: 'margin-top:22px' }, 'лог версий · от свежей к базовой'),
+      h('div', { class: 'lab', style: 'margin-top:22px' }, 'как менялся skill · от свежей версии к базовой · у каждой версии кто, по какому правилу и что изменилось'),
       box, links()
     ];
   }
@@ -431,7 +483,7 @@
     return [
       h('div', { class: 'kick' }, '{ журнал стола · записей ' + (S.events || 0) + ' }'),
       h('p', { class: 'm' }, 'кто, что и ', h('em', null, 'через что')),
-      h('p', { class: 's' }, 'Полный журнал: каждое действие с логином и способом. Человек со страницы, агент по ключу, бот демо или сама система. Те же строки лежат в папке стола в файлах events.jsonl и TRAIL.md. ' + sysLine() + '.'),
+      h('p', { class: 's' }, 'Кто над чем поработал и что поменял: у каждой новой версии правило, фраза «что и зачем» и число строк. Строка версии открывает её в истории дорожки. Те же записи лежат в папке стола в файлах events.jsonl и TRAIL.md. ' + sysLine() + '.'),
       box, links()
     ];
   }
@@ -472,8 +524,12 @@
     if (view === 'log') k = 'log:' + (S.events || 0);
     else if (view.indexOf('lane:') === 0) k = view + ':' + ((laneOf(view.slice(5)) || {}).laps || 0);
     else if (!v) k = 'entry:' + (S.seats || []).map(function (s) { return s.taken ? 1 : 0; }).join('') + S.lanes.map(function (l) { return l.laps + l.status + (l.runner || '') + (l.doing || ''); }).join() + (S.events || 0);
-    else k = 'lanes:' + v.login + ':' + (v.rest > 0) + S.lanes.map(function (l) { return l.laps + l.status + (l.runner || '') + (l.doing || '') + (l.why_not ? 1 : 0); }).join() + (S.events || 0);
-    if (k === key) return rail();
+    else k = 'lanes:' + v.login + ':' + (v.rest > 0) + S.lanes.map(function (l) { return l.laps + l.status + (l.runner || '') + (l.doing || '') + (l.why_not ? 1 : 0); }).join() + (S.events || 0) + ':' + ((S.add || {}).left || 0);
+    if (key === k && view === 'auto' && document.activeElement && document.activeElement.closest && document.activeElement.closest('.addown')) return rail(); // человек вставляет свой skill: экран не перерисовываем
+    if (k === key) {
+      if (view.indexOf('lane:') === 0 && $('holder')) fill($('holder'), holderLine(laneOf(view.slice(5))));
+      return rail();
+    }
     key = k;
     kids = view === 'log' ? viewLog() : view.indexOf('lane:') === 0 ? viewLane(view.slice(5)) : !v ? viewEntry() : viewLanes();
     fill($('panel'), kids);
@@ -551,13 +607,36 @@
     text(String(tt.laps || 0), cx, cy - (small ? 8 : 12), small ? 30 : Math.min(64, inner * 1.05), INK, 'center', 600);
     text('{ изменений принято }', cx, cy + (small ? 16 : Math.min(34, inner * 0.62)), 10.5, INK2);
     var b = small ? 7.5 : Math.max(9, gap * 0.4);
+    if (!small) text('{ нажми на шарик: кто правит и как менялся skill }', cx, hgt - 6, 10, INK3);
+    var hits = [], tip = null;
     S.lanes.forEach(function (l, i) {
       var r = inner + gap * i, run = l.status === 'бежит', u = run ? Math.min(0.985, Math.max(0.012, (now() - l.since) / Math.max(1, l.until - l.since))) : 0;
-      var p = at(u, cx, cy, L, r), mine = !!l.mine;
-      sphere(p[0], p[1], mine ? b * 1.55 : b, mine ? ACC : INK, run ? 1 : 0.42, lt);
-      if (!small || mine) text(two(l.n) + ' · v' + l.laps, p[0] + (run ? 0 : -b - 7), p[1] + (run ? -(mine ? b * 1.55 : b) - 9 : 0), 10, mine ? ACC : INK2, run ? 'center' : 'right', mine ? 600 : 400);
+      var p = at(u, cx, cy, L, r), mine = !!l.mine, hot = hover === l.id, br = (mine ? b * 1.55 : b) * (hot ? 1.25 : 1);
+      sphere(p[0], p[1], br, mine || hot ? ACC : INK, run || hot ? 1 : 0.42, lt);
+      hits.push({ id: l.id, x: p[0], y: p[1], r: Math.max(br, gap * 0.5) + 3 });
+      if (hot) tip = { l: l, x: p[0], y: p[1], r: br };
+      else if (!small || mine) text(two(l.n) + ' · ' + (run ? (mine ? 'у тебя' : cutName(l.runner)) : 'v' + l.laps), p[0] + (run ? 0 : -b - 7), p[1] + (run ? -br - 9 : 0), 10, mine ? ACC : run ? INK : INK2, run ? 'center' : 'right', mine ? 600 : 400);
     });
+    HIT = hits;
+    if (tip) { // подпись шарика под курсором: чей он сейчас и кто правил последним
+      var l = tip.l, a = two(l.n) + ' · ' + l.title + ' · v' + l.laps;
+      var c2 = l.status === 'бежит' ? 'правит ' + (l.mine ? 'ты' : l.runner) + (l.account && l.account !== l.runner ? ' (' + l.account + ')' : '') + ' · осталось ' + clock(l.until - now()) :
+        (l.last_runner ? 'последним поправил ' + l.last_runner : l.added_by ? 'добавил ' + l.added_by : 'базовая версия') + ' · свободен';
+      ctx.save(); ctx.font = '600 11px "JetBrains Mono", ui-monospace, monospace';
+      var tw = Math.max(ctx.measureText(a).width, ctx.measureText(c2).width) + 20, bx = Math.max(4, Math.min(w - tw - 4, tip.x - tw / 2)), by = tip.y - tip.r - 50 < 4 ? tip.y + tip.r + 8 : tip.y - tip.r - 50;
+      ctx.fillStyle = css('--bg') || '#fff'; ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.fillRect(bx, by, tw, 42); ctx.strokeRect(bx + 0.5, by + 0.5, tw - 1, 41); ctx.restore();
+      text(a, bx + 10, by + 14, 11, INK, 'left', 600); text(c2, bx + 10, by + 29, 10.5, l.status === 'бежит' ? ACC : INK2, 'left');
+    }
   }
+  function cutName(n) { n = String(n || ''); return n.length > 14 ? n.slice(0, 13) + '…' : n; }
+  function ballAt(e) {
+    var bx = cv.getBoundingClientRect(), x = e.clientX - bx.left, y = e.clientY - bx.top, best = null, bd = 1e9;
+    HIT.forEach(function (q) { var d = Math.hypot(q.x - x, q.y - y); if (d <= q.r && d < bd) { bd = d; best = q.id; } });
+    return best;
+  }
+  cv.addEventListener('mousemove', function (e) { hover = ballAt(e) || ''; cv.style.cursor = hover ? 'pointer' : ''; });
+  cv.addEventListener('mouseleave', function () { hover = ''; cv.style.cursor = ''; });
+  cv.addEventListener('click', function (e) { var id = ballAt(e); if (id) openLane(id); });
 
   // ---------- клавиши и запуск ----------
   addEventListener('keydown', function (e) {
