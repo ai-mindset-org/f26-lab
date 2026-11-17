@@ -70,7 +70,7 @@ export default function SkillRelayPage({ labId, labTitle }: SkillRelayPageProps)
         <PageHeader
           kicker={`${labTitle} · эстафета`}
           title="Эстафета skills"
-          subtitle="Skill растёт по одному изменению. Возьми skill со стола, примени одно правило и передай новой версией следующему."
+          subtitle="Возьми skill со стола, выбери одно правило и передай новой версией следующему. На всё пять минут."
           actions={
             entry ? (
               <a

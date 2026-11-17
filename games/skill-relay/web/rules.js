@@ -55,22 +55,10 @@
       return h('div', { 'data-key': g.key || '', onmouseenter: g.key ? function () { showSource(g); } : null, onmouseleave: function () { showRule(null); } },
         h('a', { class: 'q', href: g.url, rel: 'noopener', target: '_blank' }, g.title), note ? ' · ' + g.note : '');
     }
-    // skill как файл из восьми частей: где лежит правило и что в этой части меняется
-    var FILE = ['head', 'params', 'steps', 'format', 'example', 'rakes', 'check', 'border'];
-    function fileArt(part, now) {
-      return h('div', { class: 'fa' + (now ? ' now' : '') + (part === 'whole' ? ' all' : '') }, h('i', null, 'SKILL.md'),
-        FILE.map(function (id) { return h('span', { class: id === part || part === 'whole' ? 'hit' : '' }, (PT[id] || {}).title || id); }));
-    }
-    // история правила в три кадра: каким текст был, какой вопрос задаёт правило, каким текст стал
+    // история правила в три кадра: тот же вид, что у версии на столе и при выборе правила
     function story(x) {
-      var ex = x.ex || { was: [], now: [] }, where = part(x);
-      return h('div', { class: 'story' },
-        h('div', { class: 'fr' }, h('em', null, '01 · было'), fileArt(x.part, false),
-          h('div', { class: 'lines' }, ex.was.length ? ex.was.map(function (t) { return h('div', { class: 'del' }, t); }) : h('div', { class: 'none' }, 'в части «' + where + '» этого пока нет'))),
-        h('div', { class: 'fr mid' }, h('em', null, '02 · правило ' + x.id), h('div', { class: 'fig' }, window.ART.rule(x.id)),
-          h('div', { class: 'ask' }, x.easy || x.ask)),
-        h('div', { class: 'fr' }, h('em', null, '03 · стало'), fileArt(x.part, true),
-          h('div', { class: 'lines' }, ex.now.map(function (t) { return h('div', { class: 'add' }, t); }))));
+      var ex = x.ex || { was: [], now: [] };
+      return window.ART.story({ part: x.part, id: x.id, ask: x.easy || x.ask, was: ex.was, now: ex.now, none: 'в части «' + part(x) + '» этого пока нет' });
     }
     function part(x) { return (PT[x.part] || {}).title || 'весь текст'; }
     function ruleBody(x) {
@@ -104,7 +92,7 @@
         return st.q.toLowerCase().split(/\s+/).filter(Boolean).every(function (w) { return hay[x.id].indexOf(w) >= 0; });
       }
       var input = h('input', { type: 'search', class: 'bq', placeholder: 'поиск: слово из правила, практики или источника', 'aria-label': 'поиск по правилам', autocomplete: 'off', spellcheck: 'false' });
-      var count = h('span', { class: 'bcount', role: 'status' }), kinds = h('div', { class: 'bkinds' }), map = h('div', { class: 'bmap' }),
+      var count = h('span', { class: 'bcount', role: 'status' }), kinds = h('div', { class: 'bkinds' }), hint = h('p', { class: 'bhint' }), map = h('div', { class: 'bmap' }),
         srcs = h('div', { class: 'bsrc' }), detail = h('div', { class: 'bdetail rule tale' }), reset = h('button', { type: 'button', class: 'breset', onclick: function () { st.q = ''; st.kind = ''; st.src = ''; input.value = ''; paint(); } }, 'сбросить');
       input.addEventListener('input', function () { st.q = input.value; paint(); });
       function pick(id) { st.sel = id; paint(); }
@@ -120,6 +108,9 @@
           return h('button', { type: 'button', class: 'bk' + (st.kind === k.id ? ' sel' : ''), title: k.text, 'aria-pressed': st.kind === k.id ? 'true' : 'false',
             onclick: function () { st.kind = st.kind === k.id ? '' : k.id; paint(); } }, window.ART.kind(k.id), k.title, h('i', null, String(n)));
         }));
+        var kd = (d.kinds || []).filter(function (k) { return k.id === st.kind; })[0];
+        hint.replaceChildren.apply(hint, kd ? [h('b', null, kd.title + '. '), kd.text] : st.src && keys[st.src] ? [h('b', null, keys[st.src].title + '. '), 'Остались правила, которые стоят на этом источнике.'] :
+          ['Вид изменения говорит, что правило делает с текстом skill. Строка сетки: часть файла SKILL.md, где правило лежит.']);
         map.replaceChildren.apply(map, (d.parts || []).map(function (pt) {
           var list = d.rules.filter(function (x) { return x.part === pt.id; });
           return h('div', { class: 'brow' + (list.some(function (x) { return on[x.id]; }) ? '' : ' dim') },
@@ -155,7 +146,7 @@
           h('div', null, h('b', null, String(order.length)), 'первоисточников'),
           h('div', null, h('b', null, String(d.limits.changed)), 'строк за одно изменение')),
         h('div', { class: 'bbar' }, input, count, reset),
-        kinds,
+        kinds, hint,
         h('div', { class: 'bgrid' }, map, srcs),
         detail);
     }

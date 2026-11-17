@@ -198,9 +198,36 @@
     return box;
   }
 
+  // ---------- история изменения в три кадра ----------
+  // один вид на карте правил, при выборе правила и у версии на столе: каким текст был, что говорит правило, каким стал
+  var FILE = ['head', 'params', 'steps', 'format', 'example', 'rakes', 'check', 'border'];
+  var PART = { head: 'шапка', params: 'параметры', steps: 'шаги', format: 'формат', example: 'пример', rakes: 'грабли', check: 'проверка', border: 'границы' };
+  function hx(tag, cls) {
+    var e = document.createElement(tag), i;
+    if (cls) e.className = cls;
+    function add(c) { if (c == null || c === false) return; if (Array.isArray(c)) return c.forEach(add); e.appendChild(typeof c === 'object' ? c : document.createTextNode(String(c))); }
+    for (i = 2; i < arguments.length; i++) add(arguments[i]);
+    return e;
+  }
+  function fileArt(part, now) {
+    return hx('div', 'fa' + (now ? ' now' : '') + (part === 'whole' ? ' all' : ''), hx('i', '', 'SKILL.md'),
+      FILE.map(function (id) { return hx('span', id === part || part === 'whole' ? 'hit' : '', PART[id]); }));
+  }
+  function story(o) {
+    var was = o.was || [], now = o.now || [];
+    return hx('div', 'story',
+      hx('div', 'fr', hx('em', '', '01 · было'), fileArt(o.part, false),
+        hx('div', 'lines', was.length ? was.map(function (t) { return hx('div', 'del', t); }) : hx('div', 'none', o.none || 'в этой части этого пока нет'))),
+      hx('div', 'fr mid', hx('em', '', '02 · правило ' + o.id), hx('div', 'fig', RULE[o.id] ? draw(96, 64, RULE[o.id], 'rule-art') : null), hx('div', 'ask', o.ask || '')),
+      hx('div', 'fr', hx('em', '', '03 · стало'), fileArt(o.part, true),
+        hx('div', 'lines', now.length ? now.map(function (t) { return hx('div', 'add', t); }) : hx('div', 'none', 'строк не добавлено: правило убирает лишнее'))));
+  }
+
   window.ART = {
     scheme: scheme,
     intro: intro,
+    story: story,
+    partName: function (id) { return PART[id] || 'весь текст'; },
     rule: function (id) { return RULE[id] ? draw(96, 64, RULE[id], 'rule-art') : null; },
     kind: function (id) { return KIND[id] ? draw(16, 16, KIND[id], 'kind-art') : null; },
     step: function (i) { return draw(72, 48, STEP[i], 'step-art'); },

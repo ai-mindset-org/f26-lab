@@ -548,7 +548,16 @@ def main():
             say("старая настройка темы стирается у тех, у кого осталась", "removeItem('relay.theme')" in pages["shell.js"])
             say("на входе анимация «что значит взять skill» в четыре кадра", "function intro" in pages["art.js"] and "A.intro(" in pages["app.js"] and all(w in pages["art.js"] for w in ("возьми skill", "одно правило", "проверка", "новая версия")))
             say("после входа видно, под каким именем и ником человек за столом", "function whoLine" in pages["app.js"] and "v.nick" in pages["app.js"])
-            say("у правил карта с поиском, фильтрами и историей в три кадра", all(w in pages["rules.js"] for w in ("function board", "function story", "bq", "первоисточники", "01 · было", "03 · стало")))
+            say("у правил карта с поиском, фильтрами и историей в три кадра", all(w in pages["rules.js"] for w in ("function board", "function story", "bq", "первоисточники")) and all(w in pages["art.js"] for w in ("function story", "01 · было", "03 · стало")))
+            css = str(Client(pt).call("GET", "/art.css")[1])
+            say("стол собран дашбордом: числа, поиск, фильтры, строки «skill → версии», люди и деталь под строкой",
+                all(w in pages["app.js"] for w in ("function deck", "bstats", "bq", "bkinds", "bmap", "кто внёс версии", "function verDetail", "function skillDetail")) and "lanesBlock" not in pages["app.js"])
+            say("история версии на столе и правило при выборе идут тем же видом в три кадра, что на карте", pages["app.js"].count("A.story(") >= 2 and "window.ART.story(" in pages["rules.js"])
+            say("правило в изменении выбирают фильтрами и плитками, отдельного списка нет", "function drawPick" in pages["app.js"] and "pickgrid" in pages["app.js"] and "h('select'" not in pages["app.js"])
+            say("стили дашборда общие для стола и карты правил, под узкую рамку он складывается сам", all(w in css for w in (".bstats", ".bmap", ".story", "@container", ".take", "[data-skin=lms] .bmap")) and ".bstats" not in str(Client(pt).call("GET", "/pages.css")[1]))
+            say("кнопки одной высоты: главная с заливкой, обычная с рамкой, ссылка-действие", all(w in css for w in ("button.go,a.btn.go{", "min-height:40px", ".row>button.quiet")))
+            say("экраны стола встают шагами в историю браузера, из демо можно встать из-за стола", "history.pushState" in pages["app.js"] and "addEventListener('popstate'" in pages["app.js"] and "встать из-за стола" in pages["app.js"])
+            say("на входе одна кнопка и одна фраза", "один круг по шагам" not in pages["app.js"] and "Skill растёт по одному изменению" not in pages["app.js"])
             rb = a.call("GET", "/lms/api/rules")[1]
             keys = {g["key"] for g in rb["sources"]["guides"] + rb["sources"]["research"]}
             say("каждое правило карты стоит на первоисточнике с адресом", all(any(k in keys for k in r["src"]) for r in rb["rules"]) and all(str(g.get("url", "")).startswith("https://") for g in rb["sources"]["guides"] + rb["sources"]["research"]), str([r["id"] for r in rb["rules"] if not any(k in keys for k in r["src"])]))

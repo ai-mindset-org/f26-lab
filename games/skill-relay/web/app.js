@@ -77,16 +77,17 @@
   function chg(n) { return n % 10 === 1 && n % 100 !== 11 ? 'изменение' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'изменения' : 'изменений'; }
   function kindTag(k) { return k && KN[k] ? h('span', { class: 'kind tag', title: KA[k] }, A.kind(k), KN[k]) : null; }
   var PT = { head: 'шапка', params: 'параметры', steps: 'шаги', format: 'формат вывода', example: 'пример', rakes: 'грабли', check: 'проверка', border: 'границы', whole: 'весь текст' };
+  // правило одним видом везде: история в три кадра, вопрос, изменение, практика и первоисточники
   function ruleCard(r, link) {
     if (!r) return null;
-    return h('div', { class: 'rule pic' }, h('div', { class: 'fig' }, A.rule(r.id)), h('div', null,
-      h('h3', null, h('span', { class: 'id' }, r.id), r.title, ' ', kindTag(r.kind)),
-      r.easy ? h('p', { class: 'easy' }, r.easy) : null,
+    var ex = r.ex || { was: [], now: [] };
+    return h('div', { class: 'rule tale' },
+      h('h3', null, h('span', { class: 'id' }, r.id), r.title, ' ', kindTag(r.kind), h('span', { class: 'where' }, 'часть: ' + A.partName(r.part))),
+      A.story({ part: r.part, id: r.id, ask: r.easy || r.ask, was: ex.was, now: ex.now, none: 'в части «' + A.partName(r.part) + '» этого пока нет' }),
       h('p', null, h('b', null, 'вопрос. '), r.ask), h('p', null, h('b', null, 'изменение. '), r.fix),
       r.why ? h('p', { class: 'why' }, h('b', null, 'практика. '), r.why) : null,
-      r.ex ? h('div', { class: 'ex' }, h('div', { class: 'exl' }, 'пример · ' + (PT[r.part] || '')),
-        r.ex.was.map(function (t) { return h('div', { class: 'del' }, '− ' + t); }), r.ex.now.map(function (t) { return h('div', { class: 'add' }, '+ ' + t); })) : null,
-      link ? h('p', null, h('a', { href: 'rules#' + r.id, target: '_blank', rel: 'noopener' }, 'источники правила и вся система отдельным окном ↗')) : null));
+      h('div', { class: 'refs' }, h('b', null, 'на чём основано: '), SRC ? srcLine(r) : 'соглашение эстафеты',
+        link ? [' · ', h('a', { href: 'rules#' + r.id, target: '_blank', rel: 'noopener' }, 'правило на карте ↗')] : null));
   }
   // лента версий: v0, знак вида у каждой принятой версии, пунктирный узел у того, кто сейчас вносит изменение
   function ribbon(l) {
@@ -103,7 +104,7 @@
   function until(ts, cls) { return h('em', { 'data-until': ts, class: cls || '' }, clock(ts - now())); }
   function out(box) { return function (e) { fill(box, h('div', { class: 'msg' }, e.message)); }; }
   function laneOf(id) { return (S.lanes || []).filter(function (l) { return l.id === id; })[0]; }
-  function openLane(id, v) { if (S.locked) return toast('войди, чтобы открыть версии skill'); focusV = v || 0; go('lane:' + id); }
+  function openLane(id, v) { if (S.locked) return toast('войди, чтобы открыть версии skill'); focusV = v || 0; if (view === 'lane:' + id) show(view); else go('lane:' + id); }
   function lines(n) { return n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'строка' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'строки' : 'строк'); }
 
   // ---------- загрузка ----------
@@ -193,32 +194,19 @@
       S.viewer ? h('button', { class: 'quiet', onclick: function () { api('POST', 'api/auth/logout', {}).then(function () { leg = null; load(); }); } }, 'выйти') : null);
   }
   function tabs() { Array.prototype.forEach.call(document.querySelectorAll('.tabs a'), function (x) { var log = x.getAttribute('href').indexOf('view=log') > 0; x.classList.toggle('on', x.getAttribute('href') === './' ? view !== 'log' : log && view === 'log'); }); }
-  function go(v) { view = v; key = ''; tabs(); render(); $('panel').scrollTop = 0; if (innerWidth <= 900 && v !== 'auto') $('panel').scrollIntoView(); }
-
-  // что это и где: две строки и контекст лабы, одинаково до входа и на столе
-  function lab26() {
-    var t = S.totals || {};
-    return h('div', { class: 'lab26' },
-      h('span', null, h('b', null, 'AI Mindset · лаба F26')),
-      h('span', null, 'осень 2026 · участники собирают свои skills'),
-      h('span', null, 'skills на столе: ', h('b', null, String(S.lanes.length))),
-      t.laps != null ? h('span', null, 'версий внесено: ', h('b', null, String(t.laps))) : null,
-      h('span', null, 'закрепление: ', h('b', null, span(S.lock))));
-  }
-  function holdStrip(l) {
-    if (l.status !== 'бежит') return null;
-    var all = Math.max(1, l.until - (l.since || l.until - S.lock)), left = Math.max(0, l.until - now());
-    return h('div', { class: 'hold', title: 'skill закреплён: пока идёт время, его правит один человек' },
-      h('span', null, 'закреплён · ', h('b', null, l.mine ? 'за тобой' : l.runner), l.doing ? ' · ' + KN[l.doing] : ''),
-      until(l.until), h('i', { 'data-bar': l.until, 'data-all': all, style: 'width:' + Math.round(100 * left / all) + '%' }));
-  }
+  function show(v) { view = v; key = ''; tabs(); render(); $('panel').scrollTop = 0; if (innerWidth <= 900 && v !== 'auto') $('panel').scrollIntoView(); }
+  // каждый экран стола встаёт шагом в историю браузера: «назад» возвращает на прошлый экран и в рамке LMS
+  function go(v) { if (v !== view) { try { history.pushState({ view: v }, ''); } catch (e) { } } show(v); }
+  try { history.replaceState({ view: view }, ''); } catch (e) { }
+  addEventListener('popstate', function (e) { show((e.state && e.state.view) || 'auto'); });
 
   // кто за столом: имя, ник и способ входа. Под этим именем версии лягут в журнал
   function whoLine(v) {
     return h('div', { class: 'who', title: 'под этим именем твои версии видны на столе и в журнале' },
       h('span', { class: 'av', 'aria-hidden': 'true' }, (v.name || v.login || '?').trim().charAt(0).toUpperCase()),
       h('span', null, 'ты за столом как ', h('b', null, v.name || v.login), v.nick ? [' · ', h('span', { class: 'nick' }, '@' + v.nick)] : null,
-        v.auth ? h('i', null, ' · вход: ' + v.auth) : null));
+        v.auth ? h('i', null, ' · вход: ' + v.auth) : null),
+      S.mode === 'демо' ? h('button', { class: 'out', title: 'вернуться на первый экран', onclick: function () { api('POST', 'api/auth/logout', {}).then(function () { leg = null; view = 'auto'; load(); }); } }, 'встать из-за стола') : null);
   }
 
   // ---------- вход ----------
@@ -239,52 +227,162 @@
     var nm = S.tailnet ? h('input', { type: 'text', id: 'tname', maxlength: 40, value: S.tailnet.name, 'aria-label': 'имя на столе', style: 'max-width:260px' }) : null;
     var tail = S.tailnet ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сервер узнал тебя по Tailscale · имя на столе можно поправить'),
       h('div', { class: 'row' }, nm, h('button', { class: 'go', onclick: function () { api('POST', 'api/tailnet/login', { name: nm.value }).then(load, out(box)); } }, 'войти'))] : null;
-    var t = S.totals || {};
+    var sum = h('summary'), tb = h('div');
+    function onTable() { var t = S.totals || {}; sum.textContent = 'что сейчас на столе · skills ' + S.lanes.length + (t.laps != null ? ' · версий ' + t.laps : ''); fill(tb, trailBlock(6)); }
     return [
       h('div', { class: 'kick' }, '{ открытая эстафета · ' + (demo ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : S.lms ? 'вход из LMS' : S.sso ? 'единый вход' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
-      h('p', { class: 'why' }, 'Skill растёт по одному изменению. Берёшь skill со стола, применяешь одно правило и отдаёшь новой версией следующему.'),
+      h('p', { class: 'why' }, 'Берёшь skill со стола, применяешь одно правило и отдаёшь новой версией следующему.'),
       intro(),
       demo ? [h('div', { class: 'row', style: 'margin-top:18px' },
-          free ? h('button', { class: 'go', onclick: sit(free.login) }, 'сесть за стол') : null,
-          h('a', { class: 'btn', href: 'show' }, 'один круг по шагам')),
+          free ? h('button', { class: 'go', onclick: sit(free.login) }, 'сесть за стол') : null),
         h('p', { class: 's' }, 'Демо: входа нет, имена выдуманные, пауза после взятия ' + span(S.hour) + '. Стол можно трогать, он учебный.'),
         seats.length > 1 ? h('details', { class: 'own' }, h('summary', null, 'выбрать место самому · ' + seats.length), h('div', { class: 'row' }, seats)) : null,
         S.tailnet ? tail : null] :
         tail || [S.lms ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.lms, target: '_top' }, 'войти через LMS')) : S.sso && window.SKIN !== 'lms' ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.sso.url }, 'войти через ' + S.sso.name)) : S.login_url ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
           h('p', { class: 's' }, S.lms ? 'Вход идёт со страницы лабы в LMS: она подтверждает участника и открывает стол под твоим именем и ником.' : S.sso ? 'Единый вход AI Mindset: тот же аккаунт, что в других сервисах лабы. На столе будет видно твоё имя у каждой версии.' : S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
       box,
-      S.lanes && S.lanes.length ? h('details', { class: 'own onTable' },
-        h('summary', null, 'что сейчас на столе · skills ' + S.lanes.length + (t.laps != null ? ' · версий ' + t.laps : '')),
-        lab26(), lanesBlock(true), trailBlock(6)) : null,
+      S.lanes && S.lanes.length ? h('details', { class: 'own onTable' }, sum, deck(true, onTable), tb) : null,
       links()
     ];
   }
 
-  // ---------- дорожки ----------
-  function lanesBlock(readonly) {
-    var box = h('div');
-    return [h('div', { class: 'lanes' + (S.lanes.length <= 4 ? ' cards n' + S.lanes.length : '') }, S.lanes.map(function (l) {
-      var act;
-      if (l.status === 'бежит') act = l.mine ? 'изменение у тебя' : 'в работе';
-      else if (readonly) act = 'свободен';
-      else if (l.why_not) act = h('span', { title: l.why_not }, l.why_not.indexOf('пауза') === 0 ? 'пауза' : 'свободен');
-      else act = h('button', { class: 'go', onclick: function () { api('POST', 'api/take', { lane: l.id }).then(function () { leg = null; view = 'auto'; return load(); }, out(box)); } }, 'взять на ' + span(S.lock));
-      return h('div', { class: 'ln' + (l.mine ? ' mine' : '') },
-        h('span', { class: 'no' }, two(l.n)),
-        h('div', { class: 'bd' },
-          holdStrip(l),
-          h('button', { class: 'nm', onclick: function () { openLane(l.id); } }, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
-          h('p', { class: 'what' }, l.what),
-          ribbon(l),
-          l.parts ? h('div', { class: 'lsch', title: 'части skill: шапка, параметры, шаги, формат, пример, грабли, проверка, границы' }, A.scheme(l.parts, { mini: true })) : null,
-          h('span', { class: 'meta', title: (l.level ? 'уровень ' + l.level + ' · тема: ' + l.theme + ' · ' : '') + lines(l.lines) }, (l.status === 'бежит' && !l.mine ? 'сейчас правит ' + l.runner + ' · ' : '') +
-            (l.last_runner ? 'v' + l.laps + ' поправил ' + l.last_runner + ' · ' + (KN[l.last_kind] || l.last_rule) : l.added_by ? 'skill добавил ' + l.added_by : 'базовая версия') +
-            (l.status !== 'бежит' && l.idle_since ? ' · свободен ' + ago(now() - l.idle_since) : ''))),
-        h('div', { class: 'side' },
-          h('span', { class: 'ver', title: 'сколько изменений принято в этот skill: ' + l.laps }, 'v' + l.laps),
-          h('span', { class: 'act' }, act)));
-    })), box, readonly ? null : addBlock()];
+  // ---------- стол дашбордом ----------
+  // порядок блоков тот же, что у карты правил: числа → поиск → фильтры → сетка и список справа → деталь выбранного.
+  // строка сетки = skill, плитки = его версии по порядку, последняя плитка = действие
+  var deckSt = { q: '', status: '', kind: '', who: '', sel: '', ver: 0, text: false }, deckUI = null, laneMemo = {};
+  function laneInfo(l) { var k = l.id + ':' + l.laps; return laneMemo[k] || (laneMemo[k] = api('GET', 'api/lane?id=' + encodeURIComponent(l.id))); }
+  function deck(readonly, after) {
+    var input = h('input', { type: 'search', class: 'bq', placeholder: 'поиск: skill, правило или имя', 'aria-label': 'поиск по skills на столе', autocomplete: 'off', spellcheck: 'false', value: deckSt.q });
+    var stats = h('div', { class: 'bstats' }), count = h('span', { class: 'bcount', role: 'status' }), chips = h('div', { class: 'bkinds' }), hint = h('p', { class: 'bhint' }),
+      map = h('div', { class: 'bmap' }), side = h('div', { class: 'bsrc' }), detail = h('div', { class: 'bdetail rule tale' }), msg = h('div'), shown = '';
+    var reset = h('button', { type: 'button', class: 'breset', onclick: function () { deckSt.q = deckSt.status = deckSt.kind = deckSt.who = ''; input.value = ''; paint(); } }, 'сбросить');
+    input.addEventListener('input', function () { deckSt.q = input.value; paint(); });
+    function take(l) { return function () { api('POST', 'api/take', { lane: l.id }).then(function () { leg = null; view = 'auto'; return load(); }, out(msg)); }; }
+    function free(l) { return l.status !== 'бежит'; }
+    function words(l) {
+      return [l.title, l.what, l.skill, l.theme, l.level ? 'уровень ' + l.level : '', l.runner || '', (l.versions || []).map(function (x) {
+        return x.rule + ' ' + (KN[x.kind] || '') + ' ' + (x.by || '') + ' ' + (RULES && RULES[x.rule] ? RULES[x.rule].title : ''); }).join(' ')].join(' ').toLowerCase();
+    }
+    function ok(l) {
+      if (deckSt.status === 'free' && !free(l)) return false;
+      if (deckSt.status === 'run' && free(l)) return false;
+      if (deckSt.kind && !(l.versions || []).some(function (x) { return x.kind === deckSt.kind; })) return false;
+      if (deckSt.who && !(l.versions || []).some(function (x) { return x.by === deckSt.who; })) return false;
+      var hay = words(l);
+      return deckSt.q.toLowerCase().split(/\s+/).filter(Boolean).every(function (w) { return hay.indexOf(w) >= 0; });
+    }
+    // выбранное раскрывается под своей строкой; повторное нажатие закрывает
+    function pick(id, ver) {
+      if (deckSt.sel === id && deckSt.ver === (ver || 0)) deckSt.sel = ''; else { deckSt.sel = id; deckSt.ver = ver || 0; }
+      deckSt.text = false; shown = ''; paint();
+    }
+    function slot(l) {
+      if (!free(l)) return h('span', { class: 'slot run', title: 'skill закреплён: пока идёт время, его правит один человек' },
+        h('b', null, l.mine ? 'у тебя' : 'правит ' + l.runner), h('span', null, (l.doing ? KN[l.doing] + ' · ' : '') + 'осталось ', until(l.until)));
+      if (readonly) return h('span', { class: 'slot' }, h('b', null, 'свободен'), l.idle_since ? ago(now() - l.idle_since) : 'ждёт первого');
+      if (l.why_not) return h('span', { class: 'slot', title: l.why_not }, h('b', null, l.why_not.indexOf('пауза') === 0 ? 'пауза' : 'свободен'), l.why_not.indexOf('пауза') === 0 && S.viewer && S.viewer.rest_until ? until(S.viewer.rest_until) : 'взять нельзя');
+      return h('button', { type: 'button', class: 'take', onclick: take(l) }, 'взять на ' + span(S.lock), h('i', null, '→'));
+    }
+    function row(l, on) {
+      var vs = l.versions || [], hidden = l.laps - vs.length, sel = deckSt.sel === l.id;
+      return h('div', { class: 'brow' + (on ? '' : ' dim') },
+        h('button', { type: 'button', class: 'sk' + (sel && !deckSt.ver ? ' sel' : ''), 'aria-pressed': sel && !deckSt.ver ? 'true' : 'false', title: 'что лежит в этом skill', onclick: function () { pick(l.id, 0); } },
+          h('span', { class: 'no' }, two(l.n)), h('b', null, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
+          h('span', { class: 'what' }, l.what),
+          l.parts ? A.scheme(l.parts, { mini: true }) : null,
+          h('span', { class: 'meta' }, (l.level ? 'уровень ' + l.level + ' · ' : '') + (l.theme ? l.theme + ' · ' : '') + lines(l.lines))),
+        h('div', { class: 'btiles' },
+          h('button', { type: 'button', class: 'bt v v0' + (sel && !deckSt.ver ? ' sel' : ''), title: l.added_by ? 'оригинал · skill добавил ' + l.added_by : 'оригинал из кита', onclick: function () { pick(l.id, 0); } }, h('b', null, 'v0'), h('span', null, 'основа')),
+          hidden > 0 ? h('span', { class: 'vmore', title: 'ещё версий: ' + hidden + ' · все лежат в истории skill' }, '… ' + hidden) : null,
+          vs.map(function (x) {
+            var dim = (deckSt.kind && x.kind !== deckSt.kind) || (deckSt.who && x.by !== deckSt.who), on2 = sel && deckSt.ver === x.n;
+            return h('button', { type: 'button', class: 'bt v' + (dim ? ' off' : '') + (on2 ? ' sel' : ''), 'aria-pressed': on2 ? 'true' : 'false',
+              title: 'v' + x.n + (x.by ? ' · поправил ' + x.by : '') + ' · ' + (KN[x.kind] || '') + ' · ' + x.rule, onclick: function () { pick(l.id, x.n); } },
+              A.kind(x.kind), h('b', null, 'v' + x.n), h('span', null, x.rule + (x.by ? ' · ' + x.by : '')));
+          }),
+          slot(l)));
+    }
+    // деталь skill: что в нём лежит, кто правил последним и что можно сделать
+    function skillDetail(l) {
+      var box = h('div');
+      if (deckSt.text) laneInfo(l).then(function (d) { fill(box, h('pre', { class: 'skill' }, d.text)); }, out(box));
+      return [
+        h('h3', null, h('span', { class: 'id' }, two(l.n)), l.title, h('span', { class: 'where' }, 'v' + l.laps + ' · ' + lines(l.lines) + (l.level ? ' · уровень ' + l.level : '') + (l.theme ? ' · ' + l.theme : ''))),
+        h('p', null, l.what),
+        l.parts ? A.scheme(l.parts, {}) : null,
+        h('p', null, h('b', null, free(l) ? 'свободен. ' : (l.mine ? 'у тебя. ' : 'правит ' + l.runner + '. ')),
+          l.last_runner ? 'Последняя версия v' + l.laps + ': ' + l.last_runner + ', ' + (KN[l.last_kind] || l.last_rule) + '.' : l.added_by ? 'Skill добавил ' + l.added_by + ', версий пока нет.' : 'Лежит оригинал, версий пока нет.',
+          ' Плитка версии в строке показывает, что она поменяла и по какому правилу.'),
+        h('div', { class: 'row' },
+          free(l) && !readonly && !l.why_not ? h('button', { type: 'button', class: 'go', onclick: take(l) }, 'взять на ' + span(S.lock)) : null,
+          S.locked ? null : h('button', { type: 'button', onclick: function () { openLane(l.id); } }, 'история версий'),
+          S.locked ? null : h('button', { type: 'button', onclick: function () { deckSt.text = !deckSt.text; shown = ''; paint(); } }, deckSt.text ? 'скрыть текст' : 'текст skill целиком')),
+        box];
+    }
+    // деталь версии: та же история в три кадра, что у правила на карте, только с настоящими строками этой версии
+    function verDetail(l, n) {
+      var box = h('div', null, h('p', { class: 's' }, 'читаю версию…'));
+      var x = (l.versions || []).filter(function (y) { return y.n === n; })[0] || {}, r = RULES && RULES[x.rule];
+      if (S.locked) fill(box, h('p', { class: 's' }, 'Разницу версии видно после входа.'));
+      else laneInfo(l).then(function (d) {
+        var g = d.legs.filter(function (y) { return y.n === n; })[0];
+        if (!g) return fill(box, h('p', { class: 's' }, 'Версия ушла в архив забега: она лежит в истории skill.'));
+        var text = function (op) { return (g.diff || []).filter(function (y) { return (y.op === '-') === op && String(y.t).trim(); }).map(function (y) { return y.t; }); }, was = text(true), nw = text(false);
+        fill(box,
+          A.story({ part: g.part || (r ? r.part : ''), id: g.rule, ask: r ? (r.easy || r.ask) : g.rule_title, was: was, now: nw, none: 'версия только добавила строки' }),
+          g.note ? h('p', null, h('b', null, 'что и зачем. '), g.note) : null,
+          r ? h('p', null, h('b', null, 'правило. '), r.id + ' · ' + r.title + '. ' + r.fix) : null,
+          g.next ? h('p', null, h('b', null, 'записка следующему. '), g.next) : null,
+          h('div', { class: 'refs' }, h('b', null, 'на чём основано: '), r ? srcLine(r) : 'соглашение эстафеты'));
+      }, out(box));
+      return [
+        h('h3', null, h('span', { class: 'id' }, 'v' + n), l.title, ' ', kindTag(x.kind), h('span', { class: 'where' }, (x.by ? 'поправил ' + x.by + ' · ' : '') + x.rule + (r ? ' · ' + r.title : ''))),
+        box,
+        h('div', { class: 'row' },
+          S.locked ? null : h('button', { type: 'button', onclick: function () { openLane(l.id, n); } }, 'открыть в истории skill'),
+          r ? h('a', { class: 'quiet', href: 'rules#' + r.id, target: '_blank', rel: 'noopener' }, 'правило на карте ↗') : null)];
+    }
+    function paint() {
+      var L = S.lanes || [], t = S.totals || {}, v = S.viewer, hits = L.filter(ok), on = {}, by = {}, kinds = {}, run = L.filter(function (l) { return !free(l); });
+      hits.forEach(function (l) { on[l.id] = 1; });
+      L.forEach(function (l) { (l.versions || []).forEach(function (x) { if (x.by) by[x.by] = (by[x.by] || 0) + 1; kinds[x.kind] = (kinds[x.kind] || 0) + 1; }); });
+      if (deckSt.sel && !on[deckSt.sel]) { deckSt.sel = ''; deckSt.ver = 0; deckSt.text = false; }
+      var filtered = !!(deckSt.q || deckSt.status || deckSt.kind || deckSt.who);
+      fill(stats,
+        h('div', null, h('b', null, String(L.length)), 'skills на столе'),
+        h('div', null, h('b', null, String(t.laps != null ? t.laps : L.reduce(function (a, l) { return a + l.laps; }, 0))), 'версий принято'),
+        h('div', null, h('b', null, String(L.length - run.length)), 'свободны сейчас'),
+        h('div', null, h('b', null, String(run.length)), 'правят сейчас'),
+        v ? h('div', null, h('b', null, String(v.legs || 0)), 'твоих версий') : h('div', null, h('b', null, String(t.runners || Object.keys(by).length)), 'человек внесли версию'));
+      count.textContent = filtered ? 'найдено ' + hits.length + ' из ' + L.length : 'все skills: ' + L.length;
+      reset.hidden = !filtered;
+      function chip(on2, label, n, fn, icon, title) { return h('button', { type: 'button', class: 'bk' + (on2 ? ' sel' : ''), title: title || null, 'aria-pressed': on2 ? 'true' : 'false', onclick: fn }, icon || null, label, h('i', null, String(n))); }
+      fill(chips,
+        chip(deckSt.status === 'free', 'свободны', L.length - run.length, function () { deckSt.status = deckSt.status === 'free' ? '' : 'free'; paint(); }),
+        chip(deckSt.status === 'run', 'правят', run.length, function () { deckSt.status = deckSt.status === 'run' ? '' : 'run'; paint(); }),
+        h('span', { class: 'bsep' }),
+        KO.filter(function (k) { return kinds[k]; }).map(function (k) { return chip(deckSt.kind === k, KN[k], kinds[k], function () { deckSt.kind = deckSt.kind === k ? '' : k; paint(); }, A.kind(k), KA[k]); }));
+      fill(hint, deckSt.kind ? [h('b', null, KN[deckSt.kind] + ': ' + KA[deckSt.kind] + '. '), 'Остались skills, где есть версия этого вида, её плитки подсвечены.'] :
+        deckSt.who ? [h('b', null, deckSt.who + '. '), 'Остались skills с версиями этого человека.'] :
+        'Строка: skill. Плитки: его версии по порядку, у каждой вид изменения и правило. Нажми на skill или на версию: под строкой откроется, что внутри и что поменялось.');
+      var open = laneOf(deckSt.sel), sig = open ? open.id + ':' + deckSt.ver + ':' + open.laps + ':' + open.status + ':' + (open.why_not ? 1 : 0) + ':' + deckSt.text : '';
+      if (sig !== shown) { shown = sig; fill(detail, open ? (deckSt.ver ? verDetail(open, deckSt.ver) : skillDetail(open)) : null); }
+      fill(map, hits.length || !filtered ? L.map(function (l) { return [row(l, !!on[l.id]), open && open.id === l.id ? detail : null]; }) : h('p', { class: 's', style: 'padding:14px' }, 'По этому запросу skills нет. Попробуй название, номер правила или имя.'));
+      var names = Object.keys(by).sort(function (a, b) { return by[b] - by[a] || (a < b ? -1 : 1); }), top = by[names[0]] || 1;
+      fill(side, h('div', { class: 'lab' }, h('b', null, 'кто внёс версии'), names.length ? ' · нажми, чтобы оставить skills этого человека' : ''),
+        names.length ? names.slice(0, 12).map(function (n) {
+          var bar = h('i'); bar.style.width = Math.round(by[n] / top * 100) + '%';
+          return h('div', { class: 'bs' + (deckSt.who === n ? ' sel' : '') }, h('button', { type: 'button', 'aria-pressed': deckSt.who === n ? 'true' : 'false', onclick: function () { deckSt.who = deckSt.who === n ? '' : n; paint(); } },
+            h('span', { class: 'n' }, String(by[n])), h('span', { class: 't' }, n), h('span', { class: 'trk' }, bar)));
+        }) : h('p', { class: 's' }, 'Версий ещё нет: первая появится, когда кто-то возьмёт skill и применит правило.'),
+        h('div', { class: 'bnow' }, h('div', { class: 'lab' }, h('b', null, 'правят сейчас')),
+          run.length ? run.map(function (l) { return h('div', null, h('span', null, (l.mine ? 'ты' : l.runner) + ' · ' + two(l.n) + ' ' + l.title), until(l.until)); }) : h('p', null, 'Никто не взял: все skills свободны.')));
+      if (after) after();
+    }
+    deckUI = { node: h('section', { class: 'board deck' }, stats, h('div', { class: 'bbar' }, input, count, reset), chips, hint, h('div', { class: 'bgrid' }, map, side), msg), paint: paint, sig: '' };
+    paint();
+    return deckUI.node;
   }
   // свой skill новой дорожкой: текст проходит ту же проверку, что и изменения
   function addBlock() {
@@ -304,15 +402,18 @@
       ta, h('div', { class: 'row' }, btn), res);
   }
   function viewLanes() {
-    var v = S.viewer, resting = v.rest > 0;
+    var v = S.viewer, resting = v.rest > 0, tb = h('div');
     return [
-      h('div', { class: 'kick' }, '{ твоих версий ' + v.legs + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + ' }'),
+      h('div', { class: 'kick' }, '{ стол · твоих версий ' + v.legs + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + ' }'),
       h('h1', { class: 'h1s' }, 'эстафета skills', h('em', null, '.')),
       whoLine(v),
-      resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, S.lanes.length <= 4 ? 'выбери один из ' + ['', 'одного', 'двух', 'трёх', 'четырёх'][S.lanes.length] + ' ' : 'возьми ', h('em', null, S.lanes.length <= 4 && S.lanes.length > 1 ? 'skills' : 'skill')),
-      h('p', { class: 's' }, resting ? 'Следующий skill можно взять, когда выйдет время. Дорожки, версии и правила можно читать.' :
-        'Взял: skill закреплён за тобой на ' + span(S.lock) + '. Применяешь одно правило и отдаёшь новой версией, дальше его берёт следующий. После взятия ' + span(S.hour) + ' паузы на все дорожки.'),
-      lanesBlock(false), trailBlock(), links()
+      resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, 'возьми ', h('em', null, 'skill')),
+      h('p', { class: 's' }, resting ? 'Следующий skill можно взять, когда выйдет время. Версии и правила можно читать.' :
+        'Взял: skill твой на ' + span(S.lock) + '. Применяешь одно правило и отдаёшь новой версией, дальше его берёт следующий. После взятия ' + span(S.hour) + ' паузы на все skills.'),
+      deck(false, function () { fill(tb, trailBlock()); }),
+      addBlock(), tb,
+      h('div', { class: 'row widebtn' }, h('button', { class: 'quiet', onclick: function () { stadium = !stadium; key = ''; render(); } }, stadium ? 'стол во всю ширину' : 'показать стадион')),
+      links()
     ];
   }
 
@@ -350,7 +451,8 @@
       '', 'Ключ действует до конца срока. Разборов на одно изменение: ' + S.limits.reviews + '.'].join('\n');
   }
   function viewLeg() {
-    var l = laneOf(leg.lane), res = h('div'), cand = h('div', null, h('p', { class: 's' }, 'смотрю, чего этому skill не хватает…')), ruleBox = h('div'), cnt = h('div', { class: 'cnt' }), kindBox = h('div', { class: 'row' });
+    var l = laneOf(leg.lane), res = h('div'), ruleBox = h('div'), cnt = h('div', { class: 'cnt' });
+    var pk = { kind: '' }, chipBox = h('div', { class: 'bkinds' }), tileBox = h('div', { class: 'pickgrid' }), pickHint = h('p', { class: 'bhint' });
     var ta = h('textarea', { class: 'code', spellcheck: 'false', value: leg.text, oninput: function () { leg.text = ta.value; count(); } });
     var f = {}, next = 'v' + (l.laps + 1);
     var sch = h('div'), applyBtn = h('button', { class: 'go', onclick: applyRule }, 'применить правило');
@@ -381,27 +483,31 @@
       var c = counts(leg.base, leg.text);
       fill(cnt, 'строк ', h('b', { class: c.lines > S.limits.lines ? 'over' : '' }, c.lines), ' из ' + S.limits.lines + ' · изменено ', h('b', { class: c.changed > S.limits.changed ? 'over' : '' }, c.changed), ' из ' + S.limits.changed);
     }
-    function kindOf(id) { return (RULES[id] || {}).kind || ''; }
-    function options(kind) {
-      fill(sel, h('option', { value: '' }, kind ? 'другое правило вида «' + KN[kind] + '»…' : 'любое правило…'),
-        Object.keys(RULES).filter(function (id) { return !kind || RULES[id].kind === kind; }).map(function (id) { return h('option', { value: id }, id + ' · ' + RULES[id].title); }));
-    }
-    function pickKind(kind) {
-      var hit = (leg.analysis ? leg.analysis.candidates : []).filter(function (c) { return kindOf(c.rule) === kind; })[0];
-      pick(hit ? hit.rule : Object.keys(RULES).filter(function (id) { return RULES[id].kind === kind; })[0]);
+    // чего skill не хватает: три правила от разбора стола, они стоят первыми и помечены причиной
+    function need() { var m = {}; (leg.analysis ? leg.analysis.candidates : []).forEach(function (c) { m[c.rule] = c.why; }); return m; }
+    function drawPick() {
+      var nd = need(), ids = Object.keys(RULES || {});
+      function chip(k, label, n, icon, title) { return h('button', { type: 'button', class: 'bk' + (pk.kind === k ? ' sel' : ''), title: title || null, 'aria-pressed': pk.kind === k ? 'true' : 'false', onclick: function () { pk.kind = k; drawPick(); } }, icon || null, label, h('i', null, String(n))); }
+      fill(chipBox, chip('', 'не хватает этому skill', Object.keys(nd).length),
+        KO.map(function (k) { return chip(k, KN[k], ids.filter(function (id) { return RULES[id].kind === k; }).length, A.kind(k), KA[k]); }),
+        chip('*', 'все правила', ids.length));
+      var list = pk.kind === '' ? Object.keys(nd) : ids.filter(function (id) { return pk.kind === '*' || RULES[id].kind === pk.kind; });
+      list.sort(function (a, b) { return (nd[b] ? 1 : 0) - (nd[a] ? 1 : 0); });
+      fill(tileBox, list.length ? list.map(function (id) {
+        var r = RULES[id];
+        return h('button', { type: 'button', class: 'bt' + (nd[id] ? ' need' : '') + (leg.rule === id ? ' sel' : ''), 'data-rule': id, title: r.title, 'aria-pressed': leg.rule === id ? 'true' : 'false', onclick: function () { pick(id); } },
+          A.kind(r.kind), h('b', null, id), h('span', null, r.title), nd[id] ? h('i', { class: 'star' }, nd[id]) : null);
+      }) : h('p', { class: 's' }, leg.analysis ? 'Разбор не нашёл явных пробелов: выбери вид изменения.' : 'смотрю, чего этому skill не хватает…'));
+      fill(pickHint, pk.kind === '' ? ['Три правила, которые дадут этому skill больше всего', leg.analysis && leg.analysis.by ? ' · ' + leg.analysis.by : '', '. Другое правило: нажми на вид изменения.'] :
+        pk.kind === '*' ? 'Все правила книги. Те, которых этому skill не хватает, стоят первыми.' : [h('b', null, KN[pk.kind] + ': ' + KA[pk.kind] + '. '), 'Нажми на плитку: ниже откроется история правила в три кадра.']);
     }
     function pick(id) {
       leg.rule = id;
-      var r = RULES[id], kind = kindOf(id);
-      Array.prototype.forEach.call(cand.querySelectorAll('.cand'), function (b) { b.classList.toggle('sel', b.getAttribute('data-rule') === id); });
-      Array.prototype.forEach.call(kindBox.querySelectorAll('button.kind'), function (b) { b.classList.toggle('sel', b.getAttribute('data-kind') === kind); });
-      options(kind);
+      var r = RULES[id];
+      drawPick();
       fill(ruleBox, ruleCard(r, true));
-      sel.value = id || '';
       drawScheme(); applyBtn.textContent = r ? 'применить ' + r.id + ' · ' + r.title : 'применить правило';
     }
-    var sel = h('select', { onchange: function () { if (sel.value) pick(sel.value); } });
-    fill(kindBox, KO.map(function (k) { return h('button', { class: 'kind', 'data-kind': k, onclick: function () { pickKind(k); } }, A.kind(k), KA[k]); }));
     function showResult(d) {
       leg.result = d;
       var rv = d.review, kids = [];
@@ -424,11 +530,9 @@
       if (leg !== mine) return;
       if (a.pending && tries++ < 25) setTimeout(ask, 3000);
       leg.analysis = a;
-      fill(cand, h('div', { class: 'lab', style: 'margin-top:14px' }, 'чего этому skill не хватает больше всего · ' + a.by), a.candidates.map(function (c) {
-        return h('button', { class: 'cand', 'data-rule': c.rule, onclick: function () { pick(c.rule); } }, h('b', null, kindTag(kindOf(c.rule)), ' ' + c.rule + ' · ' + c.title), h('span', null, c.why));
-      }));
       pick(leg.rule || (a.candidates[0] || {}).rule);
-    }, function (e) { fill(cand, h('div', { class: 'msg' }, e.message)); options(''); }); }
+    }, function (e) { pk.kind = '*'; drawPick(); fill(pickHint, h('span', { class: 'msg' }, e.message)); }); }
+    drawPick();
     ask();
     count();
     drawScheme();
@@ -439,7 +543,7 @@
       h('div', { class: 'task' }, h('div', { class: 'lab' }, 'твоя задача'),
         h('p', null, h('b', null, l.title + '. '), l.what),
         h('p', null, 'Он твой на ' + span(S.lock) + ', другим дорожка закрыта. Выбери правило, примени и отдай skill новой версией ' + next + ': тогда его возьмёт следующий. Не успеешь: skill вернётся свободным, без изменения.')),
-      h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '1'), ' · выбери правило · оно ляжет в свою часть skill'), sch, cand, kindBox, h('div', { class: 'fld' }, sel), ruleBox),
+      h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '1'), ' · выбери правило · оно ляжет в свою часть skill'), sch, chipBox, pickHint, tileBox, ruleBox),
       h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '2'), ' · примени · текст править не нужно'),
         h('div', { class: 'row' }, applyBtn, h('button', { class: 'quiet', onclick: drop }, 'вернуть без изменения')),
         h('p', { class: 'cnt' }, 'Модель внесёт в skill одно изменение по выбранному правилу, до ' + S.limits.changed + ' строк. Ты увидишь разницу и разбор и отдашь skill кнопкой «закоммитить»: в дорожке появится ' + next + ' с твоим именем.'),
@@ -447,7 +551,7 @@
       h('details', { class: 'own' }, h('summary', null, 'сделать изменение по-своему: задание агенту или правка руками'),
       h('div', { class: 'blk' }, h('div', { class: 'lab' }, 'изменение от агента или руками'),
         h('div', { class: 'row' },
-          h('button', { class: 'sel', onclick: function () { copy(agentTask(), 'задание с ключом скопировано'); } }, 'задание агенту'),
+          h('button', { onclick: function () { copy(agentTask(), 'задание с ключом скопировано'); } }, 'задание агенту'),
           h('button', { onclick: function () { copy(agentPrompt(), 'промпт скопирован'); } }, 'промпт для чата без команд'),
           h('button', { onclick: function () { save('SKILL.md', leg.base); } }, 'скачать SKILL.md')),
         h('p', { class: 'cnt' }, 'Агент с доступом к командам делает всё сам: забирает skill по ключу, вносит изменение и присылает его сюда с одной фразой «что и зачем». Тебе остаётся прочитать и закоммитить.'),
@@ -616,7 +720,8 @@
   var stadium = false;
   function render() {
     if (!S) return;
-    document.body.classList.toggle('wide', view.indexOf('lane:') === 0 && !stadium && !(S.viewer && S.viewer.holding && view === 'auto'));
+    var held = S.viewer && S.viewer.holding && view === 'auto';
+    document.body.classList.toggle('wide', !stadium && !held && (view.indexOf('lane:') === 0 || (view === 'auto' && !!S.viewer)));
     var v = S.viewer, hold = v && v.holding, kids, k;
     if (hold && view === 'auto') {
       k = 'leg:' + hold;
@@ -636,16 +741,27 @@
     if (view === 'rules') { location.replace('rules'); return; }
     if (view === 'log') k = 'log:' + (S.events || 0);
     else if (view.indexOf('lane:') === 0) k = view + ':' + ((laneOf(view.slice(5)) || {}).laps || 0);
-    else if (!v) k = 'entry:' + (S.seats || []).map(function (s) { return s.taken ? 1 : 0; }).join('') + S.lanes.map(function (l) { return l.laps + l.status + (l.runner || '') + (l.doing || ''); }).join() + (S.events || 0);
-    else k = 'lanes:' + v.login + ':' + (v.rest > 0) + S.lanes.map(function (l) { return l.laps + l.status + (l.runner || '') + (l.doing || '') + (l.why_not ? 1 : 0); }).join() + (S.events || 0) + ':' + ((S.add || {}).left || 0);
-    var ad = document.querySelector('details.addown');
-    if (ad && ad.open && view === 'auto' && v && !hold && key.indexOf('lanes:') === 0) return rail(); // человек вставляет свой skill: стол не перерисовываем, форма и ответ проверки остаются на экране
+    else {
+      // вход и стол: экран собирается заново, только когда меняется его состав. Новые версии и взятия обновляют сам дашборд:
+      // поиск, фильтры, выбранная плитка и открытая форма своего skill остаются на месте
+      k = !v ? 'entry:' + (S.seats || []).map(function (s) { return s.taken ? 1 : 0; }).join('') + ':' + (S.lanes.length ? 1 : 0) :
+        'lanes:' + v.login + ':' + (v.rest > 0) + ':' + v.legs + ':' + ((S.add || {}).left || 0) + ':' + stadium;
+      var sig = S.lanes.map(function (l) { return l.id + l.laps + l.status + (l.runner || '') + (l.doing || '') + (l.why_not ? 1 : 0); }).join() + (S.events || 0);
+      if (k === key && deckUI && deckUI.node.isConnected) {
+        if (deckUI.sig !== sig) { deckUI.sig = sig; deckUI.paint(); }
+        return rail();
+      }
+      key = k;
+      fill($('panel'), !v ? viewEntry() : viewLanes());
+      if (deckUI) deckUI.sig = sig;
+      return rail();
+    }
     if (k === key) {
       if (view.indexOf('lane:') === 0 && $('holder')) fill($('holder'), holderLine(laneOf(view.slice(5))));
       return rail();
     }
     key = k;
-    kids = view === 'log' ? viewLog() : view.indexOf('lane:') === 0 ? viewLane(view.slice(5)) : !v ? viewEntry() : viewLanes();
+    kids = view === 'log' ? viewLog() : viewLane(view.slice(5));
     fill($('panel'), kids);
     rail();
   }
