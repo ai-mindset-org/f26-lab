@@ -513,10 +513,11 @@ def skill_meta(text):
 
 def kit(pack="base"):
     """skills набора по уровням: base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых, all – все наборы"""
-    if pack != "all" and pack not in PACKS:
-        raise Refuse(f"набора «{pack}» нет: есть {', '.join(PACKS)}")
+    packs = list(PACKS) if pack == "all" else pack.split("+")  # text+base кладёт на стол оба набора: восемь дорожек для большой группы
+    if [x for x in packs if x not in PACKS]:
+        raise Refuse(f"набора «{pack}» нет: есть {', '.join(PACKS)}, наборы складываются через плюс")
     out = []
-    for pk in (list(PACKS) if pack == "all" else [pack]):
+    for pk in packs:
         rows = []
         for p in sorted(PACKS[pk].glob("*/SKILL.md")):
             text = p.read_text(encoding="utf-8")
@@ -556,6 +557,11 @@ def blame(texts):
         cur, alive = nxt, keep
     trim = lambda rows: rows[:-1] if rows and rows[-1][0] == "" else rows
     return trim(orig), trim(cur)
+
+
+def frame_ok():
+    """кому можно показать игру рамкой: свой адрес (макет размещения) и сайты из RELAY_FRAME_ANCESTORS (LMS)"""
+    return ("'self' " + os.environ.get("RELAY_FRAME_ANCESTORS", "")).strip()
 
 
 def parts_map(text):
@@ -1771,9 +1777,22 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                 raise Refuse("400")
             return data
 
+        def surface(self):
+            """/lms/... отдаёт ту же игру для страницы лабы в LMS: префикс срезается, рамку разрешаем себе и сайту из RELAY_FRAME_ANCESTORS"""
+            self.frame_ok = ""
+            if self.path == "/lms" or self.path.startswith("/lms?"):
+                return "/lms/" + self.path[4:]
+            if self.path.startswith("/lms/"):
+                self.path = self.path[4:]
+                self.frame_ok = frame_ok()
+            return ""
+
         def do_GET(self):
             if not self.host_ok():
                 return self.out(403, {"error": "чужой адрес"})
+            go = self.surface()
+            if go:
+                return self.out(302, "", "text/plain", {"Location": go})
             u = urlparse(self.path)
             q = {k: v[0] for k, v in parse_qs(u.query).items()}
             try:
@@ -1822,7 +1841,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     lms = data.get("src") == "lms"
                     way = "LMS" if lms else "одноразовая ссылка"
                     game.enter(p["login"], way)
-                    return self.out(302, "", "text/plain", {"Location": "/?skin=lms" if lms else "/", "Set-Cookie": session_cookie(p, way)})
+                    self.frame_ok = frame_ok() if lms else ""
+                    return self.out(302, "", "text/plain", {"Location": "/lms/" if lms else "/", "Set-Cookie": session_cookie(p, way)})
                 viewer = viewer_of(self)
                 if u.path == "/api/auth/me":
                     return self.out(200, {"viewer": viewer}) if viewer else self.out(401, {"error": "нет входа"})
@@ -1892,9 +1912,9 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                             text = table.text(q["lane"])
                         return self.out(200, text, "text/markdown; charset=utf-8", {"Content-Disposition": 'attachment; filename="SKILL.md"'})
                     return self.out(404, {"error": "нет такого адреса"})
-                rel = {"": "index.html", "rules": "rules.html", "show": "show.html", "try": "try.html", "about": "about.html", "card": "card.html"}.get(u.path.strip("/"), u.path.lstrip("/"))
+                rel = {"": "index.html", "rules": "rules.html", "show": "show.html", "try": "try.html", "about": "about.html", "card": "card.html", "lms-preview": "lms-preview.html"}.get(u.path.strip("/"), u.path.lstrip("/"))
                 if rel == "card.html":
-                    self.frame_ok = os.environ.get("RELAY_FRAME_ANCESTORS", "")
+                    self.frame_ok = frame_ok()
                 path = safe(WEB, rel)
                 if not path.is_file():
                     return self.out(404, "нет такого файла", "text/plain; charset=utf-8")
@@ -1907,6 +1927,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
         def do_POST(self):
             if not self.host_ok():
                 return self.out(403, {"error": "чужой адрес"})
+            self.surface()
             u = urlparse(self.path)
             try:
                 d = self.body()
@@ -2107,7 +2128,7 @@ def main(argv=None):
     ap.add_argument("--seats", type=int, default=6)
     ap.add_argument("--bots", type=int, default=5)
     ap.add_argument("--hour", type=int, help="длина паузы в секундах")
-    ap.add_argument("--pack", default="base", choices=sorted(PACKS), help="набор skills для init: base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых")
+    ap.add_argument("--pack", default="base", choices=sorted(PACKS) + ["text+base", "text+popular"], help="набор skills для init: base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых; text+base – восемь дорожек для большой группы")
     ap.add_argument("--lock", type=int, help="сколько секунд палочка держится за бегуном")
     ap.add_argument("--public-url", default=os.environ.get("RELAY_PUBLIC_URL", ""))
     ap.add_argument("--login")

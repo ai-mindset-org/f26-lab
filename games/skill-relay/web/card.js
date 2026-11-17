@@ -1,27 +1,32 @@
-// карточка эстафеты для страницы лабы в LMS: живое состояние того же стола, без имён участников
+// карточка эстафеты под правую колонку LMS: живое состояние того же стола, без имён участников
 (function () {
-  var q = new URLSearchParams(location.search);
-  if (q.get('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-  function clock(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2); }
+  var NS = 'http://www.w3.org/2000/svg';
+  function sv(tag, at) { var e = document.createElementNS(NS, tag); Object.keys(at).forEach(function (k) { e.setAttribute(k, at[k]); }); return e; }
   function draw(S) {
-    var lanes = S.lanes || [], skew = (S.now || Date.now() / 1000) - Date.now() / 1000, run = 0, laps = 0;
-    var box = document.getElementById('lanes'); box.replaceChildren();
-    lanes.slice(0, 5).forEach(function (l) {
-      var on = l.status === 'бежит', row = el('div', 'ln'), tr = el('div', 'tr'), i;
+    var lanes = (S.lanes || []).slice(0, 5), run = 0, laps = 0, pic = document.getElementById('pic');
+    pic.replaceChildren();
+    var step = lanes.length > 1 ? Math.min(20, 76 / (lanes.length - 1)) : 0, top = 50 - step * (lanes.length - 1) / 2;
+    lanes.forEach(function (l, n) {
+      var on = l.status === 'бежит', y = top + n * step, k = Math.min(l.laps || 0, 8), x = 24 + k * 17, i;
       if (on) run++; laps += l.laps || 0;
-      row.appendChild(el('b', '', l.title || l.skill));
-      row.appendChild(el('em', on ? 'run' : '', on ? 'правят · ' + clock(l.until - Date.now() / 1000 - skew) : 'v' + l.laps + ' · свободен'));
-      for (i = 0; i < Math.min(l.laps, 9); i++) { tr.appendChild(el('i')); tr.appendChild(el('u')); }
-      tr.appendChild(el('i', 'ball' + (on ? ' run' : ''))); tr.appendChild(el('u', 'end'));
-      row.appendChild(tr); box.appendChild(row);
+      pic.appendChild(sv('line', { x1: 16, y1: y, x2: 184, y2: y, stroke: '#f3f4f6' }));
+      if (k) pic.appendChild(sv('line', { x1: 24, y1: y, x2: x, y2: y, stroke: on ? '#dc2626' : '#d1d5db', 'stroke-width': on ? 1 : .5, 'stroke-opacity': on ? .7 : 1 }));
+      for (i = 0; i < k; i++) pic.appendChild(sv('circle', { cx: 24 + i * 17, cy: y, r: 2.5, fill: '#9ca3af' }));
+      if (on) {
+        pic.appendChild(sv('circle', { cx: x, cy: y, r: 9, fill: '#dc2626', 'fill-opacity': .12 }));
+        pic.appendChild(sv('circle', { cx: x, cy: y, r: 4.5, fill: '#dc2626', class: 'run' }));
+      } else {
+        pic.appendChild(sv('circle', { cx: x, cy: y, r: 4.5, fill: '#fff', stroke: '#111827', 'stroke-width': 1.5 }));
+        pic.appendChild(sv('circle', { cx: x, cy: y, r: 1.5, fill: '#111827' }));
+      }
     });
-    var st = document.getElementById('st'); st.replaceChildren();
-    [['skills на столе', lanes.length], ['версий', laps], ['правят сейчас', run]].forEach(function (x) { var s = el('span', '', x[0] + ' '); s.appendChild(el('b', '', String(x[1]))); st.appendChild(s); });
-    document.getElementById('tag').textContent = run ? 'идёт игра' : 'стол свободен';
+    var tag = document.getElementById('tag'); tag.textContent = run ? 'идёт игра' : ''; tag.className = run ? 'run' : '';
+    document.getElementById('st').textContent = lanes.length ? 'версий: ' + laps : 'стол пуст';
     if (S.lms) document.getElementById('go').href = S.lms;
-    var d = new Date(); document.getElementById('upd').textContent = 'обновлено ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    tell();
   }
-  function load() { fetch('api/state', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(draw, function () { document.getElementById('tag').textContent = 'нет связи'; }); }
+  function tell() { if (window.parent !== window) window.parent.postMessage({ type: 'skill-relay:card-height', height: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); }
+  function load() { fetch('api/state', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(draw, function () { document.getElementById('st').textContent = 'нет связи'; }); }
+  window.addEventListener('resize', tell);
   load(); setInterval(function () { if (!document.hidden) load(); }, 10000);
 })();

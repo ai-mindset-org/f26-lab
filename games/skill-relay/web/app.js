@@ -188,6 +188,7 @@
       h('a', { class: 'quiet', href: 'show' }, 'как это работает'),
       h('a', { class: 'quiet', href: 'rules' }, 'правила'),
       h('a', { class: 'quiet', href: 'about' }, 'о системе'),
+      window.SKIN === 'lms' ? h('a', { class: 'quiet', href: '../', target: '_blank', rel: 'noopener', title: 'тот же стол на широком экране со стадионом' }, 'на весь экран ↗') : null,
       view !== 'log' && S.trail ? h('button', { class: 'quiet', onclick: function () { go('log'); } }, 'журнал') : null,
       view !== 'auto' ? h('button', { class: 'quiet', onclick: function () { go('auto'); } }, '← на стол') : null,
       S.viewer ? h('button', { class: 'quiet', onclick: function () { api('POST', 'api/auth/logout', {}).then(function () { leg = null; load(); }); } }, 'выйти') : null);
@@ -238,8 +239,8 @@
       S.mode === 'демо' ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сядь на место: в демо входа нет, пауза после взятия ' + span(S.hour)), h('div', { class: 'row' }, seats),
         S.tailnet ? tail : null,
         h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show' }, 'как это работает: один круг по шагам'))] :
-        tail || [S.sso ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.sso.url }, 'войти через ' + S.sso.name)) : S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
-          h('p', { class: 's' }, S.sso ? 'Единый вход AI Mindset: тот же аккаунт, что в других сервисах лабы. На столе будет видно твоё имя у каждой версии.' : S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
+        tail || [S.lms ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.lms, target: '_top' }, 'войти через LMS')) : S.sso && window.SKIN !== 'lms' ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.sso.url }, 'войти через ' + S.sso.name)) : S.login_url ? h('div', { class: 'row' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
+          h('p', { class: 's' }, S.lms ? 'Вход идёт со страницы лабы в LMS: она подтверждает участника и открывает стол под твоим именем.' : S.sso ? 'Единый вход AI Mindset: тот же аккаунт, что в других сервисах лабы. На столе будет видно твоё имя у каждой версии.' : S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
       box,
       S.lanes && S.lanes.length ? [lanesBlock(true), trailBlock(6)] : null,
       h('div', { class: 'keys' }, h('kbd', null, 'T'), 'тема ', h('kbd', null, 'G'), 'шар глифами или сплошной'),

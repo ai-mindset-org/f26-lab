@@ -436,7 +436,7 @@ def main():
         print("живой режим")
         table3 = tmp / "live"
         subprocess.run([sys.executable, RELAY, "init", str(table3)], env=env, capture_output=True)
-        env3 = dict(env, RELAY_SESSION_SECRET="s" * 40, RELAY_MINT_SECRET="m" * 40)
+        env3 = dict(env, RELAY_SESSION_SECRET="s" * 40, RELAY_MINT_SECRET="m" * 40, RELAY_FRAME_ANCESTORS="https://lms.example")
         r = subprocess.run([sys.executable, RELAY, "serve", str(table3), "--live"], env=env, capture_output=True, text=True)
         say("без секрета сессии живой режим не стартует", r.returncode == 2 and "RELAY_SESSION_SECRET" in r.stderr)
         pt = port()
@@ -469,7 +469,17 @@ def main():
             say("LMS получает ссылку на тот же стол", code == 200 and d.get("authorized") and d.get("surface") == "lms", str(d))
             lms = Client(pt)
             code, _, loc = lms.call("GET", "/auth/complete" + d["auth_link"].split("/auth/complete")[1])
-            say("вход из LMS открывает стол в теме LMS", code == 302 and loc == "/?skin=lms", str(loc))
+            say("вход из LMS открывает версию для LMS", code == 302 and loc == "/lms/", str(loc))
+            say("под /lms/ та же сессия и тот же стол", lms.call("GET", "/lms/api/auth/me")[1]["viewer"]["login"] == "chizh" and len(lms.call("GET", "/lms/api/state")[1]["lanes"]) == len(lms.call("GET", "/api/state")[1]["lanes"]))
+            import urllib.request as _ur
+            def _csp(path):
+                with _ur.urlopen(f"http://127.0.0.1:{pt}{path}") as r:
+                    return r.headers.get("Content-Security-Policy", "")
+            say("рамкой встаёт только версия для LMS и карточка", "frame-ancestors 'none'" in _csp("/") and "frame-ancestors 'self' https://lms.example" in _csp("/lms/") and "frame-ancestors 'self' https://lms.example" in _csp("/card") and "frame-ancestors 'none'" in _csp("/about"), _csp("/lms/"))
+            shell = Client(pt).call("GET", "/shell.js")[1]
+            say("переключателя веб и LMS нет, вид задаёт адрес", "surf" not in str(shell) and "skin=" not in str(shell) and "lms" in str(shell), str(shell)[:80])
+            code, page, _ = Client(pt).call("GET", "/lms-preview")
+            say("макет размещения в LMS открывается", code == 200 and "lms/" in str(page) and "card" in str(page))
             log = lms.call("GET", "/api/log?n=40")[1]["events"]
             say("в сессии и в журнале вход помечен «LMS»", lms.call("GET", "/api/auth/me")[1]["viewer"]["auth"] == "LMS" and any(e["kind"] == "enter" and e["what"] == "вход: LMS" for e in log))
             w = lms.call("GET", "/api/whoami")[1]
