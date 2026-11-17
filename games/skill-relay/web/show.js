@@ -33,6 +33,16 @@
     if (body) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
     return fetch(path, o).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('ошибка ' + r.status)); return d; }); });
   }
+  var KN = { protocol: 'протокол', logic: 'логика', border: 'граница', example: 'пример', rake: 'грабля', check: 'проверка', trim: 'сжатие' };
+  function kindTag(k) { return k && KN[k] ? h('span', { class: 'kind tag' }, window.ART.kind(k), KN[k]) : null; }
+  // лента версий первой дорожки: за ней идёт весь прогон
+  function ribbon(l) {
+    var vs = l.versions || [];
+    return h('div', { class: 'vr' }, h('span', { class: 'v0' }, 'v0'),
+      vs.map(function (v, i) { return h('span', { class: 'nd' + (i === vs.length - 1 ? ' last' : ''), title: 'v' + v.n + ' · ' + (KN[v.kind] || '') }, h('span', null, window.ART.kind(v.kind) || '·')); }),
+      l.status === 'бежит' ? [h('span', { class: 'nd next' }, h('span', null, '+')), h('span', { class: 'cur' }, 'вносит ' + l.runner + (l.doing ? ' · ' + KN[l.doing] : ''))] :
+        h('span', { class: 'cur' }, vs.length ? 'лежит v' + vs.length + ' · свободен' : 'лежит базовая версия · свободен'));
+  }
   function how(e) { return e.via === 'агент' ? 'агент' + (e.agent ? ' ' + e.agent : '') : e.via; }
 
   function card(c) {
@@ -51,19 +61,18 @@
   }
   function win(w) {
     var mine = w.lanes.filter(function (l) { return l.mine; })[0];
-    var right = mine ? ['держит палочку · ', h('em', { 'data-until': mine.until }, clock(mine.until - now()))] :
+    var right = mine ? ['вносит изменение · ', h('em', { 'data-until': mine.until }, clock(mine.until - now()))] :
       w.rest_until ? ['пауза ', h('em', { 'data-until': w.rest_until }, clock(w.rest_until - now()))] : (w.auth ? 'вход: ' + w.auth : 'входа нет');
     return h('div', { class: 'win' + (mine ? ' act' : '') },
       h('div', { class: 'bar' }, h('span', null, h('b', null, w.name), ' · ' + w.harness), h('span', null, right)),
       h('div', { class: 'ls' }, w.lanes.map(function (l) {
-        var st = l.mine ? 'у тебя' : l.status === 'бежит' ? 'у ' + ({ 'Сова': 'Совы', 'Лис': 'Лиса', 'Ёж': 'Ежа' }[l.runner] || l.runner) : (l.why_not || '').indexOf('пауза') === 0 ? 'пауза' : 'свободна';
+        var st = l.mine ? 'у тебя' : l.status === 'бежит' ? 'у ' + ({ 'Сова': 'Совы', 'Лис': 'Лиса', 'Ёж': 'Ежа' }[l.runner] || l.runner) : (l.why_not || '').indexOf('пауза') === 0 ? 'пауза' : 'свободен';
         var hop = l.mine && held[l.id] !== w.login && !first;
         return h('div', { class: 'wl' + (l.mine ? ' mine' : '') + (hop ? ' hop' : '') },
-          h('span', { class: 'no' }, two(l.n)), h('span', { class: 't' }, l.title, h('i', null, l.laps + ' ' + plural(l.laps))), h('span', { class: 'st' }, st));
+          h('span', { class: 'no' }, two(l.n)), h('span', { class: 't' }, l.title, h('i', null, 'v' + l.laps)), h('span', { class: 'st' }, st));
       })),
       card(w.card));
   }
-  function plural(n) { return n % 10 === 1 && n % 100 !== 11 ? 'передача' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'передачи' : 'передач'; }
   function render() {
     var n = S.step, last = S.total - 1;
     $('ph').textContent = '{ шаг ' + two(n) + ' из ' + two(last) + ' }';
@@ -72,6 +81,8 @@
     $('kick').textContent = '{ один круг по шагам · каждое действие настоящее · разбор: ' + (S.model || 'по признакам, шаг отвечает сразу') + ' }';
     $('prev').disabled = busy || n === 0; $('next').disabled = busy || n === last;
     $('next').textContent = busy ? 'идёт шаг…' : n === last ? 'конец круга' : 'дальше →';
+    var l0 = S.windows[0].lanes[0];
+    fill($('ver'), h('div', { class: 'vt' }, h('b', null, 'skill 01 · ' + l0.title), h('span', null, l0.what || '')), ribbon(l0));
     fill($('wins'), S.windows.map(win));
     S.windows.forEach(function (w) { w.lanes.forEach(function (l) { if (l.mine) held[l.id] = w.login; else if (held[l.id] === w.login) delete held[l.id]; }); });
     fill($('log'), S.log.length ? S.log.map(function (e) {
@@ -84,9 +95,10 @@
     }) : h('div', { class: 'e sys' }, h('span', null, '·'), h('b', null, 'система'), h('span', null, 'стол ждёт: никто не вошёл')));
     $('jlab').textContent = 'журнал стола · записей ' + S.log.length + ' · свежие сверху';
     fill($('files'), (S.files || []).length ? S.files.map(function (f) { return h('div', null, f); }) : h('div', null, 'на этом шаге стол не менялся'));
-    fill($('chain'), S.chain.length ? [h('div', { class: 'lab' }, 'цепочка дорожки 01 · от чьего лица и через что'), S.chain.map(function (c) {
-      return h('div', { class: 'c' }, h('b', null, 'передача ' + c.n + ' · ' + c.runner), h('span', null, ' · ' + c.rule + ' ' + c.rule_title), h('br'),
-        h('span', null, 'правку прислал: ' + (c.via === 'агент' ? 'агент ' + c.agent : c.via) + ' · передал: человек, ' + c.passed + ' · вход: ' + c.auth), h('br'),
+    fill($('chain'), S.chain.length ? [h('div', { class: 'lab' }, 'лог версий дорожки 01 · от чьего лица и через что'), S.chain.slice().reverse().map(function (c) {
+      return h('div', { class: 'c' }, h('b', null, 'v' + c.n + ' · ' + c.runner + ' '), kindTag(c.kind), h('span', null, ' ' + c.rule + ' ' + c.rule_title), h('br'),
+        h('span', null, c.note), h('br'),
+        h('span', null, 'прислал: ' + (c.via === 'агент' ? 'агент ' + c.agent : c.via) + ' · закоммитил: человек, ' + c.passed + ' · вход: ' + c.auth), h('br'),
         h('span', null, 'разбор: ' + c.verdict + ' · ' + c.by + ' · −' + c.minus + ' / +' + c.plus + ' строк · версия ' + c.digest));
     })] : null);
     fill($('rail'), S.steps.map(function (t, i) {

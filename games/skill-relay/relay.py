@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """эстафета skills · открытая беговая эстафета.
 
-Пять палочек (SKILL.md) лежат на дорожках. Участник входит под своим логином, берёт свободную
-палочку (дорожка закрывается за ним), примеряет skill у себя, вносит одну правку по правилу
-из гайдов, получает разбор и передаёт палочку дальше. После взятия час паузы на все дорожки.
-Считается, сколько раз каждый skill прошёл передачу.
+Пять skills (SKILL.md) лежат на дорожках. Участник входит под своим логином, берёт свободный
+skill (дорожка закрепляется за ним), вносит одно изменение по правилу из гайдов и коммитит его
+за пять минут: в дорожке лежит новая версия. После взятия пауза на все дорожки.
+У каждого skill видна лента версий: кто, какое изменение и через какого агента.
 
   python3 relay.py init   <стол> [--demo] [--heats N]     создать стол
   python3 relay.py serve  <стол> --demo [--bots 8]        деморежим: «час» за 7 минут, места без входа, бегуны-боты
   python3 relay.py serve  <стол> --live [--open]          живой режим: вход по ссылке, час паузы, разбор моделью
   python3 relay.py mint   <стол> --login <ник> --name ..  ссылка для входа (ручная выдача)
   python3 relay.py state  <стол>                          таблица дорожек
-  python3 relay.py lint   <SKILL.md>                      проверка текста палочки
+  python3 relay.py lint   <SKILL.md>                      проверка текста skill
   python3 relay.py rules                                  собрать guides/RULES.md из rules.json
   python3 relay.py guides                                 скачать оригиналы гайдов в guides/raw/
 
@@ -48,7 +48,7 @@ GUIDES = HERE / "guides"
 LOGIN = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
 SKILL_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 MAX_LINES, MAX_CHARS, MAX_CHANGED, MAX_REVIEWS = 180, 14000, 12, 3
-HOUR_LIVE, LOCK_LIVE = 3600, 1200
+HOUR_LIVE, LOCK_LIVE = 3600, 300  # одно изменение коммитится за пять минут
 TICKET_TTL, SESSION_TTL = 900, 30 * 24 * 3600
 MODEL_DEFAULT = "anthropic/claude-sonnet-5.5"
 MODEL_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -68,6 +68,12 @@ def load_rules():
 
 
 RULES, BOOK = load_rules()
+KINDS = {k["id"]: k for k in BOOK.get("kinds", [])}
+
+
+def kind_of(rule):
+    """вид одного изменения: протокол, логика, граница, пример, грабля, проверка, сжатие"""
+    return RULES.get(rule, {}).get("kind", "")
 MEMO = {}  # разборы прогона: повтор шага не зовёт модель второй раз
 
 # ---------- проверка текста: факты, решение за человеком ----------
@@ -147,9 +153,9 @@ def facts(text, skill=True):
     lines = text.split("\n")
     if skill:
         if len(lines) > MAX_LINES:
-            add("стоп", 0, f"{len(lines)} строк, палочка до {MAX_LINES}: оставь ядро")
+            add("стоп", 0, f"{len(lines)} строк, skill до {MAX_LINES}: оставь ядро")
         if len(text) > MAX_CHARS:
-            add("стоп", 0, f"{len(text)} знаков, палочка до {MAX_CHARS}")
+            add("стоп", 0, f"{len(text)} знаков, skill до {MAX_CHARS}")
         fm = frontmatter(text)
         if fm is None:
             add("стоп", 1, "нет шапки: первые строки --- name, description ---")
@@ -493,7 +499,10 @@ def write(path, text):
 def skill_meta(text):
     m = re.search(r"Уровень (\d) · тема «([^»]+)»", text)
     h1 = re.search(r"(?m)^# (.+)$", text)
-    return {"level": int(m.group(1)) if m else 0, "theme": m.group(2) if m else "", "title": h1.group(1).strip() if h1 else ""}
+    desc = (frontmatter(text) or {}).get("description", "")
+    what = re.split(r"\s+Бери, когда", desc)[0].strip()
+    return {"level": int(m.group(1)) if m else 0, "theme": m.group(2) if m else "", "title": h1.group(1).strip() if h1 else "",
+            "what": what if len(what) <= 170 else what[:168].rstrip() + "…"}
 
 
 def kit():
@@ -611,7 +620,7 @@ def do_init(root, heats=1, demo=False, seats=6):
 
 def relay_md(t, lid):
     lane = t.st["lanes"][lid]
-    rows = ["# дорожка " + lid, "", f"skill `{lane['skill']}` · передач {lane['laps']}", "",
+    rows = ["# дорожка " + lid, "", f"skill `{lane['skill']}` · версия v{lane['laps']}", "",
             "| № | бегун | правило | что поменял | строк −/+ | разбор | версия |", "|---|---|---|---|---|---|---|"]
     for n in range(0, lane["laps"] + 1):
         m, _ = t.leg(lid, n)
@@ -637,7 +646,7 @@ class Game:
                 lane["freed"] = int(now)
                 self.t.st["runners"].setdefault(lk["login"], {}).setdefault("dropped", 0)
                 self.t.st["runners"][lk["login"]]["dropped"] += 1
-                self.t.event("система", f"замок истёк ({self.t.name(lk['login'])}): палочка вернулась на старт без правки", lid, kind="expire")
+                self.t.event("система", f"срок вышел ({self.t.name(lk['login'])}): skill снова свободен, без изменения", lid, kind="expire")
                 changed = True
         return changed
 
@@ -654,9 +663,9 @@ class Game:
     def why_not(self, login, lid):
         lane = self.t.st["lanes"][lid]
         if lane.get("lock"):
-            return "палочка в руках у " + self.t.name(lane["lock"]["login"])
+            return "skill сейчас в руках у " + self.t.name(lane["lock"]["login"])
         if self.holding(login):
-            return "у тебя уже есть палочка: сначала передай её"
+            return "у тебя уже есть skill в работе: сначала закоммить его"
         left = self.rest_left(login)
         if left:
             return f"пауза: следующий забег через {left // 60}:{left % 60:02d}"
@@ -681,7 +690,7 @@ class Game:
                                               "token": secrets.token_urlsafe(18), "reviews": 0, "draft": None}
             r = self.t.st["runners"].setdefault(login, {})
             r["last_take"] = int(now)
-            self.t.event(login, "палочка взята: дорожка закрыта за логином на " + (f"{round(hold / 60)} мин" if hold >= 60 else f"{round(hold)} с"),
+            self.t.event(login, "skill взят: закреплён за логином на " + (f"{round(hold / 60)} мин" if hold >= 60 else f"{round(hold)} с"),
                          lid, kind="take", via=via)
             self.t.save()
             return self.t.st["lanes"][lid]["lock"]
@@ -689,7 +698,7 @@ class Game:
     def held(self, login, lid):
         lane = self.t.st["lanes"].get(lid)
         if not lane or not lane.get("lock") or lane["lock"]["login"] != login:
-            raise Refuse("эта палочка сейчас не у тебя")
+            raise Refuse("этот skill сейчас не у тебя")
         return lane
 
     def by_token(self, token):
@@ -758,13 +767,11 @@ class Game:
                 errors.append("выбери правило, по которому сделана правка")
             if len(fields["note"]) < 10:
                 errors.append("напиши одной фразой, что поменял и зачем")
-            if len(fields["tried"]) < 5:
-                errors.append("напиши, на чём примерил skill: тип входа одной строкой, без имён и данных")
             minus, plus, rows = changed_lines(old, text)
             if not rows:
                 errors.append("текст не изменился: одна правка обязательна")
             if max(minus, plus) > MAX_CHANGED:
-                errors.append(f"изменено строк {max(minus, plus)}, за одну передачу до {MAX_CHANGED}: оставь одну правку")
+                errors.append(f"изменено строк {max(minus, plus)}, за одно изменение до {MAX_CHANGED}: оставь одно")
             fm = frontmatter(text) or {}
             if fm.get("name") != lane["skill"]:
                 errors.append(f"имя skill в шапке меняется только в ките: верни name: {lane['skill']}")
@@ -772,7 +779,7 @@ class Game:
             extra = [dict(f, rule="в записке: " + f["rule"]) for k in fields for f in facts(fields[k], skill=False) if f["level"] == "стоп"]
             found += extra
             if stops(found):
-                errors.append("проверка текста остановила палочку: смотри строки «стоп»")
+                errors.append("проверка текста остановила изменение: смотри строки «стоп»")
             base = {"lane": lid, "minus": minus, "plus": plus, "diff": rows[:60], "facts": found, "errors": errors,
                     "lines": len(text.split("\n")) - 1, "digest": digest(text), "reviews_left": MAX_REVIEWS - lk["reviews"]}
             if errors:
@@ -788,7 +795,7 @@ class Game:
                 return dict(base, ok=True, review=lk["draft"]["review"])
             if lk["reviews"] >= MAX_REVIEWS:
                 return dict(base, ok=False, review=(lk.get("draft") or {}).get("review"),
-                            errors=[f"разборов на этот забег было {MAX_REVIEWS}: передай последнюю разобранную версию или верни палочку на старт"])
+                            errors=[f"разборов на одно изменение было {MAX_REVIEWS}: закоммить последнюю разобранную версию или верни skill без изменения"])
             lk["reviews"] += 1
             self.t.save()
         mk = (rule, digest(old), digest(text))
@@ -818,7 +825,7 @@ class Game:
             if dr["review"]["verdict"] != "принять" and not anyway:
                 raise Refuse("разбор просит доработать. Исправь и проверь снова или передай с замечанием: следующий бегун его увидит")
             if stops(facts(dr["text"])):
-                raise Refuse("проверка текста остановила палочку")
+                raise Refuse("проверка текста остановила изменение")
             n = lane["laps"] + 1
             d = self.t.lane_dir(lid)
             prev = digest(self.t.text(lid))
@@ -834,12 +841,12 @@ class Game:
             lane.setdefault("applied", []).append(dr["rule"])
             r = self.t.st["runners"].setdefault(login, {})
             r["legs"] = r.get("legs", 0) + 1
-            self.t.event(login, f"передача {n} записана · {dr['rule']} · {cut(dr['note'], 70)}", lid, kind="give", via=via,
+            self.t.event(login, f"версия v{n} записана · {dr['rule']} · {cut(dr['note'], 70)}", lid, kind="give", via=via,
                          agent=dr.get("agent", "") if via != "страница" else "")
             relay_md(self.t, lid)
             self.t.save()
             if self.use_git:
-                self.commit(f"передача {n} · {lid} · {dr['rule']} · {login}")
+                self.commit(f"v{n} · {lid} · {dr['rule']} · {login}")
             return meta
 
     def drop(self, login, lid, via="страница"):
@@ -850,7 +857,7 @@ class Game:
             lane["freed"] = int(time.time())
             r = self.t.st["runners"].setdefault(login, {})
             r["dropped"] = r.get("dropped", 0) + 1
-            self.t.event(login, "палочка возвращена на старт без правки", lid, kind="drop", via=via)
+            self.t.event(login, "skill возвращён без изменения", lid, kind="drop", via=via)
             self.t.save()
 
     def commit(self, message):
@@ -879,9 +886,12 @@ class Game:
                 row = {"id": lid, "n": i, "skill": lane["skill"], "heat": lane["heat"], "title": meta["title"], "level": meta["level"],
                        "theme": meta["theme"], "laps": lane["laps"], "lines": len(text.split("\n")) - 1, "digest": digest(text),
                        "status": "бежит" if lk else "свободна", "last_rule": (lane.get("applied") or [""])[-1],
-                       "last_runner": self.t.name(lane["last_runner"]) if lane.get("last_runner") else ""}
+                       "last_runner": self.t.name(lane["last_runner"]) if lane.get("last_runner") else "",
+                       "what": meta["what"], "versions": [{"n": k, "rule": r, "kind": kind_of(r)} for k, r in enumerate(lane.get("applied") or [], 1)][-12:]}
+                row["last_kind"] = kind_of(row["last_rule"])
                 if lk:
-                    row.update(runner=self.t.name(lk["login"]), since=lk["since"], until=lk["until"], mine=lk["login"] == login)
+                    row.update(runner=self.t.name(lk["login"]), since=lk["since"], until=lk["until"], mine=lk["login"] == login,
+                               doing=kind_of((lk.get("draft") or {}).get("rule", "")))
                 else:
                     row["idle_since"] = lane.get("freed") or st.get("created", 0)
                 if login:
@@ -913,7 +923,7 @@ class Game:
             lk = self.held(login, lid)["lock"]
             if not lk.get("agent_seen"):
                 lk["agent_seen"] = True
-                self.t.event(login, "агент забрал палочку по ключу забега", lid, kind="agent", via="агент", agent=agent)
+                self.t.event(login, "агент забрал skill по ключу", lid, kind="agent", via="агент", agent=agent)
                 self.t.save()
 
     def describe(self, login, lid, d):
@@ -968,7 +978,8 @@ class Game:
             legs, prev = [], None
             for n in range(0, lane["laps"] + 1):
                 m, text = self.t.leg(lid, n)
-                row = dict(m, runner=self.t.name(m.get("runner", "")) if n else "кит", rule_title=RULES.get(m.get("rule", ""), {}).get("title", ""))
+                row = dict(m, runner=self.t.name(m.get("runner", "")) if n else "кит", rule_title=RULES.get(m.get("rule", ""), {}).get("title", ""),
+                           kind=kind_of(m.get("rule", "")))
                 if prev is not None:
                     row["diff"] = changed_lines(prev, text)[2][:40]
                 prev = text
@@ -1107,19 +1118,18 @@ def renew(game):
 
 SHOW_CAST = [("sova", "Сова", "Claude Code"), ("lis", "Лис", "Codex"), ("ezh", "Ёж", "чат в браузере")]
 SHOW_STEPS = [
-    ("стол открыт", "Пять skills лежат на дорожках. В системе никого: журнал показывает, что стол ждёт."),
-    ("вход", "Сова, Лис и Ёж входят под своими логинами. В живой игре это одноразовая ссылка из бота или из LMS. В журнале видно, кто вошёл и каким способом."),
-    ("взять", "Сова берёт дорожку 01. Дорожка закрыта за её логином на 20 минут: у Лиса и Ежа она занята. У Совы пошёл час паузы на остальные дорожки."),
-    ("агент забирает палочку", "Сова отдаёт своему агенту одну команду с ключом забега. Агент получает текст skill, пределы и три места, где одна правка даст больше всего."),
-    ("агент правит и объясняет", "Агент примеряет skill на задаче Совы, вносит одну правку и сам пишет три строки: что поменял и зачем, на чём примерил, записка следующему. Сервер проверяет текст и отдаёт разбор."),
-    ("человек передаёт", "Сова читает карточку агента и нажимает «передать». Версия записана: файл передачи, цепочка дорожки, журнал. Счётчик дорожки стал 1: skill прошёл через одни руки."),
-    ("палочка в другом окне", "Дорожка 01 снова свободна, и её берёт Лис. В его окне skill уже с правкой Совы, рядом её записка и разбор."),
-    ("стоп: личное в правке", "Агент Лиса дописал граблю с названием компании и почтой. Проверка текста остановила правку до разбора. Причина записана в журнал."),
-    ("исправил и передал", "Агент убрал личное и прислал правку заново. Разбор её принял, Лис передал. Счётчик дорожки 2."),
-    ("пауза", "Сова хочет взять следующую дорожку. Система отказывает: после взятия час паузы на все дорожки."),
-    ("не успел", "Ёж взял дорожку 03 и ушёл. Замок истёк, система сама вернула палочку на старт: дорожка свободна, пауза у Ежа осталась."),
-    ("что записано", "Дорожка 01 прошла две передачи. У каждой версии в цепочке видно, от чьего лица она передана, через какого агента, по какому правилу и что сказал разбор."),
+    ("стол и задача", "Пять skills лежат на дорожках. Задача у всех одна: взять skill, внести одно изменение и закоммитить его за пять минут. Пока никто не вошёл, журнал ведёт система."),
+    ("взять", "Сова, Лис и Ёж входят под своими логинами. Сова берёт skill 01: он закреплён за ней на пять минут, у Лиса и Ежа дорожка занята."),
+    ("одно изменение", "Сова отдаёт агенту задание с ключом забега. Агент примеряет skill на её задаче и добавляет одно: здесь это пример. Сам пишет, что изменил и зачем. Сервер проверяет текст и отдаёт разбор."),
+    ("коммит: версия v1", "Сова читает изменение и нажимает «закоммитить». В дорожке лежит новая версия v1: файл версии, лента версий и журнал обновились."),
+    ("следующий берёт v1", "Дорожку берёт Лис. В его окне skill уже с изменением Совы, рядом её записка."),
+    ("стоп: личное в изменении", "Агент Лиса дописал граблю с названием компании и почтой. Проверка текста остановила изменение до разбора, причина записана в журнал."),
+    ("версия v2", "Агент убрал личное и прислал изменение заново. Разбор принял, Лис закоммитил: в дорожке версия v2."),
+    ("пауза и срок", "Сова хочет взять ещё один skill: система отказывает, после взятия идёт пауза. Ёж взял skill 03 и не уложился в срок: система сама вернула его свободным, без изменения."),
+    ("лог версий", "У каждой версии видно, от чьего лица она закоммичена, через какого агента, какое изменение внесено и что сказал разбор."),
 ]
+# шаг прогона = один или два хода стола; номера ходов прежние, поэтому сценарий не менялся
+SHOW_PLAN = [[], [1, 2], [3, 4], [5], [6], [7], [8], [9, 10], [11]]
 
 
 class Show:
@@ -1143,6 +1153,13 @@ class Show:
                 "verdict": rv.get("verdict", ""), "by": rv.get("by", ""), "comment": rv.get("comment", "")}
 
     def run(self, n):
+        files = []
+        for m in SHOW_PLAN[n]:
+            self.move(m)
+            files += [f for f in self.files if f not in files]
+        self.files = files
+
+    def move(self, n):
         g, t, L = self.game, self.game.t, self.lane
         with GATE:
             t.load()
@@ -1155,41 +1172,41 @@ class Show:
             self.files = ["roster.json", "events.jsonl", "TRAIL.md"]
         elif n == 2:
             g.take("sova", L)
-            self.cards["sova"] = {"title": "палочка у Совы", "note": "Ключ забега выдан: по нему агент читает палочку и присылает правку."}
+            self.cards["sova"] = {"title": "задача у Совы", "note": "Одно изменение в skill, пять минут. Ключ забега выдан: по нему агент читает skill и присылает изменение."}
             self.files = ["state.json: замок и ключ забега", "events.jsonl", "TRAIL.md"]
         elif n == 3:
             g.agent_seen("sova", L, "Claude Code")
             a = g.analysis("sova", L)
-            self.cards["sova"] = {"title": "агент получил палочку", "by": a["by"], "candidates": [{"rule": c["rule"], "title": c["title"], "why": c["why"]} for c in a["candidates"]]}
+            self.cards["sova"] = {"title": "агент получил skill", "by": a["by"], "candidates": [{"rule": c["rule"], "title": c["title"], "why": c["why"]} for c in a["candidates"]]}
             self.files = ["GET /api/leg: текст, пределы, три правила", "events.jsonl"]
         elif n == 4:
             x = fx[0]
             res = g.check("sova", L, {"text": old.replace(x["find"], x["replace"], 1), "rule": x["rule"], "note": x["note"], "tried": x["tried"], "next": x.get("next", "")},
                           use_model=self.use_model, via="агент", agent="Claude Code")
-            self.cards["sova"] = dict(self.card(res, "агент прислал правку"), rule=x["rule"], note=x["note"], tried=x["tried"], next=x.get("next", ""))
+            self.cards["sova"] = dict(self.card(res, "агент прислал одно изменение"), rule=x["rule"], note=x["note"], tried=x["tried"], next=x.get("next", ""))
             self.files = ["POST /api/leg/check: правка и три строки", "state.json: черновик с разбором", "events.jsonl"]
         elif n == 5:
             m = g.give("sova", L, anyway=True)
-            self.cards["sova"] = {"title": "передано", "note": f"Передача {m['n']} записана от лица Совы. Правку прислал агент {m['agent']}, передал человек со страницы."}
+            self.cards["sova"] = {"title": f"версия v{m['n']} лежит", "note": f"Изменение закоммичено от лица Совы. Прислал агент {m['agent']}, коммит нажал человек со страницы."}
             self.files = [f"lanes/{L}/legs/001.md", f"lanes/{L}/legs/001.json", f"lanes/{L}/RELAY.md"] + base
         elif n == 6:
             g.take("lis", L)
             m, _ = t.leg(L, 1)
-            self.cards["lis"] = {"title": "палочка у Лиса", "note": "Записка от Совы: " + (m.get("next") or m.get("note", "")), "verdict": m["review"]["verdict"], "by": m["review"].get("by", "")}
+            self.cards["lis"] = {"title": "v1 у Лиса", "note": "Записка от Совы: " + (m.get("next") or m.get("note", "")), "verdict": m["review"]["verdict"], "by": m["review"].get("by", "")}
             self.files = ["state.json: замок и ключ забега", "events.jsonl", "TRAIL.md"]
         elif n == 7:
             bad = old.replace("\n\n## никогда", "\n- Отчёт для «Ромашка Трейд» ушёл с ошибкой в сумме, вопросы на otchet@romashka.example.\n\n## никогда", 1)
             g.agent_seen("lis", L, "Codex")
             res = g.check("lis", L, {"text": bad, "rule": "G-08", "note": "грабля из примерки: в отчёте ушла неверная сумма", "tried": "отчёт для заказчика", "next": ""},
                           use_model=self.use_model, via="агент", agent="Codex")
-            self.cards["lis"] = dict(self.card(res, "проверка остановила правку"), rule="G-08")
-            self.files = ["events.jsonl: причина остановки", "палочка не изменилась"]
+            self.cards["lis"] = dict(self.card(res, "проверка остановила изменение"), rule="G-08")
+            self.files = ["events.jsonl: причина остановки", "skill не изменился"]
         elif n == 8:
             x = fx[1]
             res = g.check("lis", L, {"text": old.replace(x["find"], x["replace"], 1), "rule": x["rule"], "note": x["note"], "tried": x["tried"], "next": x.get("next", "")},
                           use_model=self.use_model, via="агент", agent="Codex")
             g.give("lis", L, anyway=True)
-            self.cards["lis"] = dict(self.card(res, "принято и передано"), rule=x["rule"], note=x["note"], tried=x["tried"])
+            self.cards["lis"] = dict(self.card(res, "версия v2 лежит"), rule=x["rule"], note=x["note"], tried=x["tried"])
             self.files = [f"lanes/{L}/legs/002.md", f"lanes/{L}/legs/002.json", f"lanes/{L}/RELAY.md"] + base
         elif n == 9:
             try:
@@ -1204,7 +1221,7 @@ class Show:
                 t.load()
                 g.sweep()
                 t.save()
-            self.cards["ezh"] = {"title": "замок истёк", "note": "Палочка вернулась на старт без правки. Пауза у Ежа идёт от момента взятия."}
+            self.cards["ezh"] = {"title": "срок вышел", "note": "Skill вернулся свободным, без изменения. Пауза у Ежа идёт от момента взятия."}
             self.files = ["state.json: замок снят", "events.jsonl: запись от системы", "TRAIL.md"]
         elif n == 11:
             self.files = [f"lanes/{L}/RELAY.md", f"lanes/{L}/legs/000.md … 002.md", "events.jsonl", "TRAIL.md"]
@@ -1234,13 +1251,13 @@ class Show:
             v = pub["viewer"]
             wins.append({"login": login, "name": name, "harness": harness, "auth": v.get("auth", ""), "rest_until": v["rest_until"] if v["rest"] > 0 else 0,
                          "holding": v["holding"], "legs": v["legs"], "card": self.cards.get(login),
-                         "lanes": [{k: l.get(k) for k in ("id", "n", "title", "laps", "status", "runner", "mine", "until", "why_not")} for l in pub["lanes"]]})
+                         "lanes": [{k: l.get(k) for k in ("id", "n", "title", "laps", "status", "runner", "mine", "until", "why_not", "versions", "doing", "what")} for l in pub["lanes"]]})
         chain = []
         with GATE:
             t.load()
             for n in range(1, t.st["lanes"][self.lane]["laps"] + 1):
                 m, _ = t.leg(self.lane, n)
-                chain.append({"n": n, "runner": t.name(m["runner"]), "rule": m["rule"], "rule_title": RULES.get(m["rule"], {}).get("title", ""), "note": m["note"],
+                chain.append({"n": n, "runner": t.name(m["runner"]), "rule": m["rule"], "rule_title": RULES.get(m["rule"], {}).get("title", ""), "note": m["note"], "kind": kind_of(m["rule"]),
                               "via": m.get("via", ""), "agent": m.get("agent", ""), "auth": m.get("auth", ""), "passed": m.get("passed", ""),
                               "minus": m["minus"], "plus": m["plus"], "digest": m["digest"], "verdict": m["review"]["verdict"], "by": m["review"].get("by", "")})
         return {"step": self.step, "total": len(SHOW_STEPS), "steps": [x[0] for x in SHOW_STEPS], "title": SHOW_STEPS[self.step][0], "text": SHOW_STEPS[self.step][1],
@@ -1405,7 +1422,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", "")})
                     return self.out(200, game.public(viewer))
                 if u.path == "/api/rules":
-                    return self.out(200, {"rules": list(RULES.values()), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
+                    return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
                                           "sources": json.loads((GUIDES / "sources.json").read_text(encoding="utf-8")),
                                           "limits": {"lines": MAX_LINES, "changed": MAX_CHANGED, "reviews": MAX_REVIEWS}})
                 if u.path == "/api/show":
@@ -1559,13 +1576,21 @@ def cmd_state(root):
 def cmd_rules():
     src = json.loads((GUIDES / "sources.json").read_text(encoding="utf-8"))
     keys = {g["key"]: g for g in src["guides"] + src.get("research", [])}
-    rows = ["# правила развития skills", "",
-            "Книга эстафеты: по одному правилу на передачу. Собрано из гайдов, формулировки свои, первоисточники ниже.",
-            "Файл собирается командой `python3 relay.py rules` из `rules.json`.", ""]
-    for r in RULES.values():
-        refs = " · ".join(f"[{keys[k]['title']}]({keys[k]['url']})" if k in keys else "правило эстафеты" for k in r["src"])
-        rows += [f"## {r['id']} · {r['title']}", "", f"**Вопрос.** {r['ask']}", "", f"**Правка.** {r['fix']}", "",
-                 f"**Практика.** {r.get('why', '')}", "", f"Источник: {refs}", ""]
+    rows = ["# одно изменение: виды и правила", "",
+            "Книга эстафеты. Участник берёт skill, вносит одно изменение по одному правилу и коммитит его за пять минут: в дорожке лежит новая версия.",
+            "Собрано из гайдов, формулировки свои, первоисточники ниже. Файл собирается командой `python3 relay.py rules` из `rules.json`.", "",
+            "| вид изменения | что это | правила |", "|---|---|---|"]
+    for k in BOOK.get("kinds", []):
+        rows.append(f"| {k['add']} | {k['text']} | {', '.join(r['id'] for r in RULES.values() if r.get('kind') == k['id'])} |")
+    rows.append("")
+    for k in BOOK.get("kinds", []):
+        rows += [f"# {k['add']}", "", k["text"], ""]
+        for r in RULES.values():
+            if r.get("kind") != k["id"]:
+                continue
+            refs = " · ".join(f"[{keys[x]['title']}]({keys[x]['url']})" if x in keys else "правило эстафеты" for x in r["src"])
+            rows += [f"## {r['id']} · {r['title']}", "", f"**Вопрос.** {r['ask']}", "", f"**Изменение.** {r['fix']}", "",
+                     f"**Практика.** {r.get('why', '')}", "", f"Источник: {refs}", ""]
     rows += ["# настройка skill в харнессе", ""]
     for x in BOOK.get("settings", []):
         rows += [f"## {x['id']} · {x['title']}", "", x["text"], "", "Источник: " + " · ".join(f"[{keys[k]['title']}]({keys[k]['url']})" if k in keys else "соглашение эстафеты" for k in x["src"]), ""]
@@ -1603,7 +1628,7 @@ def main(argv=None):
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--open", action="store_true", help="живой режим: пускать тех, кого нет в составе")
     ap.add_argument("--lan", action="store_true", help="слушать сеть, а не только этот компьютер")
-    ap.add_argument("--git", action="store_true", help="каждую передачу записывать коммитом в репозиторий стола")
+    ap.add_argument("--git", action="store_true", help="каждую версию записывать коммитом в репозиторий стола")
     ap.add_argument("--port", type=int, default=8996)
     ap.add_argument("--heats", type=int, default=1, help="сколько параллельных забегов каждого skill")
     ap.add_argument("--seats", type=int, default=6)

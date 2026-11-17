@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>прогон · эстафета skills · AI Mindset</title>
-<meta name="description" content="Один круг эстафеты skills по шагам: три окна участников, палочка переходит из окна в окно, журнал пишет, кто действовал и через что. Каждое действие настоящее и идёт на отдельном столе.">
+<meta name="description" content="Один круг эстафеты skills по шагам: три окна участников, skill переходит из окна в окно и растёт по одному изменению, журнал пишет, кто действовал и через что. Каждое действие настоящее и идёт на отдельном столе.">
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="pages.css">
+<link rel="stylesheet" href="art.css">
 </head>
 <body data-field>
 <div class="frame"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
@@ -29,6 +30,7 @@
     </div>
   </div>
   <div id="err"></div>
+  <div class="vline" id="ver"></div>
   <div class="wins" id="wins"></div>
   <div class="under">
     <div>
@@ -44,6 +46,7 @@
 </main>
 <div class="rail" id="rail"></div>
 <script src="field.js" defer></script>
+<script src="art.js" defer></script>
 <script src="show.js" defer></script>
 </body>
 </html>

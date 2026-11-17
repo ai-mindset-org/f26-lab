@@ -1,123 +1,81 @@
-# правила развития skills
+# одно изменение: виды и правила
 
-Книга эстафеты: по одному правилу на передачу. Собрано из гайдов, формулировки свои, первоисточники ниже.
-Файл собирается командой `python3 relay.py rules` из `rules.json`.
+Книга эстафеты. Участник берёт skill, вносит одно изменение по одному правилу и коммитит его за пять минут: в дорожке лежит новая версия.
+Собрано из гайдов, формулировки свои, первоисточники ниже. Файл собирается командой `python3 relay.py rules` из `rules.json`.
 
-## G-01 · описание отвечает «что делает» и «когда брать»
+| вид изменения | что это | правила |
+|---|---|---|
+| добавить протокол | Порядок действий: шаг с входом и выходом, чек-лист, остановка перед шагом с последствиями. | G-03, G-05, G-09, G-18 |
+| добавить логику | Условие и ветка: умолчание с условием замены, редкий случай под «читай, если», параметр с умолчанием. | G-04, G-12, G-13, R-01 |
+| добавить границу | Когда skill брать и когда оставить: описание, строка «не бери, если», одна работа на skill. | G-01, G-14, G-17 |
+| добавить пример | Образец результата: пример «вход → выход» на выдуманных данных или шаблон вывода. | G-06, G-07 |
+| добавить граблю | Ошибка из живой примерки и причина требования: что сломалось и как надо. | G-08, G-16 |
+| добавить проверку | Способ понять, что получилось: проверка с ответом «сошлось или нет», проверочная задача. | G-10, G-15 |
+| убрать лишнее | Меньше текста при том же смысле: убрать известное агенту, оставить одно слово на понятие. | G-02, G-11 |
 
-**Вопрос.** По одной строке description агент решает, брать ли skill. В ней названо, что skill делает, и ситуации или слова человека, на которых он нужен? Она написана в третьем лице?
+# добавить протокол
 
-**Правка.** Перепиши description: сначала действие и результат, затем «Бери, когда …» с двумя-тремя живыми формулировками запроса. Без «я помогу» и «ты можешь».
-
-**Практика.** В общем списке агент видит только name и description и по ним решает, брать ли skill. Стандарт даёт описанию до 1024 знаков, Claude Code обрезает его в списке на 1536 знаках вместе с when_to_use: главный случай стоит первым.
-
-Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Optimizing skill descriptions](https://agentskills.io/skill-creation/optimizing-descriptions) · [Claude Code · Extend Claude with skills](https://code.claude.com/docs/en/skills) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
-
-## G-02 · только то, чего агент не знает
-
-**Вопрос.** Каждая строка проходит вопрос «ошибётся ли агент без этой инструкции»? Есть ли объяснения общеизвестного и повторы?
-
-**Правка.** Убери или сожми строки, без которых агент справится. Освободившееся место отдай тому, что знает только автор: соглашения, порядок, тонкие случаи.
-
-**Практика.** Замер SkillsBench на 87 задачах: компактные skills прибавляют 19 пунктов к доле решённых задач, исчерпывающая документация 0,7 пункта.
-
-Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
+Порядок действий: шаг с входом и выходом, чек-лист, остановка перед шагом с последствиями.
 
 ## G-03 · строгость по хрупкости
 
 **Вопрос.** Хрупкие места (где ошибка стоит дорого или порядок важен) заданы точной последовательностью? Гибкие места оставляют агенту выбор?
 
-**Правка.** Найди одно место, где строгость не совпадает с хрупкостью: закрепи порядок там, где он важен, или сними лишний жёсткий запрет там, где годятся разные пути.
+**Изменение.** Найди одно место, где строгость не совпадает с хрупкостью: закрепи порядок там, где он важен, или сними лишний жёсткий запрет там, где годятся разные пути.
 
 **Практика.** Гайд Anthropic называет это степенью свободы: на узком мосту нужны точные шаги, в открытом поле хватает направления.
 
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
 
-## G-04 · умолчание вместо меню
-
-**Вопрос.** Где skill предлагает несколько равных вариантов инструмента или подхода и оставляет выбор без опоры?
-
-**Правка.** Назови один вариант по умолчанию и одной фразой условие, при котором берётся другой.
-
-**Практика.** Перечень равных вариантов заставляет агента выбирать наугад. Гайды дают один путь по умолчанию и короткое условие для запасного.
-
-Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
-
 ## G-05 · шаги с явным входом и выходом
 
 **Вопрос.** Skill учит, как подходить к классу задач, повелительными шагами? У каждого шага понятно, что он берёт и что оставляет следующему?
 
-**Правка.** Перепиши одно расплывчатое место в шаг: глагол, над чем работает, что получается на выходе.
+**Изменение.** Перепиши одно расплывчатое место в шаг: глагол, над чем работает, что получается на выходе.
 
 **Практика.** Skill хранит процедуру: порядок действий, который агент повторит на новой задаче. Описание без шагов агент пересказывает и пропускает.
 
 Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [OpenAI Codex · Build skills](https://developers.openai.com/codex/skills)
 
-## G-06 · шаблон вывода
-
-**Вопрос.** Формат результата показан готовой заготовкой, которую агент заполняет, или описан словами?
-
-**Правка.** Добавь или уточни шаблон результата: заголовки, порядок блоков, что стоит в каждом.
-
-**Практика.** Заготовку агент заполняет точнее, чем следует формату, описанному словами. Строгий шаблон нужен там, где результат читает программа или другой человек.
-
-Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
-
-## G-07 · пример «вход → выход»
-
-**Вопрос.** Есть ли хотя бы один конкретный пример: короткий вход и то, что из него должно получиться?
-
-**Правка.** Добавь один пример на 4–8 строк на выдуманных данных. Он должен показывать трудное место, которое шагами описать сложно.
-
-**Практика.** Пара «вход → выход» задаёт стиль и глубину точнее описания. Примеры пишутся на выдуманных данных.
-
-Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
-
-## G-08 · грабли из живого прогона
-
-**Вопрос.** Есть ли раздел с конкретными ошибками, которые агент делает без подсказки? Пришла ли хоть одна из них из настоящего запуска?
-
-**Правка.** Примерь skill на своём входе. Ошибку, которую пришлось исправлять руками, запиши одной строкой в «грабли»: что агент сделал и как надо.
-
-**Практика.** Гайд agentskills.io называет раздел с граблями самым ценным в skill: это поправки к ошибкам, которые агент делает без подсказки. Запись появляется сразу после живой ошибки.
-
-Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
-
 ## G-09 · чек-лист для длинной работы
 
 **Вопрос.** Если в работе больше пяти шагов или есть зависимости между ними, может ли агент отмечать пройденное и не пропустить шаг?
 
-**Правка.** Собери шаги в чек-лист с отметками и поставь строку «не переходи дальше, пока не отмечено».
+**Изменение.** Собери шаги в чек-лист с отметками и поставь строку «не переходи дальше, пока не отмечено».
 
 **Практика.** Чек-лист держит агента на длинной работе: видно, что пройдено, и есть куда вернуться.
 
 Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
 
-## G-10 · петля проверки
+## G-18 · шаг с последствиями ждёт слова человека
 
-**Вопрос.** После работы агент сверяет результат с чем-то проверяемым и возвращается чинить, если сверка не сошлась? Перед необратимым шагом есть план и его проверка?
+**Вопрос.** Есть ли в skill шаги, которые отправляют, удаляют, платят или меняют что-то за пределами рабочей папки? Перед каждым таким шагом стоит остановка и вопрос человеку?
 
-**Правка.** Добавь одну проверку с понятным «сошлось или нет» и строку «если нет: исправь и проверь снова».
+**Изменение.** Пометь один шаг с последствиями: что агент показывает человеку и какого слова ждёт. Права на инструменты называй узко: команда и её рамка.
 
-**Практика.** Петля «сделал, проверил, исправил» в гайде Anthropic названа главным способом поднять качество. Проверка отвечает «сошлось» или «нет».
+**Практика.** Claude Code даёт таким skills ручной запуск (disable-model-invocation) и узкие права в allowed-tools, Codex отключает неявный запуск через allow_implicit_invocation. Обзор Snyk 10 000 популярных skills: больше 64% подталкивают агента к небезопасным действиям.
 
-Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
+Источник: [Claude Code · Extend Claude with skills](https://code.claude.com/docs/en/skills) · [OpenAI Codex · Build skills](https://developers.openai.com/codex/skills) · [Snyk · Re-Assessing the Security of the Agent Skill Ecosystem](https://research.snyk.io/blog/skill-analysis/)
 
-## G-11 · один термин на одно понятие
+# добавить логику
 
-**Вопрос.** Одно и то же понятие названо одним словом по всему тексту?
+Условие и ветка: умолчание с условием замены, редкий случай под «читай, если», параметр с умолчанием.
 
-**Правка.** Выбери одно слово для понятия, у которого в тексте два или три имени, и замени остальные.
+## G-04 · умолчание вместо меню
 
-**Практика.** Разные слова для одного понятия агент читает как разные понятия.
+**Вопрос.** Где skill предлагает несколько равных вариантов инструмента или подхода и оставляет выбор без опоры?
 
-Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+**Изменение.** Назови один вариант по умолчанию и одной фразой условие, при котором берётся другой.
+
+**Практика.** Перечень равных вариантов заставляет агента выбирать наугад. Гайды дают один путь по умолчанию и короткое условие для запасного.
+
+Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
 ## G-12 · без дат и «сейчас»
 
 **Вопрос.** Есть ли в тексте то, что устареет: годы, версии «на сегодня», слова «недавно» и «новый»?
 
-**Правка.** Замени привязку ко времени на условие («если в инструменте есть …») или вынеси старый способ в отдельную строку «раньше делали так».
+**Изменение.** Замени привязку ко времени на условие («если в инструменте есть …») или вынеси старый способ в отдельную строку «раньше делали так».
 
 **Практика.** Привязка ко времени устаревает молча. Старый способ гайд держит отдельным блоком «раньше делали так».
 
@@ -127,71 +85,151 @@
 
 **Вопрос.** То, что нужно в каждом запуске, стоит в начале? Редкие случаи отделены и помечены условием, когда их читать?
 
-**Правка.** Перенеси один редкий случай в конец под строку «читай, если …» или подними наверх то, что нужно всегда.
+**Изменение.** Перенеси один редкий случай в конец под строку «читай, если …» или подними наверх то, что нужно всегда.
 
 **Практика.** Тело skill грузится целиком при включении. Гайды держат его до 500 строк и около 5000 токенов, редкое выносят в файлы, которые агент открывает по условию.
 
 Источник: [agentskills.io · Specification](https://agentskills.io/specification) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
+## R-01 · параметры общие, личное остаётся дома
+
+**Вопрос.** Всё, что у разных людей разное (язык, объём, читатель, папка, инструмент), вынесено в параметры с умолчаниями? В тексте нет имён, компаний, адресов и чужих данных?
+
+**Изменение.** Вынеси одно зашитое значение в параметр с умолчанием. Свои значения держи у себя в params.md рядом с копией skill: в эстафету они не возвращаются.
+
+**Практика.** Стандарт skills переносим между харнессами. Общий текст с параметрами работает у следующего бегуна, зашитые значения ломаются на первой чужой задаче и выносят личное наружу.
+
+Источник: правило эстафеты · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
+
+# добавить границу
+
+Когда skill брать и когда оставить: описание, строка «не бери, если», одна работа на skill.
+
+## G-01 · описание отвечает «что делает» и «когда брать»
+
+**Вопрос.** По одной строке description агент решает, брать ли skill. В ней названо, что skill делает, и ситуации или слова человека, на которых он нужен? Она написана в третьем лице?
+
+**Изменение.** Перепиши description: сначала действие и результат, затем «Бери, когда …» с двумя-тремя живыми формулировками запроса. Без «я помогу» и «ты можешь».
+
+**Практика.** В общем списке агент видит только name и description и по ним решает, брать ли skill. Стандарт даёт описанию до 1024 знаков, Claude Code обрезает его в списке на 1536 знаках вместе с when_to_use: главный случай стоит первым.
+
+Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Optimizing skill descriptions](https://agentskills.io/skill-creation/optimizing-descriptions) · [Claude Code · Extend Claude with skills](https://code.claude.com/docs/en/skills) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
+
 ## G-14 · одна работа на skill
 
 **Вопрос.** Skill закрывает одну связную работу? Нет ли в нём второй задачи, которая включается по другому поводу?
 
-**Правка.** Вынеси постороннюю задачу одной строкой «это делает другой skill» или убери её.
+**Изменение.** Вынеси постороннюю задачу одной строкой «это делает другой skill» или убери её.
 
 **Практика.** SkillsBench: задачи с одним–тремя skills прибавляют 18–19 пунктов, с четырьмя и больше 10. Узкий skill точнее включается и реже спорит с соседями.
 
 Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [OpenAI Codex · Build skills](https://developers.openai.com/codex/skills) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
 
-## G-15 · три проверочные задачи
-
-**Вопрос.** Есть ли в skill две-три короткие задачи, на которых его можно проверить, включая случай, когда он включаться не должен?
-
-**Правка.** Добавь или уточни одну проверочную задачу: запрос человека и признаки хорошего результата.
-
-**Практика.** Гайд Anthropic: 10–20 запросов на включение с целью 90% срабатываний и запросы, на которых skill молчит. В SkillsBench skill, написанный агентом и оставленный без проверки, дал минус 8–11 пунктов к работе без skill.
-
-Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Evaluating skill output quality](https://agentskills.io/skill-creation/evaluating-skills) · [agentskills.io · Optimizing skill descriptions](https://agentskills.io/skill-creation/optimizing-descriptions) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
-
-## G-16 · объясни зачем
-
-**Вопрос.** У важных требований названа причина, или текст держится на «всегда», «обязательно» и заглавных буквах?
-
-**Правка.** Замени одно голое требование на требование с причиной: что сломается, если его нарушить.
-
-**Практика.** skill-creator: причина работает сильнее нажима. Требование с объяснением модель переносит на новый случай, голое «всегда» выполняет буквально.
-
-Источник: [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
-
 ## G-17 · границы и запасной ход
 
 **Вопрос.** Сказано ли, на каких задачах этот skill брать не нужно? Есть ли простой путь на случай, когда основной порядок слишком тяжёл или нужного инструмента нет?
 
-**Правка.** Добавь строку «не бери, если …» с одним-двумя случаями и строку запасного хода: что делать, когда основной путь не подходит.
+**Изменение.** Добавь строку «не бери, если …» с одним-двумя случаями и строку запасного хода: что делать, когда основной путь не подходит.
 
 **Практика.** Разбор провалов в SkillsBench: skill вредит, когда навязывает тяжёлый порядок, вытесняет более сильный обычный ход или ведёт к инструменту, который агент не может отладить. Общая причина одна: единственный «правильный» путь без границ применимости и лёгкого запасного.
 
 Источник: [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
 
-## G-18 · шаг с последствиями ждёт слова человека
+# добавить пример
 
-**Вопрос.** Есть ли в skill шаги, которые отправляют, удаляют, платят или меняют что-то за пределами рабочей папки? Перед каждым таким шагом стоит остановка и вопрос человеку?
+Образец результата: пример «вход → выход» на выдуманных данных или шаблон вывода.
 
-**Правка.** Пометь один шаг с последствиями: что агент показывает человеку и какого слова ждёт. Права на инструменты называй узко: команда и её рамка.
+## G-06 · шаблон вывода
 
-**Практика.** Claude Code даёт таким skills ручной запуск (disable-model-invocation) и узкие права в allowed-tools, Codex отключает неявный запуск через allow_implicit_invocation. Обзор Snyk 10 000 популярных skills: больше 64% подталкивают агента к небезопасным действиям.
+**Вопрос.** Формат результата показан готовой заготовкой, которую агент заполняет, или описан словами?
 
-Источник: [Claude Code · Extend Claude with skills](https://code.claude.com/docs/en/skills) · [OpenAI Codex · Build skills](https://developers.openai.com/codex/skills) · [Snyk · Re-Assessing the Security of the Agent Skill Ecosystem](https://research.snyk.io/blog/skill-analysis/)
+**Изменение.** Добавь или уточни шаблон результата: заголовки, порядок блоков, что стоит в каждом.
 
-## R-01 · параметры общие, личное остаётся дома
+**Практика.** Заготовку агент заполняет точнее, чем следует формату, описанному словами. Строгий шаблон нужен там, где результат читает программа или другой человек.
 
-**Вопрос.** Всё, что у разных людей разное (язык, объём, читатель, папка, инструмент), вынесено в параметры с умолчаниями? В тексте нет имён, компаний, адресов и чужих данных?
+Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
 
-**Правка.** Вынеси одно зашитое значение в параметр с умолчанием. Свои значения держи у себя в params.md рядом с копией skill: в эстафету они не возвращаются.
+## G-07 · пример «вход → выход»
 
-**Практика.** Стандарт skills переносим между харнессами. Общий текст с параметрами работает у следующего бегуна, зашитые значения ломаются на первой чужой задаче и выносят личное наружу.
+**Вопрос.** Есть ли хотя бы один конкретный пример: короткий вход и то, что из него должно получиться?
 
-Источник: правило эстафеты · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
+**Изменение.** Добавь один пример на 4–8 строк на выдуманных данных. Он должен показывать трудное место, которое шагами описать сложно.
+
+**Практика.** Пара «вход → выход» задаёт стиль и глубину точнее описания. Примеры пишутся на выдуманных данных.
+
+Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
+
+# добавить граблю
+
+Ошибка из живой примерки и причина требования: что сломалось и как надо.
+
+## G-08 · грабли из живого прогона
+
+**Вопрос.** Есть ли раздел с конкретными ошибками, которые агент делает без подсказки? Пришла ли хоть одна из них из настоящего запуска?
+
+**Изменение.** Примерь skill на своём входе. Ошибку, которую пришлось исправлять руками, запиши одной строкой в «грабли»: что агент сделал и как надо.
+
+**Практика.** Гайд agentskills.io называет раздел с граблями самым ценным в skill: это поправки к ошибкам, которые агент делает без подсказки. Запись появляется сразу после живой ошибки.
+
+Источник: [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude)
+
+## G-16 · объясни зачем
+
+**Вопрос.** У важных требований названа причина, или текст держится на «всегда», «обязательно» и заглавных буквах?
+
+**Изменение.** Замени одно голое требование на требование с причиной: что сломается, если его нарушить.
+
+**Практика.** skill-creator: причина работает сильнее нажима. Требование с объяснением модель переносит на новый случай, голое «всегда» выполняет буквально.
+
+Источник: [anthropics/skills · skill-creator (Apache-2.0)](https://github.com/anthropics/skills/tree/main/skills/skill-creator) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
+
+# добавить проверку
+
+Способ понять, что получилось: проверка с ответом «сошлось или нет», проверочная задача.
+
+## G-10 · петля проверки
+
+**Вопрос.** После работы агент сверяет результат с чем-то проверяемым и возвращается чинить, если сверка не сошлась? Перед необратимым шагом есть план и его проверка?
+
+**Изменение.** Добавь одну проверку с понятным «сошлось или нет» и строку «если нет: исправь и проверь снова».
+
+**Практика.** Петля «сделал, проверил, исправил» в гайде Anthropic названа главным способом поднять качество. Проверка отвечает «сошлось» или «нет».
+
+Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices)
+
+## G-15 · три проверочные задачи
+
+**Вопрос.** Есть ли в skill две-три короткие задачи, на которых его можно проверить, включая случай, когда он включаться не должен?
+
+**Изменение.** Добавь или уточни одну проверочную задачу: запрос человека и признаки хорошего результата.
+
+**Практика.** Гайд Anthropic: 10–20 запросов на включение с целью 90% срабатываний и запросы, на которых skill молчит. В SkillsBench skill, написанный агентом и оставленный без проверки, дал минус 8–11 пунктов к работе без skill.
+
+Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Evaluating skill output quality](https://agentskills.io/skill-creation/evaluating-skills) · [agentskills.io · Optimizing skill descriptions](https://agentskills.io/skill-creation/optimizing-descriptions) · [Anthropic · The complete guide to building Skills for Claude](https://claude.com/resources/guides/the-complete-guide-to-building-skills-for-claude) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
+
+# убрать лишнее
+
+Меньше текста при том же смысле: убрать известное агенту, оставить одно слово на понятие.
+
+## G-02 · только то, чего агент не знает
+
+**Вопрос.** Каждая строка проходит вопрос «ошибётся ли агент без этой инструкции»? Есть ли объяснения общеизвестного и повторы?
+
+**Изменение.** Убери или сожми строки, без которых агент справится. Освободившееся место отдай тому, что знает только автор: соглашения, порядок, тонкие случаи.
+
+**Практика.** Замер SkillsBench на 87 задачах: компактные skills прибавляют 19 пунктов к доле решённых задач, исчерпывающая документация 0,7 пункта.
+
+Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) · [agentskills.io · Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) · [SkillsBench · Benchmarking How Well Agent Skills Work (arXiv 2602.12670)](https://arxiv.org/abs/2602.12670)
+
+## G-11 · один термин на одно понятие
+
+**Вопрос.** Одно и то же понятие названо одним словом по всему тексту?
+
+**Изменение.** Выбери одно слово для понятия, у которого в тексте два или три имени, и замени остальные.
+
+**Практика.** Разные слова для одного понятия агент читает как разные понятия.
+
+Источник: [Anthropic · Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
 # настройка skill в харнессе
 

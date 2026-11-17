@@ -153,13 +153,13 @@ def main():
             say("передача записана, счётчик вырос на один", code == 200 and row["laps"] == laps + 1 and row["status"] == "свободна")
             say("после взятия идёт пауза на все дорожки", after["viewer"]["rest"] > 0 and a.call("POST", "/api/take", {"lane": "text-summary"})[0] == 409)
             say("след и протокол дорожки обновлены", "G-16" in (table / "lanes" / lane / "RELAY.md").read_text(encoding="utf-8")
-                and "передача" in (table / "TRAIL.md").read_text(encoding="utf-8"))
+                and "версия v" in (table / "TRAIL.md").read_text(encoding="utf-8"))
             code, d, _ = b.call("POST", "/api/take", {"lane": lane})
             say("следующий бегун берёт ту же палочку", code == 200)
             time.sleep(4.6)
             s2 = b.call("GET", "/api/state")[1]
             row = [l for l in s2["lanes"] if l["id"] == lane][0]
-            say("срок вышел: палочка вернулась на старт", row["status"] == "свободна" and any("замок истёк" in e["what"] for e in s2["trail"]))
+            say("срок вышел: палочка вернулась на старт", row["status"] == "свободна" and any("срок вышел" in e["what"] for e in s2["trail"]))
             time.sleep(4.0)
             code, d, _ = a.call("POST", "/api/take", {"lane": lane})
             say("свою прошлую правку подряд не продолжают", code == 409 and "другую дорожку" in d["error"], str(d))
@@ -201,20 +201,26 @@ def main():
                 and len(rb["settings"]) >= 8 and len(rb["evidence"]) >= 3 and len(rb["sources"]["research"]) >= 3)
             say("книга правил и прогон открываются отдельными страницами", a.call("GET", "/rules")[0] == 200 and a.call("GET", "/show")[0] == 200
                 and a.call("GET", "/pages.css")[0] == 200 and a.call("GET", "/show.js")[0] == 200 and a.call("GET", "/rules.js")[0] == 200)
+            say("рисунки и их стили отдаются: без них страницы остаются без знаков видов",
+                a.call("GET", "/art.js")[0] == 200 and a.call("GET", "/art.css")[0] == 200 and a.ctype.startswith("text/css"))
+            say("книга отдаёт семь видов изменения, у каждого правила есть вид",
+                len(rb.get("kinds", [])) == 7 and all(r.get("kind") in {k["id"] for k in rb["kinds"]} for r in rb["rules"]))
             a.call("GET", "/pages.css")
             say("таблица стилей отдаётся как text/css: иначе браузер её не применяет", a.ctype.startswith("text/css"))
             # ---------- прогон по шагам ----------
             print("прогон")
             laps_main = a.call("GET", "/api/state")[1]["totals"]["laps"]
             code, sh, _ = a.call("GET", "/api/show")
-            say("прогон стоит на старте: три окна, двенадцать шагов", code == 200 and sh["step"] == 0 and len(sh["windows"]) == 3 and sh["total"] == 12, str(sh)[:200])
-            code, sh, _ = a.call("POST", "/api/show/go", {"to": 11})
-            say("прогон проходит круг: две передачи, остановка, отказ и истёкший замок", code == 200 and sh["step"] == 11 and len(sh["chain"]) == 2
+            say("прогон стоит на старте: три окна, девять шагов", code == 200 and sh["step"] == 0 and len(sh["windows"]) == 3 and sh["total"] == 9, str(sh)[:200])
+            code, sh, _ = a.call("POST", "/api/show/go", {"to": 8})
+            say("прогон проходит круг: две версии, остановка, отказ и истёкший срок", code == 200 and sh["step"] == 8 and len(sh["chain"]) == 2
                 and {"stop", "refuse", "expire", "give", "agent", "enter"} <= {e["kind"] for e in sh["log"]}, str(sh)[:300])
             say("в цепочке прогона видно агента и способ входа", [c["agent"] for c in sh["chain"]] == ["Claude Code", "Codex"]
                 and all(c["auth"] == "одноразовая ссылка" and c["passed"] == "страница" for c in sh["chain"]))
-            code, sh, _ = a.call("POST", "/api/show/go", {"to": 6})
-            say("прогон возвращается на любой шаг", code == 200 and sh["step"] == 6 and [x for x in sh["windows"] if x["login"] == "lis"][0]["holding"] == "text-summary")
+            code, sh, _ = a.call("POST", "/api/show/go", {"to": 4})
+            say("прогон возвращается на любой шаг", code == 200 and sh["step"] == 4 and [x for x in sh["windows"] if x["login"] == "lis"][0]["holding"] == "text-summary")
+            w0 = sh["windows"][0]["lanes"][0]
+            say("у дорожки видны задача и лента версий с видом изменения", bool(w0.get("what")) and [v["kind"] for v in w0["versions"]] == ["example"], str(w0)[:200])
             say("прогон идёт на отдельном столе", a.call("GET", "/api/state")[1]["totals"]["laps"] == laps_main and (table / ".show" / "state.json").exists())
         finally:
             srv.terminate()
@@ -265,7 +271,7 @@ def main():
             code, me, _ = c.call("GET", "/api/auth/me")
             say("сессия узнаёт человека и способ входа", code == 200 and me["viewer"]["login"] == "chizh" and me["viewer"]["name"] == "Чиж" and me["viewer"]["auth"] == "одноразовая ссылка")
             code, s, _ = c.call("GET", "/api/state")
-            say("живой режим: час паузы и замок 20 минут", code == 200 and s["hour"] == 3600 and s["lock"] == 1200 and s["mode"] == "живой")
+            say("живой режим: час паузы и пять минут на одно изменение", code == 200 and s["hour"] == 3600 and s["lock"] == 300 and s["mode"] == "живой")
             say("ход в живом режиме идёт", c.call("POST", "/api/take", {"lane": "text-summary"})[0] == 200)
             roster = json.loads((table3 / "roster.json").read_text(encoding="utf-8"))
             roster["people"] = [p for p in roster["people"] if p["login"] != "chizh"]

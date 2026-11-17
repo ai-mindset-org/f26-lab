@@ -45,7 +45,12 @@ a.q:hover{color:var(--acc);border-color:var(--acc)}
 
 /* прогон */
 .head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px 40px;align-items:end}
-.wins{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:26px}
+.vline{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 30px;align-items:center;margin-top:24px;padding:12px 14px;border:1px solid var(--ink);background:var(--bg)}
+.vline .vt{font-size:11.5px;line-height:1.5;color:var(--ink2);min-width:0}
+.vline .vt b{display:block;font-size:12.5px;font-weight:600;color:var(--ink)}
+.vline .vr .nd span{width:24px;height:24px}
+.vline .vr .nd::before{width:14px}
+.wins{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
 .win{border:1px solid var(--line);background:var(--bg);min-height:300px;display:flex;flex-direction:column;transition:border-color .4s}
 .win.act{border-color:var(--ink)}
 .win .bar{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px}
@@ -88,6 +93,7 @@ a.q:hover{color:var(--acc);border-color:var(--acc)}
 .chain .c{padding:7px 0 7px 12px;border-left:1px solid var(--ink);margin-top:8px}
 .chain .c b{font-weight:600}
 .chain .c span{color:var(--ink2)}
+.chain .c .kind{color:var(--ink);font-size:11px;vertical-align:-4px;padding:2px 6px 2px 4px}
 .rail{position:fixed;left:0;right:0;bottom:0;display:flex;gap:4px;z-index:3;padding:30px 44px 30px;background:linear-gradient(to top,var(--bg) 72%,transparent)}
 .rail button{position:relative;height:14px;flex:1 1 0;border:0;padding:0;background:transparent;border-bottom:2px solid var(--line)}
 .rail button.past{border-color:var(--ink3)}
@@ -113,13 +119,28 @@ a.q:hover{color:var(--acc);border-color:var(--acc)}
 .rule p.why b{color:var(--acc)}
 .rule .refs{margin-top:6px;font-size:11.5px;line-height:1.9}
 .src{font-size:12px;line-height:2;color:var(--ink2);margin-top:10px}
+.rule.pic{display:grid;grid-template-columns:120px minmax(0,1fr);gap:4px 20px;align-items:start}
+.rule.pic .fig svg{width:120px;height:80px}
+.rule.pic .fig{padding-top:2px}
+.kinds{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-top:30px;scroll-margin-top:24px}
+.kcard{display:block;border-top:1px solid var(--ink);padding:12px 0 4px;text-decoration:none;color:var(--ink2);font-size:11px;line-height:1.5}
+.kcard svg{width:22px;height:22px;margin-bottom:8px}
+.kcard b{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.kcard i{display:block;font-style:normal;color:var(--ink3);margin-top:6px}
+.kcard:hover b{color:var(--acc)}
+.kcard:hover svg.art *{stroke:var(--acc)}
+h2.kh{display:flex;gap:10px;align-items:center}
+h2.kh svg{width:20px;height:20px}
 
 @media (max-width:900px){
   .top{left:30px;right:30px;top:28px;font-size:11px}
   .top .x{display:none}
   .page{padding:66px 20px 84px}
   .head{grid-template-columns:1fr}
-  .wins,.under,.cols{grid-template-columns:1fr}
+  .wins,.under,.cols,.vline{grid-template-columns:1fr}
+  .kinds{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rule.pic{grid-template-columns:72px minmax(0,1fr);gap:4px 12px}
+  .rule.pic .fig svg{width:72px;height:48px}
   .win{min-height:0}
   .card{margin-top:10px}
   .rail{padding:26px 20px 18px}

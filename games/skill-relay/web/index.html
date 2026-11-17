@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>эстафета skills · AI Mindset</title>
-<meta name="description" content="Открытая эстафета: пять skills лежат на дорожках, участник берёт свободный, его агент вносит одну правку по правилу из гайдов, человек читает разбор и передаёт дальше. Журнал пишет, кто действовал и через что.">
+<meta name="description" content="Открытая эстафета skills: пять skills на дорожках, участник берёт один, добавляет одно изменение и коммитит за пять минут. В дорожке лежит новая версия, у каждой версии видно, кто её внёс и через какого агента.">
 <meta name="robots" content="noindex">
 <style>
 @font-face{font-family:'JetBrains Mono';src:url('fonts/jetbrains-mono.woff2') format('woff2');font-weight:100 800;font-style:normal;font-display:swap}
@@ -144,16 +144,49 @@ details pre{margin-top:6px;color:var(--ink2)}
   .ln{grid-template-columns:22px 1fr auto}
   .ln .act{grid-column:2 / 4;grid-row:3;text-align:left;min-width:0}
 }
+.ln{grid-template-columns:26px minmax(0,1fr) auto;gap:4px 14px;align-items:start;padding:15px 0}
+.ln .bd{min-width:0}
+.ln .what{margin:4px 0 9px;font-size:11.5px;line-height:1.5;color:var(--ink2);max-width:560px}
+.ln .meta{display:block;grid-column:auto;margin-top:8px;color:var(--ink3);font-size:11px}
+.ln .side{text-align:right;min-width:104px}
+.ln .ver{display:block;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.ln.mine .ver{color:var(--acc)}
+.ln .ver i{display:block;font-style:normal;font-weight:400;font-size:10.5px;color:var(--ink2);margin:4px 0 9px}
+.ln .act{display:block;grid-row:auto;grid-column:auto;min-width:0}
+.task{margin-top:14px;border:1px solid var(--ink);padding:12px 14px 13px;font-size:12.5px;line-height:1.55;background:var(--bg);max-width:680px}
+.task .lab{margin:0 0 4px}
+.task p{margin:4px 0 0;color:var(--ink2)}
+.task p b{font-weight:600;color:var(--ink)}
+.rule.pic{display:grid;grid-template-columns:96px minmax(0,1fr);gap:4px 16px;align-items:start}
+.cand span.kind{display:inline-flex;margin:0 2px 0 0;font-size:11px;color:var(--ink);vertical-align:-3px}
+.cand>span{display:block}
+.leg h3 .kind{margin:0 4px;vertical-align:-4px}
+.leg details{margin-top:4px}
+.trail .ev{display:grid;grid-template-columns:40px 74px minmax(0,1fr);gap:8px;padding:3px 0;line-height:1.5}
+.trail .ev .tm{color:var(--ink3);font-variant-numeric:tabular-nums}
+.trail .ev b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trail .ev .kind{font-size:11px;vertical-align:-4px;padding:2px 6px 2px 4px}
+.trail .lab{margin-bottom:6px}
+@media (max-width:900px){
+  .ln{grid-template-columns:22px minmax(0,1fr) auto}
+  .ln .side{min-width:70px}
+  .ln .act{grid-column:auto;grid-row:auto;text-align:right}
+  .rule.pic{grid-template-columns:72px minmax(0,1fr);gap:4px 12px}
+  .rule.pic .fig svg{width:72px;height:48px}
+  .trail .ev{grid-template-columns:38px 62px minmax(0,1fr)}
+}
 </style>
+<link rel="stylesheet" href="art.css">
 </head>
 <body data-field>
 <div class="frame"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
 <div class="top"><span class="brand"><b>AI Mindset</b><i> · f26</i> · эстафета skills</span><span><span class="ph" id="ph"></span> <span id="where"></span></span></div>
-<div class="stage" id="stage"><canvas id="cv" aria-label="стадион: палочки идут по дорожкам, оранжевая у тебя"></canvas></div>
+<div class="stage" id="stage"><canvas id="cv" aria-label="стадион: skills идут по дорожкам, оранжевый у тебя"></canvas></div>
 <div class="rail" id="rail"></div>
 <main class="panel" id="panel"></main>
 <div class="toast" id="toast" role="status"></div>
 <script src="field.js" defer></script>
+<script src="art.js" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>
