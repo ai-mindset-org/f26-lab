@@ -259,6 +259,7 @@
     var btn = h('button', { class: 'go', onclick: function () {
       btn.disabled = true;
       api('POST', 'api/lane/add', { text: ta.value }).then(function (d) {
+        var dt = btn.closest('details'); if (dt) dt.open = false;
         toast('skill на столе: дорожка ' + d.lane); focusV = 0; key = ''; load();
       }, function (e) { btn.disabled = false; fill(res, h('div', { class: 'msg' }, e.message)); });
     } }, 'проверить и положить на стол');
@@ -525,7 +526,8 @@
     else if (view.indexOf('lane:') === 0) k = view + ':' + ((laneOf(view.slice(5)) || {}).laps || 0);
     else if (!v) k = 'entry:' + (S.seats || []).map(function (s) { return s.taken ? 1 : 0; }).join('') + S.lanes.map(function (l) { return l.laps + l.status + (l.runner || '') + (l.doing || ''); }).join() + (S.events || 0);
     else k = 'lanes:' + v.login + ':' + (v.rest > 0) + S.lanes.map(function (l) { return l.laps + l.status + (l.runner || '') + (l.doing || '') + (l.why_not ? 1 : 0); }).join() + (S.events || 0) + ':' + ((S.add || {}).left || 0);
-    if (key === k && view === 'auto' && document.activeElement && document.activeElement.closest && document.activeElement.closest('.addown')) return rail(); // человек вставляет свой skill: экран не перерисовываем
+    var ad = document.querySelector('details.addown');
+    if (ad && ad.open && view === 'auto' && v && !hold && key.indexOf('lanes:') === 0) return rail(); // человек вставляет свой skill: стол не перерисовываем, форма и ответ проверки остаются на экране
     if (k === key) {
       if (view.indexOf('lane:') === 0 && $('holder')) fill($('holder'), holderLine(laneOf(view.slice(5))));
       return rail();
