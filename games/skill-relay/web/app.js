@@ -95,7 +95,7 @@
       S = d; skew = d.now - Date.now() / 1000; render();
       if (!RULES && !load.asked) { load.asked = 1; rules().then(function () { key = ''; render(); }, function () { }); }
     }, function (e) {
-      if (e.status === 401) { S = { mode: 'живой', lanes: [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', tailnet: (e.data || {}).tailnet || null, lock: (e.data || {}).lock || 300, hour: (e.data || {}).hour || 3600, totals: {} }; render(); }
+      if (e.status === 401) { S = { mode: 'живой', lanes: (e.data || {}).lanes || [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', tailnet: (e.data || {}).tailnet || null, lock: (e.data || {}).lock || 300, hour: (e.data || {}).hour || 3600, totals: {} }; render(); }
       else if (!S) fill($('panel'), h('div', { class: 'msg' }, 'Стол не отвечает. Страница открывается сервером эстафеты: python3 relay.py serve <стол> --demo'));
     });
   }
@@ -172,7 +172,7 @@
   // ---------- вход ----------
   function how() {
     var st = [['возьми skill', 'Свободный skill закрепляется за тобой на ' + span(S.lock) + '.'],
-      ['одно изменение', 'Добавь одно: протокол, логику, границу, пример, граблю или проверку. Делает твой агент или ты сам.'],
+      ['одно правило', 'Выбери правило и нажми «применить»: модель внесёт в skill одно изменение. Текст править не нужно.'],
       ['коммит за ' + span(S.lock), 'Сервер проверяет текст, разбор смотрит на изменение, ты нажимаешь «закоммитить».'],
       ['новая версия', 'В дорожке лежит v+1. Следующий берёт её и добавляет своё.']];
     return h('div', { class: 'how' }, st.map(function (x, i) { return h('div', { class: 'st' }, h('span', { class: 'n' }, two(i + 1)), A.step(i), h('b', null, x[0]), x[1]); }));
@@ -214,10 +214,11 @@
       return h('div', { class: 'ln' + (l.mine ? ' mine' : '') },
         h('span', { class: 'no' }, two(l.n)),
         h('div', { class: 'bd' },
-          h('button', { class: 'nm', onclick: function () { go('lane:' + l.id); } }, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
+          h('button', { class: 'nm', onclick: function () { if (S.locked) return toast('войди, чтобы открыть версии skill'); go('lane:' + l.id); } }, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
           h('p', { class: 'what' }, l.what),
           ribbon(l),
-          h('span', { class: 'meta', title: 'уровень ' + l.level + ' · тема: ' + l.theme + ' · ' + l.lines + ' строк' }, (l.last_runner ? 'последнее: ' + (KN[l.last_kind] || l.last_rule) + ', ' + l.last_runner : 'базовая версия') +
+          l.parts ? h('div', { class: 'lsch', title: 'части skill: шапка, параметры, шаги, формат, пример, грабли, проверка, границы' }, A.scheme(l.parts, { mini: true })) : null,
+          h('span', { class: 'meta', title: 'уровень ' + l.level + ' · тема: ' + l.theme + ' · ' + l.lines + ' строк' }, (l.last_runner ? 'v' + l.laps + ' поправил ' + l.last_runner + ' · ' + (KN[l.last_kind] || l.last_rule) : 'базовая версия') +
             (l.status !== 'бежит' && l.idle_since ? ' · свободен ' + ago(now() - l.idle_since) : ''))),
         h('div', { class: 'side' },
           h('span', { class: 'ver', title: 'сколько изменений принято в этот skill: ' + l.laps }, 'v' + l.laps),
@@ -272,6 +273,29 @@
     var l = laneOf(leg.lane), res = h('div'), cand = h('div', null, h('p', { class: 's' }, 'смотрю, чего этому skill не хватает…')), ruleBox = h('div'), cnt = h('div', { class: 'cnt' }), kindBox = h('div', { class: 'row' });
     var ta = h('textarea', { class: 'code', spellcheck: 'false', value: leg.text, oninput: function () { leg.text = ta.value; count(); } });
     var f = {}, next = 'v' + (l.laps + 1);
+    var sch = h('div'), applyBtn = h('button', { class: 'go', onclick: applyRule }, 'применить правило');
+    function drawScheme() { var r = RULES && RULES[leg.rule]; fill(sch, (leg.parts || l.parts) ? A.scheme(leg.parts || l.parts, { hit: r ? r.part : '', fresh: leg.fresh || [] }) : null); }
+    function drop() { api('POST', 'api/drop', { lane: leg.lane }).then(function () { leg = null; load(); }, function (e) { toast(e.message); }); }
+    // правило применяет модель стола: человек выбирает правило, видит разницу и разбор и коммитит
+    function applyRule() {
+      var r = RULES && RULES[leg.rule];
+      if (!r) return toast('выбери правило');
+      var before = (l.parts || []).filter(function (p) { return p.on; }).map(function (p) { return p.id; });
+      applyBtn.disabled = true; applyBtn.textContent = 'модель вносит изменение…';
+      fill(res, h('p', { class: 'cnt' }, 'Обычно это 5–15 секунд.'));
+      api('POST', 'api/try/apply', { text: leg.base, rule: r.id }).then(function (d) {
+        if (!d.ok) { fill(res, h('div', { class: 'msg' }, (d.errors || ['изменение не внесено']).join('\n')), factsList(d.facts)); return null; }
+        leg.text = ta.value = d.text; leg.note = f.note.value = d.note; count();
+        fill(res, h('div', { class: 'cnt' }, 'изменение внесла ' + d.by + ' · +' + d.plus + ' / −' + d.minus + ' строк · идёт разбор…'), diffBlock(d.diff));
+        applyBtn.textContent = 'разбор изменения…';
+        return api('POST', 'api/try/look', { text: d.text }).then(function (k) {
+          leg.fresh = k.parts.filter(function (p) { return p.on && before.indexOf(p.id) < 0; }).map(function (p) { return p.id; }); leg.parts = k.parts; drawScheme();
+        }, function () { }).then(function () {
+          return api('POST', 'api/check', { lane: leg.lane, text: leg.text, rule: leg.rule, note: leg.note || '', tried: leg.tried || 'правило применено со страницы', next: leg.next || '' });
+        }).then(showResult);
+      }).then(null, function (e) { fill(res, h('div', { class: 'msg' }, e.message)); })
+        .then(function () { applyBtn.disabled = false; applyBtn.textContent = 'применить ' + (RULES[leg.rule] ? leg.rule + ' · ' + RULES[leg.rule].title : 'правило'); });
+    }
     ['note', 'tried', 'next'].forEach(function (k) { f[k] = h('textarea', { rows: 2, value: leg[k] || '', oninput: function () { leg[k] = f[k].value; } }); });
     function count() {
       var c = counts(leg.base, leg.text);
@@ -297,6 +321,7 @@
         r.why ? h('p', null, h('b', null, 'практика. '), r.why) : null,
         h('p', null, h('a', { href: 'rules#' + r.id, target: '_blank', rel: 'noopener' }, 'правило, источники и настройка skills отдельным окном ↗')))) : null);
       sel.value = id || '';
+      drawScheme(); applyBtn.textContent = r ? 'применить ' + r.id + ' · ' + r.title : 'применить правило';
     }
     var sel = h('select', { onchange: function () { if (sel.value) pick(sel.value); } });
     fill(kindBox, KO.map(function (k) { return h('button', { class: 'kind', 'data-kind': k, onclick: function () { pickKind(k); } }, A.kind(k), KA[k]); }));
@@ -329,6 +354,7 @@
     }, function (e) { fill(cand, h('div', { class: 'msg' }, e.message)); options(''); }); }
     ask();
     count();
+    drawScheme();
     if (leg.result) setTimeout(function () { showResult(leg.result); }, 0);
     return [
       h('div', { class: 'kick' }, '{ дорожка ' + two(l.n) + ' · ' + l.skill + ' · сейчас v' + l.laps + ' }'),
@@ -336,15 +362,20 @@
       h('div', { class: 'task' }, h('div', { class: 'lab' }, 'твоя задача'),
         h('p', null, h('b', null, l.title + '. '), l.what),
         h('p', null, 'Добавь в этот skill одно и закоммить до конца срока: в дорожке будет лежать ' + next + '. Не успеешь: skill вернётся свободным, без изменения.')),
-      h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '1'), ' · что добавить'), kindBox, cand, h('div', { class: 'fld' }, sel), ruleBox),
-      h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '2'), ' · сделай изменение'),
+      h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '1'), ' · выбери правило · оно ляжет в свою часть skill'), sch, cand, kindBox, h('div', { class: 'fld' }, sel), ruleBox),
+      h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '2'), ' · примени · текст править не нужно'),
+        h('div', { class: 'row' }, applyBtn, h('button', { class: 'quiet', onclick: drop }, 'вернуть без изменения')),
+        h('p', { class: 'cnt' }, 'Модель внесёт в skill одно изменение по выбранному правилу, до ' + S.limits.changed + ' строк. Ты увидишь разницу и разбор и нажмёшь «закоммитить»: в дорожке появится ' + next + ' с твоим именем.'),
+        res),
+      h('details', { class: 'own' }, h('summary', null, 'сделать изменение по-своему: задание агенту или правка руками'),
+      h('div', { class: 'blk' }, h('div', { class: 'lab' }, 'изменение от агента или руками'),
         h('div', { class: 'row' },
           h('button', { class: 'sel', onclick: function () { copy(agentTask(), 'задание с ключом скопировано'); } }, 'задание агенту'),
           h('button', { onclick: function () { copy(agentPrompt(), 'промпт скопирован'); } }, 'промпт для чата без команд'),
           h('button', { onclick: function () { save('SKILL.md', leg.base); } }, 'скачать SKILL.md')),
         h('p', { class: 'cnt' }, 'Агент с доступом к командам делает всё сам: забирает skill по ключу, вносит изменение и присылает его сюда с одной фразой «что и зачем». Тебе остаётся прочитать и закоммитить.'),
         h('div', { class: 'fld' }, h('label', null, 'skill: сюда приходит версия от агента, править можно и руками'), ta, cnt)),
-      h('div', { class: 'blk' }, h('div', { class: 'lab' }, h('b', null, '3'), ' · коммит'),
+      h('div', { class: 'blk' }, h('div', { class: 'lab' }, 'фраза и проверка'),
         h('div', { class: 'fld' }, h('label', null, 'что изменил и зачем: одна фраза, как сообщение коммита'), f.note),
         h('details', null, h('summary', null, 'ещё две строки, по желанию'),
           h('div', { class: 'fld' }, h('label', null, 'на чём примерил: тип задачи одной строкой, без имён и данных'), f.tried),
@@ -362,8 +393,7 @@
               .then(showResult, function (e) { fill(res, h('div', { class: 'msg' }, e.message)); })
               .then(function () { b.disabled = false; b.textContent = 'проверить'; });
           } }, 'проверить'),
-          h('button', { class: 'quiet', onclick: function () { api('POST', 'api/drop', { lane: leg.lane }).then(function () { leg = null; load(); }, function (e) { toast(e.message); }); } }, 'вернуть без изменения')),
-        res),
+          h('button', { class: 'quiet', onclick: function () { api('POST', 'api/drop', { lane: leg.lane }).then(function () { leg = null; load(); }, function (e) { toast(e.message); }); } }, 'вернуть без изменения')))),
       links()
     ];
   }

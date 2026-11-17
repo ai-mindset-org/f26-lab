@@ -240,7 +240,24 @@ def main():
             base = kit["skills"][0]["text"]
             events = len(a.call("GET", "/api/log?n=500")[1]["events"])
             code, lk, _ = a.call("POST", "/api/try/look", {"text": base})
-            say("песочница видит без модели, чего не хватает skill", code == 200 and len(kit["skills"]) == 5 and len(lk["candidates"]) == 3 and not lk["private"] and lk["lines"] > 20, str(lk)[:200])
+            say("песочница видит без модели, чего не хватает skill", code == 200 and len(kit["skills"]) == 10 and len(lk["candidates"]) == 3 and not lk["private"] and lk["lines"] > 20, str(lk)[:200])
+            pop = [x for x in kit["skills"] if x.get("pack") == "popular"]
+            say("в песочнице два набора: пять базовых и пять кейсов по мотивам популярных, у кейса есть источник",
+                len(pop) == 5 and [x["level"] for x in pop] == [1, 2, 3, 4, 5] and all((x.get("source") or {}).get("repo") for x in pop), str([x["name"] for x in pop]))
+            say("схема skill: восемь частей, у базового на месте шапка, параметры и шаги",
+                [x["id"] for x in lk["parts"]] == ["head", "params", "steps", "format", "example", "rakes", "check", "border"] and all(x["on"] for x in lk["parts"][:3]), str(lk.get("parts"))[:200])
+            ptmp = Path(tempfile.mkdtemp(prefix="relay-pack-"))
+            r = subprocess.run([sys.executable, RELAY, "init", str(ptmp / "t"), "--pack", "popular"], capture_output=True, text=True)
+            fx = json.loads((HERE / "demo" / "patches.json").read_text(encoding="utf-8"))
+            grown = True
+            for x in pop:
+                text = (ptmp / "t" / "lanes" / x["name"] / "SKILL.md").read_text(encoding="utf-8") if (ptmp / "t" / "lanes" / x["name"]).exists() else ""
+                for f in fx.get(x["name"], []):
+                    grown = grown and f["find"] in text
+                    text = text.replace(f["find"], f["replace"], 1)
+                grown = grown and len(fx.get(x["name"], [])) == 3 and text.count("```") % 2 == 0
+            say("стол из набора popular собирается, к каждому кейсу по цепочке ложатся три заготовленных изменения", r.returncode == 0 and grown, r.stdout[-200:] + r.stderr[-200:])
+            shutil.rmtree(ptmp, ignore_errors=True)
             code, ap, _ = a.call("POST", "/api/try/apply", {"text": base, "rule": lk["candidates"][0]["rule"]})
             say("песочница вносит одно изменение до двенадцати строк и отдаёт разницу", code == 200 and ap["ok"] and 0 < ap["plus"] <= 12 and ap["text"] != base
                 and ap["kind"] and ap["diff"], str(ap)[:300])
@@ -281,6 +298,8 @@ def main():
             tail = {"Tailscale-User-Login": "Sova.Lesnaya@primer.example", "Tailscale-User-Name": "=?utf-8?q?=D0=A1=D0=BE=D0=B2=D0=B0?="}
             code, st, _ = c.call("GET", "/api/state", headers=tail)
             say("без сессии стол закрыт, но сервер узнаёт человека из tailnet", code == 401 and (st.get("tailnet") or {}).get("name") == "Сова", str(st)[:200])
+            say("стол виден до входа: дорожки и версии без имён участников",
+                len(st.get("lanes") or []) == 5 and all(x.get("title") and len(x.get("parts") or []) == 8 and x.get("last_runner", "") in ("", "участник") for x in st["lanes"]), str(st.get("lanes"))[:200])
             say("без заголовка Tailscale вход не срабатывает", Client(pt).call("POST", "/api/tailnet/login", {})[0] == 409)
             code, d, _ = c.call("POST", "/api/tailnet/login", {}, headers=tail)
             me = c.call("GET", "/api/state")[1]

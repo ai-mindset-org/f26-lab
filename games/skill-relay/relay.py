@@ -44,6 +44,8 @@ from urllib.parse import parse_qs, urlparse
 
 HERE = Path(__file__).resolve().parent
 SKILLS = HERE / "skills"
+CASES = HERE / "cases"  # кейсы по мотивам самых ставимых skills
+PACKS = {"base": SKILLS, "popular": CASES}
 WEB = HERE / "web"
 GUIDES = HERE / "guides"
 LOGIN = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
@@ -507,12 +509,56 @@ def skill_meta(text):
             "what": what if len(what) <= 170 else what[:168].rstrip() + "…"}
 
 
-def kit():
+def kit(pack="base"):
+    """skills набора по уровням: base – пять базовых, popular – кейсы по мотивам самых ставимых, all – оба набора"""
+    if pack != "all" and pack not in PACKS:
+        raise Refuse(f"набора «{pack}» нет: есть {', '.join(PACKS)}")
     out = []
-    for p in sorted(SKILLS.glob("*/SKILL.md")):
-        text = p.read_text(encoding="utf-8")
-        out.append(dict(skill_meta(text), name=p.parent.name, text=text))
-    return sorted(out, key=lambda s: (s["level"], s["name"]))
+    for pk in (list(PACKS) if pack == "all" else [pack]):
+        rows = []
+        for p in sorted(PACKS[pk].glob("*/SKILL.md")):
+            text = p.read_text(encoding="utf-8")
+            rows.append(dict(skill_meta(text), name=p.parent.name, text=text, pack=pk))
+        out += sorted(rows, key=lambda s: (s["level"], s["name"]))
+    return out
+
+
+def case_sources():
+    p = CASES / "sources.json"
+    return json.loads(p.read_text(encoding="utf-8")).get("cases", {}) if p.exists() else {}
+
+
+PART_HEADS = {"params": r"параметр", "steps": r"шаг|порядок|этап|процесс", "format": r"формат|вывод|шаблон|что отдать", "example": r"пример",
+              "rakes": r"грабл|ловушк|частые ошибки", "check": r"проверк", "border": r"никогда|границ|запрет|когда не брать|запасной ход"}
+PART_CUES = {"check": r"(?i)\bсверь\b|сошлось, если|проверь снова", "border": r"(?i)^\s*(не бери,|запасной ход)"}  # часть без своего заголовка видна по строкам
+
+
+def parts_map(text):
+    """из каких частей собран SKILL.md: есть ли часть и сколько в ней строк; по этой схеме страница показывает, куда ложится правило"""
+    text = norm(text)
+    lines = text.split("\n")
+    fm = frontmatter(text) or {}
+    heads, fence = [], False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        m = None if fence else re.match(r"^##\s+(.+)$", line)
+        if m:
+            heads.append((i, m.group(1).strip().lower()))
+    size = {}
+    for k, (i, title) in enumerate(heads):
+        end = heads[k + 1][0] if k + 1 < len(heads) else len(lines)
+        for pid, rx in PART_HEADS.items():
+            if re.search(rx, title):
+                size[pid] = size.get(pid, 0) + len([x for x in lines[i + 1:end] if x.strip()])
+                break
+    for pid, rx in PART_CUES.items():
+        if pid not in size:
+            n = len([x for x in lines if re.search(rx, x)])
+            if n:
+                size[pid] = n
+    out = [{"id": "head", "on": bool(fm.get("name") and fm.get("description")), "lines": 2 if fm else 0}]
+    return out + [{"id": pid, "on": pid in size, "lines": size.get(pid, 0)} for pid in PART_HEADS]
 
 
 class Table:
@@ -581,15 +627,15 @@ DEMO_PEOPLE = [("sova", "Сова", "Claude Code", "уверенный"), ("lis"
                ("vydra", "Выдра", "Claude Code", "начинающий"), ("zubr", "Зубр", "чат в браузере", "уверенный")]
 
 
-def do_init(root, heats=1, demo=False, seats=6):
+def do_init(root, heats=1, demo=False, seats=6, pack="base"):
     t = Table(root)
     if t.state_path.exists():
         raise Refuse("стол уже есть: для нового возьми пустую папку")
     t.root.mkdir(parents=True, exist_ok=True)
     t.st = {"v": 2, "created": int(time.time()), "lanes": {}, "order": [], "runners": {}, "trail": [], "used": {}, "analysis": {},
-            "calls": {"day": "", "n": 0}, "demo": bool(demo)}
+            "calls": {"day": "", "n": 0}, "demo": bool(demo), "pack": pack}
     for heat in range(1, max(1, min(int(heats), 6)) + 1):
-        for s in kit():
+        for s in kit(pack):
             found = stops(facts(s["text"]))
             if found:
                 raise Refuse(f"базовый skill {s['name']} не проходит проверку:\n{explain(found)}")
@@ -917,7 +963,7 @@ class Game:
                        "theme": meta["theme"], "laps": lane["laps"], "lines": len(text.split("\n")) - 1, "digest": digest(text),
                        "status": "бежит" if lk else "свободна", "last_rule": (lane.get("applied") or [""])[-1],
                        "last_runner": self.t.name(lane["last_runner"]) if lane.get("last_runner") else "",
-                       "what": meta["what"], "versions": [{"n": k, "rule": r, "kind": kind_of(r)} for k, r in enumerate(lane.get("applied") or [], 1)][-12:]}
+                       "what": meta["what"], "parts": parts_map(text), "versions": [{"n": k, "rule": r, "kind": kind_of(r)} for k, r in enumerate(lane.get("applied") or [], 1)][-12:]}
                 row["last_kind"] = kind_of(row["last_rule"])
                 if lk:
                     row.update(runner=self.t.name(lk["login"]), since=lk["since"], until=lk["until"], mine=lk["login"] == login,
@@ -1129,13 +1175,14 @@ def renew(game):
         root = game.t.root
         heats = max(l["heat"] for l in game.t.st["lanes"].values())
         seats = sum(1 for p in game.t.roster()["people"] if p.get("seat"))
+        pack = game.t.st.get("pack", "base")
         for name in ("lanes", "state.json", "roster.json", "TRAIL.md", "events.jsonl"):
             f = root / name
             if f.is_dir():
                 shutil.rmtree(f)
             elif f.exists():
                 f.unlink()
-        do_init(root, heats, True, seats)
+        do_init(root, heats, True, seats, pack)
         game.t.load()
     seed(game)
     with GATE:
@@ -1163,13 +1210,13 @@ SHOW_PLAN = [[], [1, 2], [3, 4], [5], [6], [7], [8], [9, 10], [11]]
 
 
 class Show:
-    def __init__(self, home, use_model=True):
-        self.home, self.use_model, self.gate = Path(home), use_model, threading.Lock()
+    def __init__(self, home, use_model=True, pack="base"):
+        self.home, self.use_model, self.gate, self.pack = Path(home), use_model, threading.Lock(), pack
         self.reset()
 
     def reset(self):
         shutil.rmtree(self.home, ignore_errors=True)
-        t = do_init(self.home)
+        t = do_init(self.home, pack=self.pack)
         t.save_roster({"people": [{"login": l, "tg_id": str(200001 + i), "name": n, "profile": {"harness": h}} for i, (l, n, h) in enumerate(SHOW_CAST)]})
         self.game = Game(t, HOUR_LIVE, LOCK_LIVE, True)
         self.game.memo = True
@@ -1233,7 +1280,8 @@ class Show:
             self.cards["lis"] = {"title": "v1 у Лиса", "note": "Записка от Совы: " + (m.get("next") or m.get("note", "")), "verdict": m["review"]["verdict"], "by": m["review"].get("by", "")}
             self.files = ["state.json: замок и ключ забега", "events.jsonl", "TRAIL.md"]
         elif n == 7:
-            bad = old.replace("\n\n## никогда", "\n- Отчёт для «Ромашка Трейд» ушёл с ошибкой в сумме, вопросы на otchet@romashka.example.\n\n## никогда", 1)
+            leak = "- Отчёт для «Ромашка Трейд» ушёл с ошибкой в сумме, вопросы на otchet@romashka.example."
+            bad = old.replace("\n\n## никогда", "\n" + leak + "\n\n## никогда", 1) if "\n\n## никогда" in old else old.rstrip("\n") + "\n\n## грабли\n\n" + leak + "\n"
             g.agent_seen("lis", L, "Codex")
             res = g.check("lis", L, {"text": bad, "rule": "G-08", "note": "грабля из примерки: в отчёте ушла неверная сумма", "tried": "отчёт для заказчика", "next": ""},
                           use_model=self.use_model, via="агент", agent="Codex")
@@ -1319,7 +1367,10 @@ def splice(text, mode, anchor, count, add):
     new = [l.rstrip() for l in norm(add).rstrip().split("\n")] if add.strip() else []
     while len(new) > 1 and not new[0] and not new[1]:  # пустая строка перед новым разделом остаётся одна
         new.pop(0)
-    new = new[:MAX_CHANGED]
+    if len(new) > MAX_CHANGED:
+        new = new[:MAX_CHANGED]
+        if sum(1 for l in new if l.lstrip().startswith("```")) % 2:  # срез по пределу не оставляет открытый блок кода
+            new[-1] = "```"
     idx = next((i for i, l in enumerate(lines) if a and flat(l) == a), None)
     if idx is None and len(a) >= 8:
         idx = next((i for i, l in enumerate(lines) if a[:48] in flat(l)), None)
@@ -1345,7 +1396,7 @@ def try_look(text):
     rest = [f for f in facts(text) if f not in private]
     return {"lines": len(text.rstrip("\n").split("\n")) if text.strip() else 0, "chars": len(text), "name": (frontmatter(text) or {}).get("name", ""),
             "private": private[:8], "notes": [f for f in rest if f["level"] == "стоп"][:5],
-            "candidates": candidates_offline(text, ()) if len(text.strip()) >= 40 else [], "model": model_name()}
+            "candidates": candidates_offline(text, ()) if len(text.strip()) >= 40 else [], "model": model_name(), "parts": parts_map(text)}
 
 
 def try_apply(text, rule, budget):
@@ -1376,12 +1427,14 @@ def try_apply(text, rule, budget):
             d = labeled(raw.split("<<<ADD")[0], ("note", "mode", "anchor", "count"))
             m = re.search(r"<<<ADD>*[ \t]*\n(.*?)\n?[ \t]*(?:<<<)?ADD>>>", raw, re.S) or re.search(r"<<<ADD>*[ \t]*\n(.*)", raw, re.S)
             add = m.group(1) if m else ""
+            add = re.sub(r"(?:\n[ \t]*(?:<<<)?ADD(?:>>>)?[ \t]*)+\s*$", "", "\n" + add).lstrip("\n")  # закрывающая метка, написанная по-своему, в skill не идёт
             mode = d.get("mode", "after")
             if not add.strip() and not mode.lower().startswith("delete"):
                 raise ValueError("в ответе модели нет строк изменения")
             cnt = re.search(r"\d+", d.get("count", "") or "")
             new = splice(text, mode, d.get("anchor", ""), int(cnt.group(0)) if cnt else 1, add)
-            note, by = cut(d.get("note", ""), 300), "модель " + model_name()
+            new = new.replace("—", "–")  # в текстах стола короткое тире
+            note, by = cut(d.get("note", "").replace("—", "–"), 300), "модель " + model_name()
         except Exception as e:
             why = "модель не ответила (" + cut(e, 60) + ")"
     if not new:
@@ -1522,7 +1575,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
         with GATE:
             if "show" not in stage:
                 # прогон идёт по признакам: шаг отвечает сразу и одинаково при каждом показе, модель разбирает правки на самом столе
-                stage["show"] = Show(table.root / ".show", use_model=False)
+                table.load()
+                stage["show"] = Show(table.root / ".show", use_model=False, pack=table.st.get("pack", "base"))
             return stage["show"]
 
     def agent_of(handler):
@@ -1603,8 +1657,12 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                             known = next((x for x in table.roster()["people"] if x.get("tail") == who["key"]), None)
                         tail = {"name": (known or who)["name"]}
                     if not viewer and not demo:
+                        # стол виден до входа: дорожки и версии без имён участников
+                        keep = ("id", "n", "skill", "heat", "title", "level", "theme", "laps", "lines", "status", "what", "versions", "last_rule", "last_kind", "idle_since", "until", "parts")
+                        brief = [dict({k: x[k] for k in keep if k in x}, last_runner="участник" if x.get("last_runner") else "", runner="участник" if x.get("runner") else "")
+                                 for x in game.public(None)["lanes"]]
                         return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", ""), "tailnet": tail,
-                                              "lock": game.lock, "hour": game.hour})
+                                              "lock": game.lock, "hour": game.hour, "lanes": brief})
                     return self.out(200, dict(game.public(viewer), tailnet=tail))
                 if u.path == "/api/rules":
                     return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "principles": BOOK.get("principles", []), "parts": BOOK.get("parts", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
@@ -1617,7 +1675,9 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                 if u.path == "/api/try/kit":
                     if not demo and not viewer:
                         return self.out(401, {"error": "нет входа"})
-                    return self.out(200, {"skills": [{k: x[k] for k in ("name", "title", "level", "what", "text")} for x in kit()], "model": model_name(),
+                    src = case_sources()
+                    return self.out(200, {"skills": [dict({k: x[k] for k in ("name", "title", "level", "what", "text", "pack")}, source=src.get(x["name"]) if x["pack"] == "popular" else None)
+                                                     for x in kit("all")], "model": model_name(), "pack": game.t.st.get("pack", "base"),
                                           "limits": {"changed": MAX_CHANGED, "lines": TRY_LINES}})
                 if u.path == "/api/log":
                     if not demo and not viewer:
@@ -1855,6 +1915,7 @@ def main(argv=None):
     ap.add_argument("--seats", type=int, default=6)
     ap.add_argument("--bots", type=int, default=5)
     ap.add_argument("--hour", type=int, help="длина паузы в секундах")
+    ap.add_argument("--pack", default="base", choices=sorted(PACKS), help="набор skills для init: base – пять базовых, popular – кейсы по мотивам самых ставимых")
     ap.add_argument("--lock", type=int, help="сколько секунд палочка держится за бегуном")
     ap.add_argument("--public-url", default=os.environ.get("RELAY_PUBLIC_URL", ""))
     ap.add_argument("--login")
@@ -1875,7 +1936,7 @@ def main(argv=None):
             print(f"стоп: {n} · глянь: {len(found) - n}. Имена людей и компаний проверка не видит: их ловит разбор модели и человек.")
             return 1 if n else 0
         if a.cmd == "init":
-            t = do_init(a.target, a.heats, a.demo, a.seats)
+            t = do_init(a.target, a.heats, a.demo, a.seats, a.pack)
             if a.demo:
                 seed(Game(t, a.hour or 420, a.lock or 300, True))
             print(f"стол создан: {t.root} · дорожек {len(t.st['order'])}" + (" · демо-состав и первые передачи на месте" if a.demo else ""))

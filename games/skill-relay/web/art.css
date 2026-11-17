@@ -86,3 +86,24 @@ p.hint a{color:var(--ink)}
   .tabs{order:3;width:100%;overflow-x:auto}
   .tabs a{padding:4px 9px}
 }
+
+/* схема skill: восемь частей файла, правило подсвечивает свою часть */
+.sch{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;margin:10px 0 12px}
+.sch .sp{border:1px dashed var(--ink3);padding:7px 7px 6px;min-height:46px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;font-size:10.5px;line-height:1.2;color:var(--ink3)}
+.sch .sp b{font-weight:500}
+.sch .sp.on{border:1px solid var(--ink);color:var(--ink2);background:var(--bg)}
+.sch .sp.on b{font-weight:600;color:var(--ink)}
+.sch .sp.hit{border-color:var(--acc);box-shadow:inset 0 -3px 0 var(--acc)}
+.sch .sp.hit b{color:var(--acc)}
+.sch .sp.new{border:1px solid var(--acc);background:var(--acc)}
+.sch .sp.new b,.sch .sp.new span{color:#111}
+.sch.mini{grid-template-columns:repeat(8,9px);gap:2px;margin:0}
+.sch.mini .sp{min-height:0;height:9px;padding:0;border:1px solid var(--ink3)}
+.sch.mini .sp.on{background:var(--ink);border-color:var(--ink)}
+.lsch{margin:6px 0 2px}
+details.own{margin-top:18px;border-top:1px solid var(--line);padding-top:10px}
+details.own>summary{cursor:pointer;font-size:11.5px;color:var(--ink2)}
+details.own[open]>summary{color:var(--ink);margin-bottom:6px}
+.chips .cl{flex-basis:100%;margin-top:4px}
+.chips em.lv{font-style:normal;color:var(--acc);margin-right:5px}
+@media (max-width:900px){.sch{grid-template-columns:repeat(4,minmax(0,1fr))}.sch.mini{grid-template-columns:repeat(8,9px)}}

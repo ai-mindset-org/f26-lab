@@ -45,9 +45,15 @@
   function ruleOf(id) { return RULES.filter(function (r) { return r.id === id; })[0]; }
 
   function drawKit() {
-    fill($('kit'), h('span', { class: 'cl' }, 'взять базовый:'), KIT.map(function (s) {
-      return h('button', { class: 'chip', title: s.what, onclick: function () { setText(s.text); } }, s.title);
-    }), h('button', { class: 'chip', onclick: function () { setText(''); $('text').focus(); } }, 'очистить'));
+    var grp = function (pk, label) {
+      var rows = KIT.filter(function (x) { return (x.pack || 'base') === pk; });
+      return rows.length ? [h('span', { class: 'cl' }, label), rows.map(function (x) {
+        var src = x.source;
+        return h('button', { class: 'chip', title: x.what + (src ? ' · по мотивам ' + src.origin + ' из ' + src.repo + (src.installs ? ', установок ' + src.installs : '') : ''), onclick: function () { setText(x.text); } },
+          h('em', { class: 'lv' }, x.level), x.title);
+      })] : null;
+    };
+    fill($('kit'), grp('popular', 'популярные skills, уровни 1–5:'), grp('base', 'базовые:'), h('button', { class: 'chip', onclick: function () { setText(''); $('text').focus(); } }, 'очистить'));
   }
   function setText(t) {
     $('text').value = t; st.v0 = t; st.versions = []; st.pending = null; st.error = null;
@@ -68,9 +74,10 @@
       h('span', null, 'строк ' + d.lines + (d.name ? ' · ' + d.name : '')),
       d.private.length ? h('span', { class: 'bad' }, ' · стоп: личное или секрет, модели текст не уйдёт') : d.lines ? h('span', null, ' · личного не видно') : null,
       d.private.map(function (f) { return h('div', { class: 'bad' }, 'строка ' + f.line + ' · ' + f.rule + (f.excerpt ? ': «' + f.excerpt + '»' : '')); }),
-      d.notes.map(function (f) { return h('div', null, 'форма · ' + f.rule); }));
+      d.notes.map(function (f) { return h('div', null, 'форма · ' + f.rule); }),
+      d.parts && d.lines ? A.scheme(d.parts, { hit: (ruleOf(st.rule) || {}).part || '' }) : null);
   }
-  function pick(kind, rule) { st.kind = kind; st.rule = rule || ''; drawRules(); save(); }
+  function pick(kind, rule) { st.kind = kind; st.rule = rule || ''; drawRules(); drawMeta(); save(); }
   function drawRules() {
     var hints = (st.look && st.look.candidates) || [];
     fill($('hints'), hints.length ? [h('span', { class: 'cl' }, 'по тексту видно, чего не хватает:'), hints.map(function (c) {

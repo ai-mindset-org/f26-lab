@@ -93,7 +93,28 @@
     cat([['l', 10, 24, 62, 24, 'm']], [0, 1, 2].map(function (i) { return ['c', 14 + i * 17, 24, 4, 'f']; }), [['c', 60, 24, 6, 'af'], ['t', 53, 42, 'v+1', 'tx ta']])
   ];
 
+  var PART_T = { head: 'шапка', params: 'параметры', steps: 'шаги', format: 'формат', example: 'пример', rakes: 'грабли', check: 'проверка', border: 'границы' };
+  // схема skill: восемь частей файла; hit – куда ляжет выбранное правило, fresh – что появилось после изменения
+  function scheme(parts, o) {
+    o = o || {};
+    var box = document.createElement('div');
+    box.className = 'sch' + (o.mini ? ' mini' : '');
+    (parts || []).forEach(function (p) {
+      var c = document.createElement('div'), fresh = (o.fresh || []).indexOf(p.id) >= 0, b, s;
+      c.className = 'sp' + (p.on ? ' on' : '') + (o.hit === p.id || o.hit === 'whole' ? ' hit' : '') + (fresh ? ' new' : '');
+      c.title = PART_T[p.id] + (p.on ? ' · строк ' + p.lines : ' · пока нет');
+      if (!o.mini) {
+        b = document.createElement('b'); b.textContent = PART_T[p.id];
+        s = document.createElement('span'); s.textContent = fresh ? 'добавлено' : p.on ? p.lines + ' стр.' : 'нет';
+        c.appendChild(b); c.appendChild(s);
+      }
+      box.appendChild(c);
+    });
+    return box;
+  }
+
   window.ART = {
+    scheme: scheme,
     rule: function (id) { return RULE[id] ? draw(96, 64, RULE[id], 'rule-art') : null; },
     kind: function (id) { return KIND[id] ? draw(16, 16, KIND[id], 'kind-art') : null; },
     step: function (i) { return draw(72, 48, STEP[i], 'step-art'); },
