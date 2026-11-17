@@ -223,9 +223,23 @@
         hx('div', 'lines', now.length ? now.map(function (t) { return hx('div', 'add', t); }) : hx('div', 'none', 'строк не добавлено: правило убирает лишнее'))));
   }
 
+  // встал из-за стола: skill снова свободен в голове дорожки, версии на месте, человек в стороне и может вернуться
+  function away() {
+    return draw(560, 132, cat(
+      [['l', 24, 48, 536, 48, 'm'], ['l', 60, 48, 172, 48]],
+      [0, 1, 2].map(function (i) { return ['c', 60 + i * 56, 48, 5, 'f']; }),
+      [0, 1, 2].map(function (i) { return ['t', 52 + i * 56, 30, 'v' + i, 'tx']; }),
+      [['c', 228, 48, 8, ''], ['c', 228, 48, 2.5, 'f'], ['t', 204, 22, 'skill свободен', 'tx'],
+        ['c', 380, 100, 10, ''], ['t', 398, 104, 'ты', 'tx'],
+        ['p', 'M238 56C262 84 318 100 366 100', 'd'], ['p', 'M246 57L238 56L239 64', 'd'],
+        ['t', 240, 114, 'вернуться за стол', 'tx ta'],
+        ['p', 'M394 96C430 86 470 86 506 96', 'm'], ['p', 'M499 90L506 96L498 101', 'm'], ['t', 430, 78, 'выйти совсем', 'tx']]), 'away-art');
+  }
+
   window.ART = {
     scheme: scheme,
     intro: intro,
+    away: away,
     story: story,
     partName: function (id) { return PART[id] || 'весь текст'; },
     rule: function (id) { return RULE[id] ? draw(96, 64, RULE[id], 'rule-art') : null; },

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """эстафета skills · открытая беговая эстафета.
 
-Пять skills (SKILL.md) лежат на дорожках. Участник входит под своим логином, берёт свободный
+Три основных skills (SKILL.md) лежат на дорожках: текст, саммари, исследование; участник может положить свой
+skill новой дорожкой. Участник входит под своим логином, берёт свободный
 skill (дорожка закрепляется за ним), вносит одно изменение по правилу из гайдов и коммитит его
 за пять минут: в дорожке лежит новая версия. После взятия пауза на все дорожки.
 У каждого skill видна лента версий: кто, какое изменение и через какого агента.
 
-  python3 relay.py init   <стол> [--demo] [--heats N]     создать стол
+  python3 relay.py init   <стол> [--demo] [--pack main]   создать стол: main – три основных skills, text+base – восемь
   python3 relay.py serve  <стол> --demo [--bots 8]        деморежим: «час» за 7 минут, места без входа, бегуны-боты
   python3 relay.py serve  <стол> --live [--open]          живой режим: вход по ссылке, час паузы, разбор моделью
   python3 relay.py mint   <стол> --login <ник> --name ..  ссылка для входа (ручная выдача)
@@ -46,7 +47,8 @@ HERE = Path(__file__).resolve().parent
 SKILLS = HERE / "skills"
 CASES = HERE / "cases"  # кейсы по мотивам самых ставимых skills
 STARTER = HERE / "starter"  # три простых текстовых skills: голос, исследование по материалам, оценка текста
-PACKS = {"base": SKILLS, "popular": CASES, "text": STARTER}
+MAIN = [STARTER / "tone-of-voice", SKILLS / "text-summary", SKILLS / "source-research"]  # три основных: текст, саммари, исследование
+PACKS = {"main": MAIN, "base": SKILLS, "popular": CASES, "text": STARTER}
 WEB = HERE / "web"
 GUIDES = HERE / "guides"
 LOGIN = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
@@ -519,18 +521,25 @@ def skill_meta(text):
             "what": what if len(what) <= 170 else what[:168].rstrip() + "…"}
 
 
-def kit(pack="base"):
-    """skills набора по уровням: base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых, all – все наборы"""
-    packs = list(PACKS) if pack == "all" else pack.split("+")  # text+base кладёт на стол оба набора: восемь дорожек для большой группы
+def kit(pack="main"):
+    """skills набора: main – три основных (текст, саммари, исследование), base – пять базовых по уровням, popular – кейсы по мотивам
+    самых ставимых, text – три простых текстовых, all – все skills по одному разу"""
+    packs = [x for x in PACKS if x != "main"] if pack == "all" else pack.split("+")  # text+base кладёт на стол оба набора: восемь дорожек для большой группы
     if [x for x in packs if x not in PACKS]:
         raise Refuse(f"набора «{pack}» нет: есть {', '.join(PACKS)}, наборы складываются через плюс")
-    out = []
+    out, seen = [], set()
     for pk in packs:
-        rows = []
-        for p in sorted(PACKS[pk].glob("*/SKILL.md")):
-            text = p.read_text(encoding="utf-8")
-            rows.append(dict(skill_meta(text), name=p.parent.name, text=text, pack=pk))
-        out += sorted(rows, key=lambda s: (s["level"], s["name"]))
+        src = PACKS[pk]
+        if isinstance(src, list):  # main: порядок дорожек задан руками, skills лежат в папках своих наборов
+            rows = [dict(skill_meta(t), name=d.name, text=t, pack=pk) for d in src for t in [(d / "SKILL.md").read_text(encoding="utf-8")]]
+        else:
+            rows = []
+            for p in sorted(src.glob("*/SKILL.md")):
+                text = p.read_text(encoding="utf-8")
+                rows.append(dict(skill_meta(text), name=p.parent.name, text=text, pack=pk))
+            rows.sort(key=lambda s: (s["level"], s["name"]))
+        out += [x for x in rows if x["name"] not in seen]
+        seen |= {x["name"] for x in rows}
     return out
 
 
@@ -785,6 +794,7 @@ class Game:
                                               "token": secrets.token_urlsafe(18), "reviews": 0, "draft": None}
             r = self.t.st["runners"].setdefault(login, {})
             r["last_take"] = int(now)
+            r.pop("away", None)
             self.t.event(login, "skill взят: закреплён за логином на " + (f"{round(hold / 60)} мин" if hold >= 60 else f"{round(hold)} с"),
                          lid, kind="take", via=via)
             self.t.save()
@@ -1022,6 +1032,32 @@ class Game:
             self.t.event(login, "skill возвращён без изменения", lid, kind="drop", via=via)
             self.t.save()
 
+    def leave(self, login, via="страница"):
+        """человек встаёт из-за стола: взятый skill возвращается без изменения, вход остаётся, в журнале запись"""
+        with GATE:
+            self.t.load()
+            lid = self.holding(login)
+            r = self.t.st["runners"].setdefault(login, {})
+            if lid:
+                lane = self.t.st["lanes"][lid]
+                lane["lock"] = None
+                lane["freed"] = int(time.time())
+                r["dropped"] = r.get("dropped", 0) + 1
+                self.t.event(login, "skill возвращён без изменения", lid, kind="drop", via=via)
+            if not r.get("away"):
+                r["away"] = int(time.time())
+                self.t.event(login, "встал из-за стола", kind="leave", via=via)
+            self.t.save()
+            return lid or ""
+
+    def back(self, login, via="страница"):
+        with GATE:
+            self.t.load()
+            r = self.t.st["runners"].setdefault(login, {})
+            if r.pop("away", None):
+                self.t.event(login, "вернулся за стол", kind="back", via=via)
+                self.t.save()
+
     def commit(self, message):
         try:
             subprocess.run(["git", "-C", str(self.t.root), "add", "-A", "lanes", "TRAIL.md"], check=True, capture_output=True, timeout=20)
@@ -1084,7 +1120,7 @@ class Game:
                 out["viewer"] = {"login": login, "name": viewer.get("name", login), "nick": viewer.get("nick", ""), "profile": viewer.get("profile") or {},
                                  "auth": viewer.get("auth") or r.get("auth", ""),
                                  "rest": self.rest_left(login), "rest_until": r.get("last_take", 0) + self.hour if r.get("last_take") else 0,
-                                 "holding": self.holding(login), "legs": r.get("legs", 0)}
+                                 "holding": self.holding(login), "legs": r.get("legs", 0), "away": bool(r.get("away"))}
             return out
 
     def agent_seen(self, login, lid, agent=""):
@@ -1136,6 +1172,7 @@ class Game:
             self.t.load()
             r = self.t.st["runners"].setdefault(login, {})
             r["auth"] = auth
+            r.pop("away", None)  # новый вход сажает за стол
             self.t.event(login, "вход: " + auth, kind="enter")
             self.t.save()
 
@@ -1221,13 +1258,15 @@ def bots_loop(game, logins, stop):
                     lid = game.holding(login)
                     free = [l for l in game.t.st["order"] if not game.why_not(login, l)
                             and game.t.st["lanes"][l].get("fx", 0) < len(patches().get(game.t.st["lanes"][l]["skill"], []))]
+                    lanes = game.t.st["lanes"]
+                    busy, keep = sum(1 for l in lanes.values() if l.get("lock")), max(1, (len(lanes) + 1) // 2)  # половина стола остаётся людям
                     game.t.save()
                 if lid:
                     if time.time() >= plan.get(login, 0):
                         bot_leg(game, login, lid)
                 elif not free and login == logins[0] and game.demo and spent(game):
                     renew(game)
-                elif free and rnd.random() < 0.12:
+                elif free and busy < len(lanes) - keep and rnd.random() < 0.12:
                     lid = rnd.choice(free)
                     hold = min(game.lock, rnd.uniform(40, 80))  # бот бежит быстрее человека: стадион в демо живой
                     game.take(login, lid, lock=hold, via="бот")
@@ -1301,7 +1340,7 @@ def renew(game):
 
 SHOW_CAST = [("sova", "Сова", "Claude Code"), ("lis", "Лис", "Codex"), ("ezh", "Ёж", "чат в браузере")]
 SHOW_STEPS = [
-    ("стол и задача", "Пять skills лежат на дорожках. Задача у всех одна: взять skill, внести одно изменение и закоммитить его за пять минут. Пока никто не вошёл, журнал ведёт система."),
+    ("стол и задача", "Skills лежат на дорожках. Задача у всех одна: взять skill, внести одно изменение и закоммитить его за пять минут. Пока никто не вошёл, журнал ведёт система."),
     ("взять", "Сова, Лис и Ёж входят под своими логинами. Сова берёт skill 01: он закреплён за ней на пять минут, у Лиса и Ежа дорожка занята."),
     ("одно изменение", "Сова отдаёт агенту задание с ключом забега. Агент примеряет skill на её задаче и добавляет одно: здесь это пример. Сам пишет, что изменил и зачем. Сервер проверяет текст и отдаёт разбор."),
     ("коммит: версия v1", "Сова читает изменение и нажимает «закоммитить». В дорожке лежит новая версия v1: файл версии, лента версий и журнал обновились."),
@@ -1309,10 +1348,11 @@ SHOW_STEPS = [
     ("стоп: личное в изменении", "Агент Лиса дописал граблю с названием компании и почтой. Проверка текста остановила изменение до разбора, причина записана в журнал."),
     ("версия v2", "Агент убрал личное и прислал изменение заново. Разбор принял, Лис закоммитил: в дорожке версия v2."),
     ("пауза и срок", "Сова хочет взять ещё один skill: система отказывает, после взятия идёт пауза. Ёж взял skill 03 и не уложился в срок: система сама вернула его свободным, без изменения."),
+    ("встать и вернуться", "Лис встаёт из-за стола: вход остаётся, его версия лежит в дорожке, в журнале запись. Будь у него в руках skill, тот вернулся бы на стол без изменения. Потом Лис возвращается тем же входом."),
     ("лог версий", "У каждой версии видно, от чьего лица она закоммичена, через какого агента, какое изменение внесено и что сказал разбор."),
 ]
 # шаг прогона = один или два хода стола; номера ходов прежние, поэтому сценарий не менялся
-SHOW_PLAN = [[], [1, 2], [3, 4], [5], [6], [7], [8], [9, 10], [11]]
+SHOW_PLAN = [[], [1, 2], [3, 4], [5], [6], [7], [8], [9, 10], [12], [11]]
 
 
 class Show:
@@ -1417,6 +1457,11 @@ class Show:
             self.files = ["state.json: замок снят", "events.jsonl: запись от системы", "TRAIL.md"]
         elif n == 11:
             self.files = [f"lanes/{L}/RELAY.md", f"lanes/{L}/legs/000.md … 002.md", "events.jsonl", "TRAIL.md"]
+        elif n == 12:
+            g.leave("lis")
+            g.back("lis")
+            self.cards["lis"] = {"title": "Лис встал и вернулся", "note": "Версия v2 осталась в дорожке с его именем. В журнале две записи: встал из-за стола и вернулся за стол."}
+            self.files = ["state.json: отметка «встал» снята", "events.jsonl: две записи", "TRAIL.md"]
 
     def go(self, to):
         with self.gate:
@@ -1946,7 +1991,10 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                 path = safe(WEB, rel)
                 if not path.is_file():
                     return self.out(404, "нет такого файла", "text/plain; charset=utf-8")
-                return self.out(200, path.read_bytes(), TYPES.get(path.suffix, "application/octet-stream"))
+                raw = path.read_bytes()
+                if path.suffix == ".html":  # превью ссылки требует полного адреса картинки и страницы
+                    raw = raw.replace(b"__ORIGIN__", base.encode("utf-8"))
+                return self.out(200, raw, TYPES.get(path.suffix, "application/octet-stream"))
             except Refuse as e:
                 return self.out(409, {"error": str(e)})
             except Exception as e:
@@ -2033,6 +2081,11 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     return self.out(200, {"ok": True, "n": meta["n"], "rest": game.rest_left(viewer["login"])})
                 if u.path == "/api/drop":
                     game.drop(viewer["login"], lid)
+                    return self.out(200, {"ok": True})
+                if u.path == "/api/leave":  # встать из-за стола: skill уходит на стол, сессия остаётся
+                    return self.out(200, {"ok": True, "dropped": game.leave(viewer["login"])})
+                if u.path == "/api/back":
+                    game.back(viewer["login"])
                     return self.out(200, {"ok": True})
                 if u.path == "/api/lane/add":
                     return self.out(200, game.add_lane(viewer["login"], str(d.get("text", ""))[:MAX_CHARS * 2]))
@@ -2156,7 +2209,7 @@ def main(argv=None):
     ap.add_argument("--seats", type=int, default=6)
     ap.add_argument("--bots", type=int, default=5)
     ap.add_argument("--hour", type=int, help="длина паузы в секундах")
-    ap.add_argument("--pack", default="base", choices=sorted(PACKS) + ["text+base", "text+popular"], help="набор skills для init: base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых; text+base – восемь дорожек для большой группы")
+    ap.add_argument("--pack", default="main", choices=sorted(PACKS) + ["text+base", "text+popular", "main+base"], help="набор skills для init: main – три основных (текст, саммари, исследование), base – пять базовых, popular – кейсы по мотивам самых ставимых, text – три простых текстовых; text+base – восемь дорожек для большой группы")
     ap.add_argument("--lock", type=int, help="сколько секунд палочка держится за бегуном")
     ap.add_argument("--public-url", default=os.environ.get("RELAY_PUBLIC_URL", ""))
     ap.add_argument("--login")

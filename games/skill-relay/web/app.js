@@ -191,8 +191,15 @@
       window.SKIN === 'lms' ? h('a', { class: 'quiet', href: '../', target: '_blank', rel: 'noopener', title: 'тот же стол на широком экране со стадионом' }, 'на весь экран ↗') : null,
       view !== 'log' && S.trail ? h('button', { class: 'quiet', onclick: function () { go('log'); } }, 'журнал') : null,
       view !== 'auto' ? h('button', { class: 'quiet', onclick: function () { go('auto'); } }, '← на стол') : null,
-      S.viewer ? h('button', { class: 'quiet', onclick: function () { api('POST', 'api/auth/logout', {}).then(function () { leg = null; load(); }); } }, 'выйти') : null);
+      S.viewer && !S.viewer.away ? h('button', { class: 'quiet', title: LEAVE_TIP, onclick: leaveTable }, 'встать из-за стола') : null);
   }
+  // встать из-за стола: skill из рук возвращается на стол без изменения, вход и версии остаются; вернуться можно одной кнопкой
+  var LEAVE_TIP = 'skill из рук вернётся на стол без изменения, твои версии и вход останутся';
+  function leaveTable() {
+    api('POST', 'api/leave', {}).then(function (d) { leg = null; view = 'auto'; key = ''; if (d.dropped) toast('skill вернулся на стол без изменения'); load(); }, function (e) { toast(e.message); });
+  }
+  function backToTable() { api('POST', 'api/back', {}).then(function () { key = ''; load(); }, function (e) { toast(e.message); }); }
+  function signOut() { api('POST', 'api/auth/logout', {}).then(function () { leg = null; view = 'auto'; key = ''; load(); }); }
   function tabs() { Array.prototype.forEach.call(document.querySelectorAll('.tabs a'), function (x) { var log = x.getAttribute('href').indexOf('view=log') > 0; x.classList.toggle('on', x.getAttribute('href') === './' ? view !== 'log' : log && view === 'log'); }); }
   function show(v) { view = v; key = ''; tabs(); render(); $('panel').scrollTop = 0; if (innerWidth <= 900 && v !== 'auto') $('panel').scrollIntoView(); }
   // каждый экран стола встаёт шагом в историю браузера: «назад» возвращает на прошлый экран и в рамке LMS
@@ -206,7 +213,7 @@
       h('span', { class: 'av', 'aria-hidden': 'true' }, (v.name || v.login || '?').trim().charAt(0).toUpperCase()),
       h('span', null, 'ты за столом как ', h('b', null, v.name || v.login), v.nick ? [' · ', h('span', { class: 'nick' }, '@' + v.nick)] : null,
         v.auth ? h('i', null, ' · вход: ' + v.auth) : null),
-      S.mode === 'демо' ? h('button', { class: 'out', title: 'вернуться на первый экран', onclick: function () { api('POST', 'api/auth/logout', {}).then(function () { leg = null; view = 'auto'; load(); }); } }, 'встать из-за стола') : null);
+      h('button', { class: 'out', title: LEAVE_TIP, onclick: leaveTable }, 'встать из-за стола'));
   }
 
   // ---------- вход ----------
@@ -229,15 +236,31 @@
       h('div', { class: 'row' }, nm, h('button', { class: 'go', onclick: function () { api('POST', 'api/tailnet/login', { name: nm.value }).then(load, out(box)); } }, 'войти'))] : null;
     var sum = h('summary'), tb = h('div');
     function onTable() { var t = S.totals || {}; sum.textContent = 'что сейчас на столе · skills ' + S.lanes.length + (t.laps != null ? ' · версий ' + t.laps : ''); fill(tb, trailBlock(6)); }
+    var me = S.viewer;
+    if (me && me.away) return [ // человек встал из-за стола: вход жив, вернуться можно одной кнопкой
+      h('div', { class: 'kick' }, '{ ты встал из-за стола · ' + (demo ? 'деморежим' : 'вход: ' + (me.auth || 'сессия')) + ' }'),
+      h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
+      h('p', { class: 'why' }, 'Место за тобой, ', h('b', null, me.name || me.login), '. ' + (me.legs ? 'Твоих версий в дорожках: ' + me.legs + ', они остаются на столе.' : 'Версий от тебя пока нет.') +
+        (me.rest > 0 ? ' Пауза после взятия идёт дальше.' : '')),
+      h('div', { class: 'away' }, A.away ? A.away() : null,
+        h('ol', null, h('li', null, h('b', null, 'skill из рук'), ' вернулся на стол без изменения: его может взять следующий'),
+          h('li', null, h('b', null, 'твои версии'), ' лежат в дорожках с твоим именем'),
+          h('li', null, h('b', null, 'в журнале'), ' записано, когда ты встал; вернёшься, появится вторая запись'))),
+      h('div', { class: 'row', style: 'margin-top:18px' }, h('button', { class: 'go', onclick: backToTable }, 'вернуться за стол'),
+        h('button', { class: 'quiet', title: demo ? 'место освободится для другого гостя' : 'вход закроется: в следующий раз зайди со страницы лабы или по ссылке', onclick: signOut }, demo ? 'освободить место' : 'выйти совсем')),
+      box,
+      S.lanes && S.lanes.length ? h('details', { class: 'own onTable' }, sum, deck(true, onTable), tb) : null,
+      links()
+    ];
     return [
       h('div', { class: 'kick' }, '{ открытая эстафета · ' + (demo ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : S.lms ? 'вход из LMS' : S.sso ? 'единый вход' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
       h('p', { class: 'why' }, 'Берёшь skill со стола, применяешь одно правило и отдаёшь новой версией следующему.'),
       intro(),
       demo ? [h('div', { class: 'row', style: 'margin-top:18px' },
-          free ? h('button', { class: 'go', onclick: sit(free.login) }, 'сесть за стол') : null),
+          free ? h('button', { class: 'go', onclick: sit(free.login) }, 'выбрать skill →') : null),
         h('p', { class: 's' }, 'Демо: входа нет, имена выдуманные, пауза после взятия ' + span(S.hour) + '. Стол можно трогать, он учебный.'),
-        seats.length > 1 ? h('details', { class: 'own' }, h('summary', null, 'выбрать место самому · ' + seats.length), h('div', { class: 'row' }, seats)) : null,
+        seats.length > 1 ? h('details', { class: 'own' }, h('summary', null, 'войти под другим именем · ' + seats.length), h('div', { class: 'row' }, seats)) : null,
         S.tailnet ? tail : null] :
         tail || [S.lms ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.lms, target: '_top' }, 'войти через LMS')) : S.sso && window.SKIN !== 'lms' ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.sso.url }, 'войти через ' + S.sso.name)) : S.login_url ? h('div', { class: 'row', style: 'margin-top:18px' }, h('a', { class: 'btn go', href: S.login_url, rel: 'noopener' }, 'войти через Telegram')) : null,
           h('p', { class: 's' }, S.lms ? 'Вход идёт со страницы лабы в LMS: она подтверждает участника и открывает стол под твоим именем и ником.' : S.sso ? 'Единый вход AI Mindset: тот же аккаунт, что в других сервисах лабы. На столе будет видно твоё имя у каждой версии.' : S.login_url ? 'Бот пришлёт кнопку входа. Ссылка живёт 15 минут и срабатывает один раз.' : 'Ссылку для входа выдаёт ведущий. Она живёт 15 минут и срабатывает один раз.')],
@@ -705,7 +728,7 @@
 
   // ---------- сборка экрана ----------
   function phase() {
-    if (!S.viewer) return 0;
+    if (!S.viewer || S.viewer.away) return 0;
     if (S.viewer.holding) return leg && leg.result && leg.result.review ? 3 : 2;
     return S.viewer.rest > 0 ? 4 : 1;
   }
@@ -721,8 +744,8 @@
   function render() {
     if (!S) return;
     var held = S.viewer && S.viewer.holding && view === 'auto';
-    document.body.classList.toggle('wide', !stadium && !held && (view.indexOf('lane:') === 0 || (view === 'auto' && !!S.viewer)));
-    var v = S.viewer, hold = v && v.holding, kids, k;
+    var v = S.viewer && !S.viewer.away ? S.viewer : null, hold = v && v.holding, kids, k;
+    document.body.classList.toggle('wide', !stadium && !held && (view.indexOf('lane:') === 0 || (view === 'auto' && !!v)));
     if (hold && view === 'auto') {
       k = 'leg:' + hold;
       if (k !== key) {
@@ -744,7 +767,7 @@
     else {
       // вход и стол: экран собирается заново, только когда меняется его состав. Новые версии и взятия обновляют сам дашборд:
       // поиск, фильтры, выбранная плитка и открытая форма своего skill остаются на месте
-      k = !v ? 'entry:' + (S.seats || []).map(function (s) { return s.taken ? 1 : 0; }).join('') + ':' + (S.lanes.length ? 1 : 0) :
+      k = !v ? 'entry:' + (S.seats || []).map(function (s) { return s.taken ? 1 : 0; }).join('') + ':' + (S.lanes.length ? 1 : 0) + ':' + (S.viewer ? 'away' + S.viewer.legs + (S.viewer.rest > 0) : '') :
         'lanes:' + v.login + ':' + (v.rest > 0) + ':' + v.legs + ':' + ((S.add || {}).left || 0) + ':' + stadium;
       var sig = S.lanes.map(function (l) { return l.id + l.laps + l.status + (l.runner || '') + (l.doing || '') + (l.why_not ? 1 : 0); }).join() + (S.events || 0);
       if (k === key && deckUI && deckUI.node.isConnected) {
@@ -824,8 +847,8 @@
     if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hgt * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hgt * dpr); }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, hgt);
     if (!S || !S.lanes || !S.lanes.length) return;
-    var N = S.lanes.length, small = w < 520, t = still ? 2.2 : ms / 1000;
-    var outer = Math.min(hgt * 0.4, w * 0.3), gap = Math.min(small ? 17 : 27, outer * 0.62 / Math.max(1, N - 1)), inner = outer - gap * (N - 1);
+    var N = S.lanes.length, small = w < 520, few = N <= 4, t = still ? 2.2 : ms / 1000; // три-четыре дорожки стоят шире: на них помещается имя skill
+    var outer = Math.min(hgt * 0.4, w * (few ? 0.27 : 0.3)), gap = Math.min(small ? (few ? 21 : 17) : few ? 40 : 27, outer * (few ? 0.5 : 0.62) / Math.max(1, N - 1)), inner = outer - gap * (N - 1);
     var L = Math.max(10, w / 2 - outer - (small ? 14 : 30)), cx = w / 2, cy = hgt / 2 - (small ? 0 : 6);
     var lt = [Math.cos(t * 0.5) * 0.72, -0.45, 0.55 + Math.sin(t * 0.5) * 0.2];
     ctx.save(); ctx.lineCap = 'round'; ctx.lineWidth = 1.5; ctx.setLineDash([0.1, small ? 6 : 7]); ctx.strokeStyle = INK3;
@@ -834,21 +857,32 @@
       ctx.beginPath(); ctx.moveTo(cx - L, cy + r); ctx.lineTo(cx + L, cy + r); ctx.arc(cx + L, cy, r, Math.PI / 2, -Math.PI / 2, true);
       ctx.lineTo(cx - L, cy - r); ctx.arc(cx - L, cy, r, -Math.PI / 2, Math.PI / 2, true); ctx.stroke();
     });
+    var pad = Math.min(gap * 0.5, 14); // линия старта стоит слева от шариков и не выходит за дорожки
     ctx.setLineDash([]); ctx.strokeStyle = INK2; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx - L, cy + inner - gap * 0.5); ctx.lineTo(cx - L, cy + outer + gap * 0.5); ctx.stroke(); ctx.restore();
+    ctx.beginPath(); ctx.moveTo(cx - L, cy + inner - pad); ctx.lineTo(cx - L, cy + outer + pad); ctx.stroke(); ctx.restore();
+    if (!small) text('старт', cx - L, cy + outer + pad + 10, 9.5, INK3);
     var tt = S.totals || {};
     text(String(tt.laps || 0), cx, cy - (small ? 8 : 12), small ? 30 : Math.min(64, inner * 1.05), INK, 'center', 600);
     text('{ изменений принято }', cx, cy + (small ? 16 : Math.min(34, inner * 0.62)), 10.5, INK2);
-    var b = small ? 7.5 : Math.max(9, gap * 0.4);
+    var b = small ? (few ? 8.5 : 7.5) : few ? Math.max(11, gap * 0.34) : Math.max(9, gap * 0.4), bg = css('--bg') || '#fff';
     if (!small) text('{ нажми на шарик: кто правит и как менялся skill }', cx, hgt - 6, 10, INK3);
     var hits = [], tip = null;
     S.lanes.forEach(function (l, i) {
       var r = inner + gap * i, run = l.status === 'бежит', u = run ? Math.min(0.985, Math.max(0.012, (now() - l.since) / Math.max(1, l.until - l.since))) : 0;
-      var p = at(u, cx, cy, L, r), mine = !!l.mine, hot = hover === l.id, br = (mine ? b * 1.55 : b) * (hot ? 1.25 : 1);
-      sphere(p[0], p[1], br, mine || hot ? ACC : INK, run || hot ? 1 : 0.42, lt);
+      var mine = !!l.mine, hot = hover === l.id, br = (mine ? b * 1.55 : b) * (hot ? 1.25 : 1);
+      var p = run ? at(u, cx, cy, L, r) : [cx - L + b + 7, cy + r]; // свободный skill ждёт сразу за линией старта
+      sphere(p[0], p[1], br, mine || hot ? ACC : INK, run || hot ? 1 : 0.5, lt);
       hits.push({ id: l.id, x: p[0], y: p[1], r: Math.max(br, gap * 0.5) + 3 });
-      if (hot) tip = { l: l, x: p[0], y: p[1], r: br };
-      else if (!small || mine) text(two(l.n) + ' · ' + (run ? (mine ? 'у тебя' : cutName(l.runner)) : 'v' + l.laps), p[0] + (run ? 0 : -b - 7), p[1] + (run ? -br - 9 : 0), 10, mine ? ACC : run ? INK : INK2, run ? 'center' : 'right', mine ? 600 : 400);
+      if (hot) { tip = { l: l, x: p[0], y: p[1], r: br }; return; }
+      if (small && !mine && !few) return; // на телефоне подписи есть, пока дорожек три-четыре
+      // подпись: у свободного skill имя и версия стоят на самой дорожке, у взятого над шариком стоит, кто правит
+      var nm = short(l.title), cap = two(l.n) + (nm && (!small || few) ? ' · ' + nm : '') + ' · ' + (run ? (mine ? 'у тебя' : cutName(l.runner)) : 'v' + l.laps), fs = small ? 9.5 : few ? 11 : 10, tw;
+      ctx.save(); ctx.font = (mine ? 600 : 400) + ' ' + fs + 'px "JetBrains Mono", ui-monospace, monospace'; tw = ctx.measureText(cap).width; ctx.restore();
+      if (run) text(cap, Math.max(tw / 2 + 4, Math.min(w - tw / 2 - 4, p[0])), p[1] - br - 9, fs, mine ? ACC : INK, 'center', mine ? 600 : 400);
+      else {
+        ctx.save(); ctx.fillStyle = bg; ctx.fillRect(p[0] + br + 5, p[1] - 8, tw + 10, 16); ctx.restore();
+        text(cap, p[0] + br + 10, p[1], fs, INK2, 'left');
+      }
     });
     HIT = hits;
     if (tip) { // подпись шарика под курсором: чей он сейчас и кто правил последним
@@ -862,6 +896,7 @@
     }
   }
   function cutName(n) { n = String(n || ''); return n.length > 14 ? n.slice(0, 13) + '…' : n; }
+  function short(t) { t = String(t || '').trim().split(/\s+/)[0] || ''; return t.length > 14 ? t.slice(0, 13) + '…' : t; } // «саммари под читателя» → «саммари»
   function ballAt(e) {
     var bx = cv.getBoundingClientRect(), x = e.clientX - bx.left, y = e.clientY - bx.top, best = null, bd = 1e9;
     HIT.forEach(function (q) { var d = Math.hypot(q.x - x, q.y - y); if (d <= q.r && d < bd) { bd = d; best = q.id; } });

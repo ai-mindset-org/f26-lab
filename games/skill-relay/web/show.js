@@ -74,7 +74,7 @@
     if (n === last && S.chain.length) return [h('h4', null, 'круг закрыт: в skill ' + chg(S.chain.length)), S.chain.map(function (x) {
       return h('div', { class: 'vrow' }, h('b', null, 'v' + x.n + ' · ' + x.runner), ruleLine({ rule: x.rule, rule_title: x.rule_title, kind: x.kind }), h('p', null, x.note));
     })];
-    if (!c) return [h('p', null, n === 0 ? 'Пять skills лежат на дорожках. Каждый ждёт одного изменения.' : 'Все трое на столе. Skill свободен.'), strip()];
+    if (!c) return [h('p', null, n === 0 ? 'Skills лежат на дорожках. Каждый ждёт одного изменения.' : 'Все трое на столе. Skill свободен.'), strip()];
     return [h('h4', null, w.name + ' · ' + c.title), ruleLine(c),
       c.note ? h('p', null, c.note) : null,
       c.tried ? h('p', null, h('b', null, 'примерил на: '), c.tried) : null,

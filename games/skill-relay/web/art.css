@@ -484,6 +484,13 @@ button.bt,button.bt.sel{color:var(--ink)}
 .bdetail .sch{margin:12px 0 4px}
 .bdetail pre.skill{max-height:380px;overflow:auto;margin-top:12px}
 .bdetail .row{margin-top:14px}
+/* встал из-за стола: что осталось на столе и как вернуться */
+.away{margin:18px 0 4px;border-top:1px solid var(--ink);padding-top:14px;max-width:680px}
+.away svg.away-art{width:100%;height:auto;max-width:560px}
+.away svg.away-art text.tx{font-size:11px}
+.away ol{margin:10px 0 0;padding:0;list-style:none;font-size:12.5px;line-height:1.6;color:var(--ink2)}
+.away ol li{padding:5px 0;border-top:1px solid var(--line)}
+.away ol li b{color:var(--ink);font-weight:600}
 .who .out{all:unset;cursor:pointer;white-space:nowrap;font-size:11px;color:var(--ink2);border-bottom:1px solid var(--line)}
 .who .out:hover{color:var(--ink);border-color:var(--ink)}
 

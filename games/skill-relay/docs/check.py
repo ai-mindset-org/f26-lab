@@ -90,7 +90,7 @@ def main():
         # ---------- стол и деморежим ----------
         print("деморежим")
         table = tmp / "demo"
-        r = subprocess.run([sys.executable, RELAY, "init", str(table), "--demo"], env=env, capture_output=True, text=True)
+        r = subprocess.run([sys.executable, RELAY, "init", str(table), "--pack", "base", "--demo"], env=env, capture_output=True, text=True)
         say("стол создан с первыми передачами", r.returncode == 0 and "первые передачи" in r.stdout, r.stdout + r.stderr)
         st = json.loads((table / "state.json").read_text(encoding="utf-8"))
         say("пять дорожек, четыре передачи в прошлом", len(st["order"]) == 5 and sum(l["laps"] for l in st["lanes"].values()) == 4)
@@ -211,10 +211,10 @@ def main():
             print("прогон")
             laps_main = a.call("GET", "/api/state")[1]["totals"]["laps"]
             code, sh, _ = a.call("GET", "/api/show")
-            say("прогон стоит на старте: три окна, девять шагов", code == 200 and sh["step"] == 0 and len(sh["windows"]) == 3 and sh["total"] == 9, str(sh)[:200])
-            code, sh, _ = a.call("POST", "/api/show/go", {"to": 8})
-            say("прогон проходит круг: две версии, остановка, отказ и истёкший срок", code == 200 and sh["step"] == 8 and len(sh["chain"]) == 2
-                and {"stop", "refuse", "expire", "give", "agent", "enter"} <= {e["kind"] for e in sh["log"]}, str(sh)[:300])
+            say("прогон стоит на старте: три окна, десять шагов", code == 200 and sh["step"] == 0 and len(sh["windows"]) == 3 and sh["total"] == 10, str(sh)[:200])
+            code, sh, _ = a.call("POST", "/api/show/go", {"to": 9})
+            say("прогон проходит круг: две версии, остановка, отказ, истёкший срок, уход и возврат за стол", code == 200 and sh["step"] == 9 and len(sh["chain"]) == 2
+                and {"stop", "refuse", "expire", "give", "agent", "enter", "leave", "back"} <= {e["kind"] for e in sh["log"]}, str(sh)[:300])
             say("в цепочке прогона видно агента и способ входа", [c["agent"] for c in sh["chain"]] == ["Claude Code", "Codex"]
                 and all(c["auth"] == "одноразовая ссылка" and c["passed"] == "страница" for c in sh["chain"]))
             code, sh, _ = a.call("POST", "/api/show/go", {"to": 4})
@@ -326,10 +326,78 @@ def main():
         finally:
             srv.terminate()
             srv.wait(5)
+        # ---------- основной набор, уход и возврат, обложка ссылки ----------
+        print("три основных skills, уход и возврат за стол, обложка ссылки")
+        table7 = tmp / "main"
+        r = subprocess.run([sys.executable, RELAY, "init", str(table7), "--demo"], env=env, capture_output=True, text=True)
+        pt = port()
+        srv = start([str(table7), "--demo", "--bots", "0", "--port", str(pt), "--hour", "8", "--lock", "4"], env)
+        try:
+            m1, m2 = Client(pt), Client(pt)
+            st = m1.call("GET", "/api/state")[1]
+            fx7 = json.loads((HERE / "demo" / "patches.json").read_text(encoding="utf-8"))
+            say("набор по умолчанию: три основных skills – текст, саммари, исследование",
+                r.returncode == 0 and [x["id"] for x in st["lanes"]] == ["tone-of-voice", "text-summary", "source-research"]
+                and json.loads((table7 / "state.json").read_text(encoding="utf-8"))["pack"] == "main", r.stderr[-200:] + str([x["id"] for x in st["lanes"]]))
+            say("к каждому основному skill есть заготовки изменений", all(len(fx7.get(x["id"], [])) >= 3 for x in st["lanes"]), str({x["id"]: len(fx7.get(x["id"], [])) for x in st["lanes"]}))
+            say("без входа встать из-за стола нельзя", m1.call("POST", "/api/leave", {})[0] == 401 and m1.call("POST", "/api/back", {})[0] == 401)
+            m1.call("POST", "/api/demo/login", {"login": "gost1"})
+            m2.call("POST", "/api/demo/login", {"login": "gost2"})
+            laps7 = st["lanes"][0]["laps"]
+            say("свой skill можно положить четвёртой дорожкой", (m1.call("GET", "/api/state")[1].get("add") or {}).get("left", 0) >= 1)
+            m1.call("POST", "/api/take", {"lane": "tone-of-voice"})
+            code, lv, _ = m1.call("POST", "/api/leave", {})
+            st = m1.call("GET", "/api/state")[1]
+            row = st["lanes"][0]
+            say("встать из-за стола: skill уходит на стол без изменения, вход остаётся",
+                code == 200 and lv.get("dropped") == "tone-of-voice" and st["viewer"] and st["viewer"].get("away") and st["viewer"]["login"] == "gost1"
+                and row["status"] == "свободна" and row["laps"] == laps7, str(lv) + str(st.get("viewer"))[:160])
+            code, tk, _ = m2.call("POST", "/api/take", {"lane": "tone-of-voice"})
+            say("освободившийся skill сразу берёт следующий", code == 200 and tk.get("ok"), str(tk)[:160])
+            code, bk, _ = m1.call("POST", "/api/back", {})
+            st = m1.call("GET", "/api/state")[1]
+            kinds7 = [e["kind"] for e in m1.call("GET", "/api/log?n=50")[1]["events"] if e.get("who") == "Гость 1"]
+            say("вернуться за стол: отметка снята, в журнале встал и вернулся",
+                code == 200 and not st["viewer"].get("away") and {"leave", "back", "drop"} <= set(kinds7), str(kinds7))
+            m3 = Client(pt)
+            m3.call("POST", "/api/demo/login", {"login": "gost3"})  # у первого гостя после взятия идёт пауза, поэтому здесь третий
+            code, lv2, _ = m3.call("POST", "/api/leave", {})
+            away3 = m3.call("GET", "/api/state")[1]["viewer"].get("away")
+            code2, tk2, _ = m3.call("POST", "/api/take", {"lane": "text-summary"})
+            say("без skill в руках встать тоже можно; взятие skill само возвращает за стол",
+                code == 200 and lv2.get("dropped") == "" and bool(away3) and code2 == 200 and not m3.call("GET", "/api/state")[1]["viewer"].get("away"), str(lv2) + str(tk2)[:120])
+            sh = m1.call("POST", "/api/show/go", {"to": 9})[1]
+            say("прогон идёт на основном наборе: три дорожки, в конце уход и возврат",
+                sh.get("step") == 9 and sh.get("total") == 10 and len(sh["windows"][0]["lanes"]) == 3 and {"leave", "back"} <= {e["kind"] for e in sh["log"]}, str(sh)[:200])
+            # обложка ссылки и значок вкладки
+            import struct
+            og = (HERE / "web" / "og.png").read_bytes()
+            say("обложка ссылки лежит рядом со страницей: PNG 1200 на 630", og[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", og[16:24]) == (1200, 630), str(struct.unpack(">II", og[16:24])))
+            origin = f"http://localhost:{pt}"
+            heads = {x: str(m1.call("GET", "/" + x)[1]) for x in ("", "show", "try", "rules")}
+            say("у страниц полный адрес обложки, размеры, подпись и канонический адрес",
+                all(f'property="og:image" content="{origin}/og.png?v=' in b and 'property="og:image:width" content="1200"' in b and 'property="og:image:height" content="630"' in b
+                    and 'property="og:image:alt"' in b and 'name="twitter:card" content="summary_large_image"' in b and f'rel="canonical" href="{origin}/' in b
+                    and "__ORIGIN__" not in b for b in heads.values()), str({k: v[:0] + str("__ORIGIN__" in v) for k, v in heads.items()}))
+            c1 = m1.call("GET", "/og.png?v=14")[0]
+            t1 = m1.ctype
+            c2 = m1.call("GET", "/favicon.svg")[0]
+            t2 = m1.ctype
+            c3 = m1.call("GET", "/favicon.png")[0]
+            c4 = m1.call("GET", "/apple-touch-icon.png")[0]
+            say("обложка и значки отдаются со своим типом", (c1, c2, c3, c4) == (200, 200, 200, 200) and t1.startswith("image/png") and t2.startswith("image/svg"), f"{c1} {t1} · {c2} {t2} · {c3} · {c4}")
+            say("значок вкладки подключён на каждой странице", all('rel="icon" href="favicon.svg"' in b for b in heads.values()))
+            js = (HERE / "web" / "app.js").read_text(encoding="utf-8")
+            say("кнопка входа называет следующий экран, уход и возврат есть на странице",
+                "выбрать skill" in js and "сесть за стол" not in js and "встать из-за стола" in js and "вернуться за стол" in js and "api/leave" in js and "api/back" in js)
+            say("на стадионе у дорожки стоит имя skill и подпись старта", "short(" in js and "'старт'" in js)
+        finally:
+            srv.terminate()
+            srv.wait(5)
         # ---------- боты ----------
         print("бегуны-боты")
         table2 = tmp / "bots"
-        subprocess.run([sys.executable, RELAY, "init", str(table2), "--demo"], env=env, capture_output=True)
+        subprocess.run([sys.executable, RELAY, "init", str(table2), "--pack", "base", "--demo"], env=env, capture_output=True)
         pt = port()
         srv = start([str(table2), "--demo", "--bots", "6", "--port", str(pt), "--hour", "5", "--lock", "6"], env)
         try:
@@ -342,7 +410,7 @@ def main():
         # ---------- командный вход по Tailscale ----------
         print("командный вход по Tailscale")
         table4 = tmp / "team"
-        subprocess.run([sys.executable, RELAY, "init", str(table4)], env=env, capture_output=True)
+        subprocess.run([sys.executable, RELAY, "init", str(table4), "--pack", "base"], env=env, capture_output=True)
         pt = port()
         srv = start([str(table4), "--live", "--tailnet", "--port", str(pt)], dict(env, RELAY_SESSION_SECRET="t" * 40))
         try:
@@ -435,7 +503,7 @@ def main():
         # ---------- живой режим ----------
         print("живой режим")
         table3 = tmp / "live"
-        subprocess.run([sys.executable, RELAY, "init", str(table3)], env=env, capture_output=True)
+        subprocess.run([sys.executable, RELAY, "init", str(table3), "--pack", "base"], env=env, capture_output=True)
         env3 = dict(env, RELAY_SESSION_SECRET="s" * 40, RELAY_MINT_SECRET="m" * 40, RELAY_FRAME_ANCESTORS="https://lms.example")
         r = subprocess.run([sys.executable, RELAY, "serve", str(table3), "--live"], env=env, capture_output=True, text=True)
         say("без секрета сессии живой режим не стартует", r.returncode == 2 and "RELAY_SESSION_SECRET" in r.stderr)
@@ -515,7 +583,7 @@ def main():
         # ---------- два входа из LMS на открытом столе ----------
         print("два входа из LMS, имя и ник, чистый вход")
         table4 = tmp / "lms2"
-        subprocess.run([sys.executable, RELAY, "init", str(table4)], env=env, capture_output=True)
+        subprocess.run([sys.executable, RELAY, "init", str(table4), "--pack", "base"], env=env, capture_output=True)
         pt = port()
         srv = start([str(table4), "--live", "--open", "--port", str(pt)], env3)
         try:
@@ -573,7 +641,7 @@ def main():
             else:
                 table4 = tmp / "model"
                 envm = dict(env, OPENROUTER_API_KEY=key)
-                subprocess.run([sys.executable, RELAY, "init", str(table4), "--demo"], env=env, capture_output=True)
+                subprocess.run([sys.executable, RELAY, "init", str(table4), "--pack", "base", "--demo"], env=env, capture_output=True)
                 pt = port()
                 srv = start([str(table4), "--demo", "--bots", "0", "--port", str(pt), "--hour", "5", "--lock", "400"], envm)
                 try:
