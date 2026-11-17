@@ -20,7 +20,7 @@ button.kind.sel svg.art *{stroke:var(--acc)}
 button.kind.sel svg.art .f{fill:var(--acc)}
 
 /* как это работает: четыре шага */
-.who{display:flex;align-items:center;gap:10px;margin:10px 0 14px;font-size:12.5px;color:var(--ink2);line-height:1.4}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 14px;font-size:12.5px;color:var(--ink2);line-height:1.4}
 .who .av{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:12px;font-weight:600}
 .who b{color:var(--ink);font-weight:600}
 .who .nick{color:var(--acc)}
@@ -444,6 +444,11 @@ h1.h1s{font-size:clamp(24px,2.5vw,38px);margin:10px 0 4px}
 .deck{margin-top:20px}
 .deck .bstats{margin-top:0;max-width:none}
 .deck .brow{grid-template-columns:minmax(210px,280px) minmax(0,1fr)}
+@container (max-width:620px){
+  .deck .brow{grid-template-columns:minmax(0,1fr)}
+  .deck button.sk,.deck button.sk.sel{border-right:0;border-bottom:1px solid var(--line)}
+  .deck .bstats>div:last-child:nth-child(odd){grid-column:1 / -1}
+}
 .sk{all:unset;cursor:pointer;box-sizing:border-box;display:block;min-width:0;padding:11px 12px 12px;border-right:1px solid var(--line);font-size:11px;line-height:1.45;color:var(--ink2)}
 .sk .no{font-size:10.5px;color:var(--ink3);letter-spacing:.04em;margin-right:7px;font-variant-numeric:tabular-nums}
 .sk b{font-size:13px;font-weight:600;line-height:1.3;color:var(--ink)}
@@ -479,7 +484,7 @@ button.bt,button.bt.sel{color:var(--ink)}
 .bdetail .sch{margin:12px 0 4px}
 .bdetail pre.skill{max-height:380px;overflow:auto;margin-top:12px}
 .bdetail .row{margin-top:14px}
-.who .out{all:unset;cursor:pointer;margin-left:10px;font-size:11px;color:var(--ink2);border-bottom:1px solid var(--line)}
+.who .out{all:unset;cursor:pointer;white-space:nowrap;font-size:11px;color:var(--ink2);border-bottom:1px solid var(--line)}
 .who .out:hover{color:var(--ink);border-color:var(--ink)}
 
 /* выбор правила в изменении: те же фильтры и плитки, что на карте */
