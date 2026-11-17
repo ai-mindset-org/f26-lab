@@ -88,7 +88,7 @@ a.q:hover{color:var(--acc);border-color:var(--acc)}
 .chain .c{padding:7px 0 7px 12px;border-left:1px solid var(--ink);margin-top:8px}
 .chain .c b{font-weight:600}
 .chain .c span{color:var(--ink2)}
-.rail{position:fixed;left:44px;right:44px;bottom:30px;display:flex;gap:4px;z-index:3;background:var(--bg);padding-top:26px}
+.rail{position:fixed;left:0;right:0;bottom:0;display:flex;gap:4px;z-index:3;padding:30px 44px 30px;background:linear-gradient(to top,var(--bg) 72%,transparent)}
 .rail button{position:relative;height:14px;flex:1 1 0;border:0;padding:0;background:transparent;border-bottom:2px solid var(--line)}
 .rail button.past{border-color:var(--ink3)}
 .rail button.now{border-color:var(--acc)}
@@ -96,6 +96,9 @@ a.q:hover{color:var(--acc);border-color:var(--acc)}
 .rail button.past span{color:var(--ink2)}
 .rail button.now span{color:var(--acc)}
 .rail button:hover span{color:var(--ink)}
+.rail button.now span{background:var(--bg);padding-right:8px;z-index:1}
+.rail button.r span{left:auto;right:0}
+.rail button.r.now span{padding:0 0 0 8px}
 
 /* правила */
 .nav{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:18px;font-size:12px}
@@ -119,10 +122,12 @@ a.q:hover{color:var(--acc);border-color:var(--acc)}
   .wins,.under,.cols{grid-template-columns:1fr}
   .win{min-height:0}
   .card{margin-top:10px}
-  .rail{left:20px;right:20px;bottom:18px}
+  .rail{padding:26px 20px 18px}
+  .top>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top .ph{white-space:nowrap;flex:none}
   .rail button span{display:none}
   .rail button.now span{display:block}
-  .jr .e{grid-template-columns:50px 1fr}
-  .jr .e i{display:none}
+  .jr .e{grid-template-columns:62px 1fr;gap:2px 10px}
+  .jr .e>span:last-child{grid-column:1 / -1}
   .keys{display:none}
 }

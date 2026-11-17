@@ -57,6 +57,7 @@ class Client:
         if sc:
             self.cookie = sc.split(";")[0]
         loc = r.getheader("Location")
+        self.ctype = r.getheader("Content-Type") or ""
         c.close()
         try:
             return r.status, json.loads(text), loc
@@ -200,6 +201,8 @@ def main():
                 and len(rb["settings"]) >= 8 and len(rb["evidence"]) >= 3 and len(rb["sources"]["research"]) >= 3)
             say("книга правил и прогон открываются отдельными страницами", a.call("GET", "/rules")[0] == 200 and a.call("GET", "/show")[0] == 200
                 and a.call("GET", "/pages.css")[0] == 200 and a.call("GET", "/show.js")[0] == 200 and a.call("GET", "/rules.js")[0] == 200)
+            a.call("GET", "/pages.css")
+            say("таблица стилей отдаётся как text/css: иначе браузер её не применяет", a.ctype.startswith("text/css"))
             # ---------- прогон по шагам ----------
             print("прогон")
             laps_main = a.call("GET", "/api/state")[1]["totals"]["laps"]

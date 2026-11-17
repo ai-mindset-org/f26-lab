@@ -1169,7 +1169,7 @@ class Show:
             self.cards["sova"] = dict(self.card(res, "агент прислал правку"), rule=x["rule"], note=x["note"], tried=x["tried"], next=x.get("next", ""))
             self.files = ["POST /api/leg/check: правка и три строки", "state.json: черновик с разбором", "events.jsonl"]
         elif n == 5:
-            m = g.give("sova", L)
+            m = g.give("sova", L, anyway=True)
             self.cards["sova"] = {"title": "передано", "note": f"Передача {m['n']} записана от лица Совы. Правку прислал агент {m['agent']}, передал человек со страницы."}
             self.files = [f"lanes/{L}/legs/001.md", f"lanes/{L}/legs/001.json", f"lanes/{L}/RELAY.md"] + base
         elif n == 6:
@@ -1260,7 +1260,8 @@ def lan_ip():
 
 
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
-         ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".md": "text/markdown; charset=utf-8", ".svg": "image/svg+xml"}
+         ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".md": "text/markdown; charset=utf-8", ".svg": "image/svg+xml",
+         ".css": "text/css; charset=utf-8", ".png": "image/png", ".ico": "image/x-icon"}
 
 
 def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, public_url):
@@ -1329,7 +1330,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
     def the_show():
         with GATE:
             if "show" not in stage:
-                stage["show"] = Show(table.root / ".show")
+                # прогон идёт по признакам: шаг отвечает сразу и одинаково при каждом показе, модель разбирает правки на самом столе
+                stage["show"] = Show(table.root / ".show", use_model=False)
             return stage["show"]
 
     def agent_of(handler):

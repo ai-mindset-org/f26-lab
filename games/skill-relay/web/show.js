@@ -44,7 +44,7 @@
       (c.candidates || []).map(function (x) { return h('p', null, h('b', null, x.rule + ' · ' + x.title + '. '), x.why); }),
       (c.errors || []).map(function (x) { return h('p', { class: 'stop' }, h('b', null, 'стоп. '), x); }),
       (c.facts || []).map(function (f) { return h('p', { class: 'stop' }, (f.line ? 'строка ' + f.line + ' · ' : '') + f.rule + (f.excerpt ? ': «' + f.excerpt + '»' : '')); }),
-      c.diff && c.diff.length && !(c.errors || []).length ? h('div', { class: 'diff' }, c.diff.slice(0, 5).map(function (r) { return h('div', { class: r.op === '-' ? 'del' : 'add' }, (r.op === '-' ? '− ' : '+ ') + r.t); })) : null,
+      c.diff && c.diff.length && !(c.errors || []).length ? h('div', { class: 'diff' }, c.diff.filter(function (r) { return r.t.trim(); }).slice(0, 5).map(function (r) { return h('div', { class: r.op === '-' ? 'del' : 'add' }, (r.op === '-' ? '− ' : '+ ') + r.t); })) : null,
       c.verdict ? h('p', null, h('b', null, 'разбор: ' + c.verdict), c.by ? ' · ' + c.by : '') : null,
       c.comment ? h('p', null, c.comment) : null,
       c.by && !c.verdict ? h('p', null, c.by) : null);
@@ -69,7 +69,7 @@
     $('ph').textContent = '{ шаг ' + two(n) + ' из ' + two(last) + ' }';
     $('title').replaceChildren(document.createTextNode(S.title), h('em', null, '.'));
     $('text').textContent = S.text;
-    $('kick').textContent = '{ один круг по шагам · каждое действие настоящее · разбор: ' + (S.model || 'признаки без модели') + ' }';
+    $('kick').textContent = '{ один круг по шагам · каждое действие настоящее · разбор: ' + (S.model || 'по признакам, шаг отвечает сразу') + ' }';
     $('prev').disabled = busy || n === 0; $('next').disabled = busy || n === last;
     $('next').textContent = busy ? 'идёт шаг…' : n === last ? 'конец круга' : 'дальше →';
     fill($('wins'), S.windows.map(win));
@@ -90,7 +90,7 @@
         h('span', null, 'разбор: ' + c.verdict + ' · ' + c.by + ' · −' + c.minus + ' / +' + c.plus + ' строк · версия ' + c.digest));
     })] : null);
     fill($('rail'), S.steps.map(function (t, i) {
-      return h('button', { class: i < n ? 'past' : i === n ? 'now' : '', title: t, onclick: function () { go(i); } }, h('span', null, (innerWidth > 1180 || i === n) ? two(i) + ' ' + t : two(i)));
+      return h('button', { class: (i < n ? 'past' : i === n ? 'now' : '') + (i > S.steps.length / 2 ? ' r' : ''), title: two(i) + ' ' + t, onclick: function () { go(i); } }, h('span', null, i === n ? two(i) + ' ' + t : two(i)));
     }));
     $('auto').className = auto ? 'on' : '';
     first = false;
@@ -130,7 +130,6 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-until]'), function (e) { e.textContent = clock(Number(e.getAttribute('data-until')) - now()); });
   }, 500);
   setInterval(function () { if (!document.hidden && !busy) api('GET', 'api/show').then(function (d) { if (!busy && (d.step !== S.step || d.log.length !== S.log.length)) take(d); }, function () { }); }, 4000);
-  addEventListener('resize', function () { if (S) render(); });
   load().then(function () {
     var want = parseInt(q.get('step'), 10);
     if (S && !isNaN(want) && want !== S.step) go(want);
