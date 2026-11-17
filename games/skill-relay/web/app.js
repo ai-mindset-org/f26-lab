@@ -82,6 +82,7 @@
     if (!r) return null;
     return h('div', { class: 'rule pic' }, h('div', { class: 'fig' }, A.rule(r.id)), h('div', null,
       h('h3', null, h('span', { class: 'id' }, r.id), r.title, ' ', kindTag(r.kind)),
+      r.easy ? h('p', { class: 'easy' }, r.easy) : null,
       h('p', null, h('b', null, 'вопрос. '), r.ask), h('p', null, h('b', null, 'изменение. '), r.fix),
       r.why ? h('p', { class: 'why' }, h('b', null, 'практика. '), r.why) : null,
       r.ex ? h('div', { class: 'ex' }, h('div', { class: 'exl' }, 'пример · ' + (PT[r.part] || '')),
@@ -186,12 +187,31 @@
     return h('div', { class: 'more' },
       h('a', { class: 'quiet', href: 'show' }, 'как это работает'),
       h('a', { class: 'quiet', href: 'rules' }, 'правила'),
+      h('a', { class: 'quiet', href: 'about' }, 'о системе'),
       view !== 'log' && S.trail ? h('button', { class: 'quiet', onclick: function () { go('log'); } }, 'журнал') : null,
       view !== 'auto' ? h('button', { class: 'quiet', onclick: function () { go('auto'); } }, '← на стол') : null,
       S.viewer ? h('button', { class: 'quiet', onclick: function () { api('POST', 'api/auth/logout', {}).then(function () { leg = null; load(); }); } }, 'выйти') : null);
   }
   function tabs() { Array.prototype.forEach.call(document.querySelectorAll('.tabs a'), function (x) { var log = x.getAttribute('href').indexOf('view=log') > 0; x.classList.toggle('on', x.getAttribute('href') === './' ? view !== 'log' : log && view === 'log'); }); }
   function go(v) { view = v; key = ''; tabs(); render(); $('panel').scrollTop = 0; if (innerWidth <= 900 && v !== 'auto') $('panel').scrollIntoView(); }
+
+  // что это и где: две строки и контекст лабы, одинаково до входа и на столе
+  function lab26() {
+    var t = S.totals || {};
+    return h('div', { class: 'lab26' },
+      h('span', null, h('b', null, 'AI Mindset · лаба F26')),
+      h('span', null, 'осень 2026 · участники собирают свои skills'),
+      h('span', null, 'skills на столе: ', h('b', null, String(S.lanes.length))),
+      t.laps != null ? h('span', null, 'версий внесено: ', h('b', null, String(t.laps))) : null,
+      h('span', null, 'закрепление: ', h('b', null, span(S.lock))));
+  }
+  function holdStrip(l) {
+    if (l.status !== 'бежит') return null;
+    var all = Math.max(1, l.until - (l.since || l.until - S.lock)), left = Math.max(0, l.until - now());
+    return h('div', { class: 'hold', title: 'skill закреплён: пока идёт время, его правит один человек' },
+      h('span', null, 'закреплён · ', h('b', null, l.mine ? 'за тобой' : l.runner), l.doing ? ' · ' + KN[l.doing] : ''),
+      until(l.until), h('i', { 'data-bar': l.until, 'data-all': all, style: 'width:' + Math.round(100 * left / all) + '%' }));
+  }
 
   // ---------- вход ----------
   function how() {
@@ -212,8 +232,9 @@
     return [
       h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : S.sso ? 'единый вход' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
-      h('p', { class: 'why' }, 'Skill растёт по одному изменению. Каждый участник добавляет одно и за ' + span(S.lock) + ' коммитит: в дорожке лежит новая версия для следующего.'),
-      how(),
+      h('p', { class: 'why' }, 'Skill растёт по одному изменению. Берёшь skill со стола, он закрепляется за тобой на ' + span(S.lock) + ', применяешь одно правило и отдаёшь новой версией следующему.'),
+      h('p', { class: 's' }, 'Игра лабы F26: за одну встречу skill проходит через несколько рук, и у каждой версии видно, кто её внёс и по какому правилу.'),
+      lab26(), how(),
       S.mode === 'демо' ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сядь на место: в демо входа нет, пауза после взятия ' + span(S.hour)), h('div', { class: 'row' }, seats),
         S.tailnet ? tail : null,
         h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show' }, 'как это работает: один круг по шагам'))] :
@@ -238,6 +259,7 @@
       return h('div', { class: 'ln' + (l.mine ? ' mine' : '') },
         h('span', { class: 'no' }, two(l.n)),
         h('div', { class: 'bd' },
+          holdStrip(l),
           h('button', { class: 'nm', onclick: function () { openLane(l.id); } }, l.title + (l.heat > 1 ? ' · забег ' + l.heat : '')),
           h('p', { class: 'what' }, l.what),
           ribbon(l),
@@ -271,10 +293,11 @@
     var v = S.viewer, resting = v.rest > 0;
     return [
       h('div', { class: 'kick' }, '{ ' + v.name + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + (v.auth ? ' · вход: ' + v.auth : '') + ' · твоих версий ' + v.legs + ' }'),
+      h('h1', { class: 'h1s' }, 'эстафета skills', h('em', null, '.')),
       resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, S.lanes.length <= 4 ? 'выбери один из ' + ['', 'одного', 'двух', 'трёх', 'четырёх'][S.lanes.length] + ' ' : 'возьми ', h('em', null, S.lanes.length <= 4 && S.lanes.length > 1 ? 'skills' : 'skill')),
       h('p', { class: 's' }, resting ? 'Следующий skill можно взять, когда выйдет время. Дорожки, версии и правила можно читать.' :
         'Взял: skill закреплён за тобой на ' + span(S.lock) + '. Применяешь одно правило и отдаёшь новой версией, дальше его берёт следующий. После взятия ' + span(S.hour) + ' паузы на все дорожки.'),
-      lanesBlock(false), trailBlock(), links()
+      lab26(), lanesBlock(false), trailBlock(), links()
     ];
   }
 
@@ -442,16 +465,66 @@
     if (!l || l.status !== 'бежит') return l && l.idle_since ? ['свободен ' + ago(now() - l.idle_since) + ' · следующую версию может внести любой'] : [];
     return ['сейчас правит ', h('b', null, l.mine ? 'ты' : l.runner), l.account && l.account !== l.runner ? ' · аккаунт ' + l.account : '', l.doing ? ' · ' + KN[l.doing] : '', ' · осталось ', until(l.until)];
   }
+  // на чём стоит правило: ссылки на первоисточники из книги правил
+  function srcLine(r) {
+    var keys = {};
+    ((SRC || {}).guides || []).concat((SRC || {}).research || []).forEach(function (x) { keys[x.key] = x; });
+    return ((r || {}).src || []).map(function (k, i) { return [i ? ' · ' : '', keys[k] ? h('a', { href: keys[k].url, target: '_blank', rel: 'noopener' }, keys[k].title) : 'соглашение эстафеты']; });
+  }
+  // оригинал и текущая версия рядом: у строки номер версии; наведение на версию или строку подсвечивает её изменения и источники правила
+  function compare(d) {
+    var vers = d.legs.filter(function (g) { return g.n; }), byN = {}, chips = {}, rows = [], pinned = 0, bar = h('div', { class: 'srcbar' }), box;
+    vers.forEach(function (g) { byN[g.n] = g; });
+    function light(n, jump) {
+      var g = byN[n], r = g && RULES ? RULES[g.rule] : null, first = null;
+      rows.forEach(function (x) { var on = !!n && x.v === n; x.el.classList.toggle('hot', on); if (on && !first && x.now) first = x.el; });
+      if (jump && first && box.scrollHeight > box.clientHeight) box.scrollTop = Math.max(0, first.offsetTop - 90); // версия выбрана со стороны: её строки подъезжают в окно сравнения
+      box.classList.toggle('dim', !!n);
+      Object.keys(chips).forEach(function (k) { chips[k].classList.toggle('hot', Number(k) === n); });
+      Array.prototype.forEach.call(document.querySelectorAll('.leg[id^="v-"]'), function (e) { e.classList.toggle('hot', !!n && e.id === 'v-' + n); });
+      if (!g) return fill(bar, h('span', null, 'Наведи на версию или на строку: подсветятся строки этой версии, здесь появится правило и его источники. Нажатие закрепляет подсветку.'));
+      fill(bar, h('span', null, h('b', null, 'v' + g.n + ' · поправил ' + g.runner), ' · ' + g.rule + ' ' + g.rule_title + ' · −' + g.minus + ' / +' + g.plus),
+        r && r.easy ? h('span', { class: 'on' }, r.easy) : null,
+        g.note ? h('span', { class: 'on' }, 'что и зачем: ' + g.note) : null,
+        h('span', { class: 'on' }, 'на чём основано: ', r ? srcLine(r) : 'соглашение эстафеты'));
+    }
+    function over(n, click, jump) {
+      var a = { onmouseenter: function () { if (!pinned) light(n, jump); }, onmouseleave: function () { if (!pinned) light(0); } };
+      if (click) a.onclick = function () { pinned = pinned === n ? 0 : n; light(pinned || n, jump); };
+      return a;
+    }
+    function line(x, v, cls) {
+      var a = v ? over(v, true) : {}, el;
+      a.class = 'l' + cls;
+      el = h('div', a, h('u', null, v ? 'v' + v : ''), h('span', null, x.t || ' '));
+      if (v) rows.push({ el: el, v: v, now: cls === ' new' });
+      return el;
+    }
+    box = h('div', { class: 'cmp' },
+      h('div', { class: 'col' }, h('div', { class: 'cl' }, h('b', null, 'оригинал · v0'), ' · ' + lines(d.origin.length) + ' · зачёркнуто то, что убрали версии'),
+        d.origin.map(function (x) { return line(x, x.gone, x.gone ? ' gone' : ''); })),
+      h('div', { class: 'col' }, h('div', { class: 'cl' }, h('b', null, 'сейчас · v' + d.laps), ' · ' + lines(d.now.length) + ' · слева версия, которая внесла строку'),
+        d.now.map(function (x) { return line(x, x.v, x.v ? ' new' : ''); })));
+    light(0);
+    return { over: over, node: [
+      h('div', { class: 'vchips' }, vers.map(function (g) { var a = over(g.n, true, true); a.title = g.rule + ' · ' + g.rule_title; return (chips[g.n] = h('button', a, h('b', null, 'v' + g.n), g.runner, kindTag(g.kind))); })),
+      bar, box] };
+  }
   function viewLane(id) {
     var box = h('div', null, h('p', { class: 's' }, 'читаю версии…')), l = laneOf(id) || {}, want = focusV;
     Promise.all([api('GET', 'api/lane?id=' + encodeURIComponent(id)), rules().then(null, function () { return null; })]).then(function (rr) {
-      var d = rr[0], open = want || d.laps;
+      var d = rr[0], open = want || d.laps, cmp = d.laps && d.origin ? compare(d) : null;
       fill(box,
+        cmp ? [h('div', { class: 'lab', style: 'margin-top:22px' }, 'оригинал и сейчас · что поменялось и по какому правилу'), cmp.node] :
+          h('p', { class: 's' }, 'Изменений ещё нет: на столе лежит оригинал. Первая версия появится, когда кто-то возьмёт skill и применит правило.'),
+        h('div', { class: 'lab', style: 'margin-top:26px' }, 'версии по порядку · от свежей к оригиналу · у каждой кто, по какому правилу и что изменилось'),
         d.legs.slice().reverse().map(function (g) {
           if (!g.n) return h('div', { class: 'leg', id: 'v-0' },
             h('h3', null, 'v0 ', h('span', null, g.added ? '· skill добавил ' + g.runner : '· базовая версия из кита'), h('span', null, ' · ' + lines(g.lines))),
             A.scheme(g.parts, {}));
-          return h('div', { class: 'leg' + (g.n === open ? ' cur' : ''), id: 'v-' + g.n },
+          var a = cmp ? cmp.over(g.n, false, true) : {};
+          a.class = 'leg' + (g.n === open ? ' cur' : ''); a.id = 'v-' + g.n;
+          return h('div', a,
             h('h3', null, 'v' + g.n + ' · поправил ' + g.runner + ' ', kindTag(g.kind), h('span', null, ' −' + g.minus + ' / +' + g.plus + ' · стало ' + lines(g.lines) + (g.noted ? ' · с замечанием разбора' : ''))),
             h('div', { class: 'note' }, h('i', null, 'правило: '), g.rule + ' · ' + g.rule_title),
             h('div', { class: 'note' }, h('i', null, 'что и зачем: '), g.note),
@@ -474,16 +547,38 @@
       h('p', { class: 's' }, l.what || ''),
       h('p', { class: 'cnt', id: 'holder' }, holderLine(l)),
       l.versions ? h('div', { style: 'margin-top:14px' }, ribbon(l)) : null,
-      h('div', { class: 'lab', style: 'margin-top:22px' }, 'как менялся skill · от свежей версии к базовой · у каждой версии кто, по какому правилу и что изменилось'),
+      h('div', { class: 'row widebtn' }, h('button', { class: 'quiet', onclick: function () { stadium = !stadium; this.textContent = stadium ? 'версии во всю ширину' : 'показать стадион'; render(); } }, stadium ? 'версии во всю ширину' : 'показать стадион')),
       box, links()
     ];
   }
+  var logMode = 'ver';
+  function logCard(e) {
+    var d = new Date(e.at * 1000), tm = two(d.getHours()) + ':' + two(d.getMinutes()), ln = laneOf(e.lane), r = RULES && e.rule ? RULES[e.rule] : null;
+    if (e.kind === 'enter') return h('div', { class: 'evc in' }, h('span', { class: 'tm' }, tm), h('div', { class: 'hd' }, h('b', null, e.who), ' вошёл · ' + e.what.replace(/^вход:\s*/, '')), h('span', { class: 'pm' }, 'вход'));
+    if (e.kind === 'take') return h('div', { class: 'evc in' }, h('span', { class: 'tm' }, tm), h('div', { class: 'hd' }, h('b', null, e.who), ' взял skill' + (ln ? ' «' + ln.title + '»' : '') + ' · закреплён на ' + span(S.lock)), h('span', { class: 'pm' }, 'взял'));
+    if (e.kind !== 'give' && e.kind !== 'add') return null;
+    return h('div', { class: 'evc open', title: 'открыть версию в истории skill', onclick: function () { openLane(e.lane, e.v || 0); } },
+      h('span', { class: 'tm' }, tm),
+      h('div', { class: 'hd' }, h('b', null, e.who), e.kind === 'add' ? ' положил на стол свой skill ' : ' внёс версию ', h('b', null, e.kind === 'add' ? 'v0' : 'v' + (e.v || '')), ln ? ' · ' + ln.title : '', r ? kindTag(r.kind) : null,
+        e.via && e.via !== 'страница' && e.via !== 'система' ? ' · ' + who(e) : ''),
+      h('span', { class: 'pm' }, e.kind === 'add' ? lines(e.plus || 0) : ['−' + (e.minus || 0) + ' / ', h('b', null, '+' + (e.plus || 0))]),
+      r || e.note ? h('div', { class: 'nt' }, r ? e.rule + ' · ' + r.title + (r.easy ? ' · ' + r.easy : '') : '', r && e.note ? h('br') : null, e.note ? 'что и зачем: ' + e.note : '') : null);
+  }
   function viewLog() {
-    var box = h('div', null, h('p', { class: 's' }, 'читаю журнал…'));
-    api('GET', 'api/log?n=240').then(function (d) { fill(box, h('div', { class: 'trail' }, d.events.map(function (e) { return eventRow(e, true); }))); }, out(box));
+    var box = h('div', null, h('p', { class: 's' }, 'читаю журнал…')), ev = [], bt = {};
+    function draw() {
+      Object.keys(bt).forEach(function (k) { bt[k].classList.toggle('sel', k === logMode); });
+      if (logMode === 'all') return fill(box, h('div', { class: 'trail', style: 'margin-top:12px' }, ev.map(function (e) { return eventRow(e, true); })));
+      var keep = logMode === 'ver' ? { give: 1, add: 1 } : { give: 1, add: 1, take: 1, enter: 1 };
+      var cards = ev.filter(function (e) { return keep[e.kind]; }).map(logCard);
+      fill(box, cards.length ? cards : h('p', { class: 's' }, 'Версий пока нет: журнал начнётся с первого изменения.'));
+    }
+    function tab(k, t) { return (bt[k] = h('button', { class: 'quiet', onclick: function () { logMode = k; draw(); } }, t)); }
+    Promise.all([api('GET', 'api/log?n=240'), rules().then(null, function () { return null; })]).then(function (rr) { ev = rr[0].events; draw(); }, out(box));
     return [
-      h('div', { class: 'kick' }, '{ журнал стола · записей ' + (S.events || 0) + ' }'),
-      h('p', { class: 'm' }, 'кто, что и ', h('em', null, 'через что')),
+      h('div', { class: 'kick' }, '{ журнал изменений · записей ' + (S.events || 0) + ' }'),
+      h('p', { class: 'm' }, 'кто взял, что поменял и ', h('em', null, 'как вошёл')),
+      h('div', { class: 'logf' }, tab('ver', 'только версии'), tab('who', 'версии, взятия и входы'), tab('all', 'все записи')),
       h('p', { class: 's' }, 'Кто над чем поработал и что поменял: у каждой новой версии правило, фраза «что и зачем» и число строк. Строка версии открывает её в истории дорожки. Те же записи лежат в папке стола в файлах events.jsonl и TRAIL.md. ' + sysLine() + '.'),
       box, links()
     ];
@@ -503,8 +598,10 @@
     var t = S.totals || {};
     $('where').textContent = S.locked ? '' : (S.mode === 'демо' ? 'демо · ' : '') + (t.laps || 0) + ' ' + chg(t.laps || 0) + ' · в работе ' + (t.running || 0) + ' из ' + S.lanes.length;
   }
+  var stadium = false;
   function render() {
     if (!S) return;
+    document.body.classList.toggle('wide', view.indexOf('lane:') === 0 && !stadium && !(S.viewer && S.viewer.holding && view === 'auto'));
     var v = S.viewer, hold = v && v.holding, kids, k;
     if (hold && view === 'auto') {
       k = 'leg:' + hold;
@@ -542,6 +639,9 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-until]'), function (e) {
       var left = Number(e.getAttribute('data-until')) - now();
       e.textContent = clock(left); if (left <= 0) zero = true;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-bar]'), function (e) {
+      e.style.width = Math.max(0, Math.min(100, 100 * (Number(e.getAttribute('data-bar')) - now()) / Number(e.getAttribute('data-all')))) + '%';
     });
     if (zero) load();
   }, 500);

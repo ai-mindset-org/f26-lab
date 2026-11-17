@@ -464,6 +464,32 @@ def main():
             say("подделанный билет отклонён", Client(pt).call("GET", path[:-4] + "AAAA")[0] == 403)
             code, me, _ = c.call("GET", "/api/auth/me")
             say("сессия узнаёт человека и способ входа", code == 200 and me["viewer"]["login"] == "chizh" and me["viewer"]["name"] == "Чиж" and me["viewer"]["auth"] == "одноразовая ссылка")
+            # вход из LMS: тот же стол и тот же журнал, вход помечен «LMS», стол открывается в её теме
+            code, d, _ = c.call("POST", "/api/mint", {"tg_id": "555001", "username": "chizh", "source": "lms"}, headers={"X-Mint-Secret": "m" * 40, "Origin": None})
+            say("LMS получает ссылку на тот же стол", code == 200 and d.get("authorized") and d.get("surface") == "lms", str(d))
+            lms = Client(pt)
+            code, _, loc = lms.call("GET", "/auth/complete" + d["auth_link"].split("/auth/complete")[1])
+            say("вход из LMS открывает стол в теме LMS", code == 302 and loc == "/?skin=lms", str(loc))
+            log = lms.call("GET", "/api/log?n=40")[1]["events"]
+            say("в сессии и в журнале вход помечен «LMS»", lms.call("GET", "/api/auth/me")[1]["viewer"]["auth"] == "LMS" and any(e["kind"] == "enter" and e["what"] == "вход: LMS" for e in log))
+            w = lms.call("GET", "/api/whoami")[1]
+            say("сервер говорит, кого видит и какие входы включены", w["viewer"] == "chizh" and w["auth"] == "LMS" and w["mode"] == "живой" and "ссылка из LMS или бота" in w["ways"], str(w))
+            lid = lms.call("GET", "/api/state")[1]["lanes"][0]["id"]
+            ln = lms.call("GET", f"/api/lane?id={lid}")[1]
+            say("история skill отдаёт оригинал и текущий текст построчно", [x["t"] for x in ln["origin"]] == [x["t"] for x in ln["now"]] and all(x["v"] == 0 for x in ln["now"]) and len(ln["now"]) > 10)
+            code, page, _ = Client(pt).call("GET", "/card")
+            say("карточка для LMS отдаётся без входа и без имён", code == 200 and "взять skill" in page)
+            code, page, _ = Client(pt).call("GET", "/about")
+            say("страница «о системе» открывается", code == 200 and "кого видит сервер" in page)
+            rb = lms.call("GET", "/api/rules")[1]["rules"]
+            say("у каждого правила есть короткая строка «просто»", all(len(r.get("easy", "")) > 10 for r in rb), str([r["id"] for r in rb if not r.get("easy")]))
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("relay_mod", RELAY)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            o, n = mod.blame(["a\nb\nc\n", "a\nB\nc\n", "a\nB\nc\nd\n"])
+            say("разметка строк: оригинал помнит, какая версия убрала строку, текущий текст помнит, какая внесла",
+                [v for _, v in o] == [0, 1, 0] and [v for _, v in n] == [0, 1, 0, 2], str((o, n)))
             code, s, _ = c.call("GET", "/api/state")
             say("живой режим: час паузы и пять минут на одно изменение", code == 200 and s["hour"] == 3600 and s["lock"] == 300 and s["mode"] == "живой")
             say("ход в живом режиме идёт", c.call("POST", "/api/take", {"lane": "text-summary"})[0] == 200)

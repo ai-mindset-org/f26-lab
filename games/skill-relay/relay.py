@@ -535,6 +535,29 @@ PART_HEADS = {"params": r"параметр", "steps": r"шаг|порядок|э
 PART_CUES = {"check": r"(?i)\bсверь\b|сошлось, если|проверь снова", "border": r"(?i)^\s*(не бери,|запасной ход)"}  # часть без своего заголовка видна по строкам
 
 
+def blame(texts):
+    """оригинал и текущий текст построчно: у строки оригинала номер версии, которая её убрала (0 = жива),
+    у строки текущего текста номер версии, которая её внесла (0 = из оригинала)"""
+    orig = [[t, 0] for t in texts[0].split("\n")]
+    cur, alive = [[t, 0] for t in texts[0].split("\n")], list(range(len(orig)))
+    for n, text in enumerate(texts[1:], 1):
+        new = text.split("\n")
+        nxt, keep = [], []
+        for op, a1, a2, b1, b2 in difflib.SequenceMatcher(None, [c[0] for c in cur], new, autojunk=False).get_opcodes():
+            if op == "equal":
+                nxt += cur[a1:a2]
+                keep += alive[a1:a2]
+                continue
+            for i in range(a1, a2):
+                if alive[i] >= 0:
+                    orig[alive[i]][1] = n
+            nxt += [[t, n] for t in new[b1:b2]]
+            keep += [-1] * (b2 - b1)
+        cur, alive = nxt, keep
+    trim = lambda rows: rows[:-1] if rows and rows[-1][0] == "" else rows
+    return trim(orig), trim(cur)
+
+
 def parts_map(text):
     """из каких частей собран SKILL.md: есть ли часть и сколько в ней строк; по этой схеме страница показывает, куда ложится правило"""
     text = norm(text)
@@ -1108,9 +1131,10 @@ class Game:
             lane = self.t.st["lanes"].get(lid)
             if not lane:
                 raise Refuse("такой дорожки нет")
-            legs, prev, was = [], None, None
+            legs, prev, was, texts = [], None, None, []
             for n in range(0, lane["laps"] + 1):
                 m, text = self.t.leg(lid, n)
+                texts.append(text)
                 base_by = self.t.name(lane["added_by"]) if lane.get("added_by") else "кит"
                 row = dict(m, runner=self.t.name(m.get("runner", "")) if n else base_by, account=m.get("runner", "") if n else lane.get("added_by", ""),
                            rule_title=RULES.get(m.get("rule", ""), {}).get("title", ""), kind=kind_of(m.get("rule", "")),
@@ -1122,7 +1146,9 @@ class Game:
                     row["fresh"] = [a["id"] for a, b in zip(parts, was) if (a["on"] and not b["on"]) or a["lines"] > b["lines"]]
                 prev, was = text, parts
                 legs.append(row)
+            orig, cur = blame(texts)
             out = {"id": lid, "skill": lane["skill"], "laps": lane["laps"], "text": self.t.text(lid), "legs": legs[-24:],
+                   "origin": [{"t": t, "gone": v} for t, v in orig], "now": [{"t": t, "v": v} for t, v in cur],
                    "added_by": self.t.name(lane["added_by"]) if lane.get("added_by") else ""}
             lk = lane.get("lock")
             if lk:
@@ -1625,10 +1651,10 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         "display_name": person.get("name", ""), "auth": auth, "iat": now, "exp": now + SESSION_TTL}, session_secret)
         return f"{cookie}={tok}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL}" + ("; Secure" if secure else "")
 
-    def ticket(person):
+    def ticket(person, src=""):
         now = int(time.time())
         return jwt_sign({"aud": "relay-login", "jti": secrets.token_hex(8), "tg_id": str(person.get("tg_id", "")), "login": person["login"],
-                         "iat": now, "exp": now + TICKET_TTL}, session_secret)
+                         "src": src, "iat": now, "exp": now + TICKET_TTL}, session_secret)
 
     def admit(tg_id, username, name):
         """состав решает, кто входит; с --open новый человек дописывается в состав"""
@@ -1721,7 +1747,7 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'")
+            self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors " + (getattr(self, "frame_ok", "") or "'none'"))
             for k, v in (extra or {}).items():
                 self.send_header(k, v)
             self.end_headers()
@@ -1793,15 +1819,20 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                         p = table.person(login=data["login"]) if fresh else None
                     if not p:
                         return self.out(403, "ссылка для входа устарела или уже использована: попроси новую", "text/plain; charset=utf-8")
-                    game.enter(p["login"], "одноразовая ссылка")
-                    return self.out(302, "", "text/plain", {"Location": "/", "Set-Cookie": session_cookie(p, "одноразовая ссылка")})
+                    lms = data.get("src") == "lms"
+                    way = "LMS" if lms else "одноразовая ссылка"
+                    game.enter(p["login"], way)
+                    return self.out(302, "", "text/plain", {"Location": "/?skin=lms" if lms else "/", "Set-Cookie": session_cookie(p, way)})
                 viewer = viewer_of(self)
                 if u.path == "/api/auth/me":
                     return self.out(200, {"viewer": viewer}) if viewer else self.out(401, {"error": "нет входа"})
                 if u.path == "/api/whoami":  # кого сервер видит за запросом: сессия и лицо из tailnet
                     who = tail_of(self)
+                    ways = (["места демо"] if demo else []) + (["Tailscale"] if tailnet else []) + ([oidc["name"]] if oidc else []) + (["ссылка из LMS или бота"] if mint_secret else [])
                     return self.out(200, {"viewer": viewer["login"] if viewer else "", "tailnet": bool(tailnet), "seen": bool(who),
-                                          "name": who["name"] if who else "", "login": who["login"] if who else ""})
+                                          "name": who["name"] if who else "", "login": who["login"] if who else "",
+                                          "shown": table.name(viewer["login"]) if viewer else "", "auth": (viewer or {}).get("auth", ""),
+                                          "mode": "демо" if demo else "живой", "ways": ways, "git": bool(game.use_git)})
                 if u.path == "/api/state":
                     who = tail_of(self)
                     tail = None
@@ -1817,8 +1848,9 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                                  for x in game.public(None)["lanes"]]
                         return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", ""), "tailnet": tail,
                                               "sso": {"url": "auth/oidc/login", "name": oidc["name"]} if oidc else None,
+                                              "lms": os.environ.get("RELAY_LMS_LINK", ""),
                                               "lock": game.lock, "hour": game.hour, "lanes": brief})
-                    return self.out(200, dict(game.public(viewer), tailnet=tail))
+                    return self.out(200, dict(game.public(viewer), tailnet=tail, lms=os.environ.get("RELAY_LMS_LINK", "")))
                 if u.path == "/api/rules":
                     return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "principles": BOOK.get("principles", []), "parts": BOOK.get("parts", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
                                           "sources": json.loads((GUIDES / "sources.json").read_text(encoding="utf-8")),
@@ -1860,7 +1892,9 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                             text = table.text(q["lane"])
                         return self.out(200, text, "text/markdown; charset=utf-8", {"Content-Disposition": 'attachment; filename="SKILL.md"'})
                     return self.out(404, {"error": "нет такого адреса"})
-                rel = {"": "index.html", "rules": "rules.html", "show": "show.html", "try": "try.html"}.get(u.path.strip("/"), u.path.lstrip("/"))
+                rel = {"": "index.html", "rules": "rules.html", "show": "show.html", "try": "try.html", "about": "about.html", "card": "card.html"}.get(u.path.strip("/"), u.path.lstrip("/"))
+                if rel == "card.html":
+                    self.frame_ok = os.environ.get("RELAY_FRAME_ANCESTORS", "")
                 path = safe(WEB, rel)
                 if not path.is_file():
                     return self.out(404, "нет такого файла", "text/plain; charset=utf-8")
@@ -1890,7 +1924,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     p = admit(tg_id, username, name)
                     if not p:
                         return self.out(200, {"authorized": False, "reason": "not_on_roster"})
-                    return self.out(200, {"authorized": True, "auth_link": f"{base}/auth/complete?token={ticket(p)}", "ttl": TICKET_TTL})
+                    src = "lms" if str(d.get("source") or "").lower() == "lms" else ""  # LMS называет себя: в журнале вход помечен «LMS», стол открывается в её теме
+                    return self.out(200, {"authorized": True, "auth_link": f"{base}/auth/complete?token={ticket(p, src)}", "ttl": TICKET_TTL, "surface": src or "web"})
                 if u.path == "/api/leg/check":  # агент присылает черновик по ключу забега, передаёт человек
                     login, lid = game.by_token(self.headers.get("X-Leg-Token") or "")
                     return self.out(200, game.check(login, lid, d, via="агент", agent=agent_of(self)))
@@ -2023,7 +2058,7 @@ def cmd_rules():
                 continue
             refs = " · ".join(f"[{keys[x]['title']}]({keys[x]['url']})" if x in keys else "правило эстафеты" for x in r["src"])
             ex = r.get("ex") or {}
-            rows += [f"## {r['id']} · {r['title']}", "", f"**Вопрос.** {r['ask']}", "", f"**Изменение.** {r['fix']}", "",
+            rows += [f"## {r['id']} · {r['title']}", "", *([f"**Просто.** {r['easy']}", ""] if r.get("easy") else []), f"**Вопрос.** {r['ask']}", "", f"**Изменение.** {r['fix']}", "",
                      f"**Практика.** {r.get('why', '')}", ""]
             if ex:
                 rows += ["```", *["было:  " + x for x in ex["was"]], *["стало: " + x for x in ex["now"]], "```", ""]

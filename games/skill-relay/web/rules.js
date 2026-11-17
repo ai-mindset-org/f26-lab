@@ -4,7 +4,7 @@
   function flat(a) { return a.reduce(function (r, x) { return r.concat(Array.isArray(x) ? flat(x) : [x]); }, []); }
   function h(tag, attrs) {
     var e = document.createElement(tag), k, i, kids = [];
-    for (k in (attrs || {})) { if (attrs[k] == null || attrs[k] === false) continue; if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    for (k in (attrs || {})) { if (attrs[k] == null || attrs[k] === false) continue; if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
     for (i = 2; i < arguments.length; i++) kids.push(arguments[i]);
     flat(kids).forEach(function (c) { if (c != null && c !== false) e.appendChild(typeof c === 'object' ? c : document.createTextNode(String(c))); });
     return e;
@@ -39,11 +39,35 @@
         return [i ? ' · ' : '', keys[k] ? h('a', { class: 'q', href: keys[k].url, rel: 'noopener', target: '_blank' }, keys[k].title) : 'соглашение эстафеты'];
       }));
     }
+    // наведение на правило: внизу справа видно, на чём оно основано, эти источники подсвечены в общем списке
+    var dock = h('div', { class: 'dock', role: 'status' });
+    document.body.appendChild(dock);
+    function lit(sel, on) { Array.prototype.forEach.call(document.querySelectorAll(sel), function (e) { e.classList.toggle('lit', on); }); }
+    function showRule(x) {
+      lit('.lit', false);
+      dock.classList.toggle('on', !!x);
+      if (!x) return;
+      (x.src || []).forEach(function (k) { lit('[data-key="' + k + '"]', true); });
+      dock.replaceChildren(h('b', null, x.id + ' · ' + x.title), h('div', null, x.easy || ''),
+        h('div', null, 'на чём основано: ', (x.src || []).map(function (k, i) { return (i ? ' · ' : '') + (keys[k] ? keys[k].title : 'соглашение эстафеты'); })));
+    }
+    function showSource(g) {
+      lit('.lit', false);
+      var cited = d.rules.filter(function (x) { return (x.src || []).indexOf(g.key) >= 0; });
+      cited.forEach(function (x) { lit('#' + x.id, true); });
+      dock.classList.add('on');
+      dock.replaceChildren(h('b', null, g.title), h('div', null, cited.length ? 'на нём стоят правила: ' + cited.map(function (x) { return x.id; }).join(' · ') : 'общий фон книги: отдельных правил на нём нет'));
+    }
+    function srcRow(g, note) {
+      return h('div', { 'data-key': g.key || '', onmouseenter: g.key ? function () { showSource(g); } : null, onmouseleave: function () { showRule(null); } },
+        h('a', { class: 'q', href: g.url, rel: 'noopener', target: '_blank' }, g.title), note ? ' · ' + g.note : '');
+    }
     function rule(x) {
-      return h('div', { class: 'rule pic', id: x.id },
+      return h('div', { class: 'rule pic', id: x.id, onmouseenter: function () { showRule(x); }, onmouseleave: function () { showRule(null); } },
         h('div', { class: 'fig' }, window.ART.rule(x.id)),
         h('div', null,
           h('h3', null, h('span', { class: 'id' }, x.id), x.title),
+          x.easy ? h('p', { class: 'easy' }, x.easy) : null,
           h('p', null, h('b', null, 'вопрос. '), x.ask),
           h('p', null, h('b', null, 'изменение. '), x.fix),
           x.why ? h('p', { class: 'why' }, h('b', null, 'практика. '), x.why) : null,
@@ -138,8 +162,8 @@
       h('div', { class: 'cols' }, d.evidence.map(function (x) { return block(x, true); })),
       h('h2', { id: 'sources' }, 'гайды, замеры и библиотеки'),
       h('div', { class: 'cols' },
-        h('div', null, h('div', { class: 'lab', style: 'margin-top:18px' }, 'гайды'), h('div', { class: 'src' }, (src.guides || []).map(function (g) { return h('div', null, h('a', { class: 'q', href: g.url, rel: 'noopener', target: '_blank' }, g.title)); }))),
-        h('div', null, h('div', { class: 'lab', style: 'margin-top:18px' }, 'замеры и исследования'), h('div', { class: 'src' }, (src.research || []).map(function (g) { return h('div', null, h('a', { class: 'q', href: g.url, rel: 'noopener', target: '_blank' }, g.title), ' · ' + g.note); })),
+        h('div', null, h('div', { class: 'lab', style: 'margin-top:18px' }, 'гайды'), h('div', { class: 'src' }, (src.guides || []).map(function (g) { return srcRow(g); }))),
+        h('div', null, h('div', { class: 'lab', style: 'margin-top:18px' }, 'замеры и исследования'), h('div', { class: 'src' }, (src.research || []).map(function (g) { return srcRow(g, true); })),
           h('div', { class: 'lab', style: 'margin-top:18px' }, 'библиотеки skills, по которым сверялись базовые skills'), h('div', { class: 'src' }, (src.libraries || []).map(function (g) { return h('div', null, h('a', { class: 'q', href: g.url, rel: 'noopener', target: '_blank' }, g.title), ' · ' + g.note); }))))]));
     var hash = location.hash.slice(1), el = hash && document.getElementById(hash === 'rules' ? 'kinds' : hash);
     if (el) el.scrollIntoView();

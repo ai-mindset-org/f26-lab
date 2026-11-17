@@ -32,7 +32,8 @@
   try { if ((q.get('theme') || localStorage.getItem('relay.theme')) === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) { }
   var A = window.ART, KN = {}, RULES = [], KINDS = [], KIT = [], MODEL = '', LIM = { changed: 12, lines: 400 };
   // состояние песочницы: исходный текст, принятые версии, изменение на рассмотрении
-  var st = { v0: '', versions: [], kind: '', rule: '', pending: null, error: null, busy: false, look: null, t0: 0 };
+  var st = { v0: '', versions: [], redo: [], kind: '', rule: '', pending: null, error: null, busy: false, look: null, t0: 0 };
+  var MAC = /Mac|iPhone|iPad/.test(navigator.platform || ''), ZK = MAC ? '⌘Z' : 'Ctrl+Z', YK = MAC ? '⇧⌘Z' : 'Ctrl+Shift+Z';
   function save() { try { sessionStorage.setItem('relay.try', JSON.stringify({ v0: st.v0, versions: st.versions, text: $('text').value, kind: st.kind, rule: st.rule })); } catch (e) { } }
   function restore() {
     try {
@@ -56,7 +57,7 @@
     fill($('kit'), grp('text', 'простые текстовые:'), grp('popular', 'популярные skills, уровни 1–5:'), grp('base', 'базовые:'), h('button', { class: 'chip', onclick: function () { setText(''); $('text').focus(); } }, 'очистить'));
   }
   function setText(t) {
-    $('text').value = t; st.v0 = t; st.versions = []; st.pending = null; st.error = null;
+    $('text').value = t; st.v0 = t; st.versions = []; st.redo = []; st.pending = null; st.error = null;
     look(); draw(); save();
   }
   var timer = null;
@@ -122,8 +123,8 @@
       h('p', null, 'внесла: ' + p.by + (p.sec ? ' · ' + p.sec + ' с' : '')),
       h('div', { class: 'row' },
         h('button', { class: 'go', onclick: keep }, 'оставить: это v' + (st.versions.length + 1)),
-        h('button', { onclick: function () { st.pending = null; draw(); drawRules(); } }, 'откатить')));
-    else out = h('div', { class: 'ev2 idle' }, h('p', null, st.versions.length ? 'Версия v' + st.versions.length + ' лежит в поле слева. Выбери следующее правило: skill растёт по одному изменению.' :
+        h('button', { onclick: function () { st.pending = null; draw(); drawRules(); }, title: 'изменение не станет версией' }, 'не оставлять · ' + ZK)));
+    else out = h('div', { class: 'ev2 idle' }, h('p', null, st.versions.length ? 'Версия v' + st.versions.length + ' лежит в поле слева. Выбери следующее правило или отмени её: ' + ZK + '.' :
       'Здесь появится разница: что было и что стало. Одно изменение, до ' + LIM.changed + ' строк.'));
     fill($('result'), out);
     fill($('versions'), st.versions.length ? [
@@ -134,7 +135,10 @@
       h('div', { class: 'row' },
         h('button', { onclick: copy, id: 'copy' }, 'скопировать SKILL.md'),
         h('button', { onclick: download }, 'скачать SKILL.md'),
-        h('button', { onclick: undo }, 'убрать v' + st.versions.length))] : h('p', { class: 'hint' }, 'Принятые изменения встанут сюда версиями: v1, v2, v3.'));
+        h('button', { onclick: undo, title: 'последняя версия снимается, в поле возвращается текст до неё' }, 'отменить v' + st.versions.length + ' · ' + ZK),
+        st.redo.length ? h('button', { onclick: redo }, 'вернуть v' + (st.versions.length + 1) + ' · ' + YK) : null)] :
+      [h('p', { class: 'hint' }, 'Принятые изменения встанут сюда версиями: v1, v2, v3. ' + ZK + ' отменяет последнюю.'),
+        st.redo.length ? h('div', { class: 'row' }, h('button', { onclick: redo }, 'вернуть v1 · ' + YK)) : null]);
   }
   function apply() {
     var r = ruleOf(st.rule), t = $('text').value;
@@ -149,14 +153,25 @@
     var p = st.pending;
     if (!p) return;
     st.versions.push({ n: st.versions.length + 1, rule: p.rule, title: p.rule_title, kind: p.kind, note: p.note, by: p.by, text: p.text, from: p.from });
-    $('text').value = p.text; st.pending = null; st.rule = '';
+    $('text').value = p.text; st.pending = null; st.rule = ''; st.redo = [];
     look(); draw(); drawRules(); save();
   }
+  // отмена как в редакторе: сначала снимается непринятое изменение, потом версии по одной; снятую версию можно вернуть
   function undo() {
+    if (st.busy) return false;
+    if (st.pending) { st.pending = null; draw(); drawRules(); return true; }
     var v = st.versions.pop();
-    if (!v) return;
-    $('text').value = v.from; st.pending = null;
+    if (!v) return false;
+    st.redo.push(v); $('text').value = v.from;
     look(); draw(); drawRules(); save();
+    return true;
+  }
+  function redo() {
+    var v = st.redo.pop();
+    if (!v || st.busy) return false;
+    v.n = st.versions.length + 1; st.versions.push(v); $('text').value = v.text; st.pending = null;
+    look(); draw(); drawRules(); save();
+    return true;
   }
   function copy() {
     var t = $('text').value, b = $('copy');
@@ -170,6 +185,13 @@
   $('text').addEventListener('input', function () { st.error = null; look(); save(); });
   setInterval(function () { var s = $('sec'); if (s && st.busy) s.textContent = Math.round((Date.now() - st.t0) / 1000); }, 500);
   addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'z' || e.key === 'Z' || e.key === 'я' || e.key === 'Я')) {
+      // в поле текста своя отмена набора: версию снимаем, только когда в поле лежит ровно текст последней версии
+      var last = st.versions[st.versions.length - 1], typed = e.target === $('text') && !st.pending && $('text').value !== (last ? last.text : st.v0);
+      if (typed) return;
+      if (e.shiftKey ? redo() : undo()) e.preventDefault();
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey || /^(TEXTAREA|INPUT)$/.test((e.target || {}).tagName || '')) return;
     var k = e.key.toLowerCase();
     if (k === 't' || k === 'е') {
