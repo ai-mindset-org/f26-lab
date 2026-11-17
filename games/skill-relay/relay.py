@@ -1597,7 +1597,11 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                                           "name": who["name"] if who else "", "login": who["login"] if who else ""})
                 if u.path == "/api/state":
                     who = tail_of(self)
-                    tail = {"name": who["name"]} if who else None
+                    tail = None
+                    if who:
+                        with GATE:
+                            known = next((x for x in table.roster()["people"] if x.get("tail") == who["key"]), None)
+                        tail = {"name": (known or who)["name"]}
                     if not viewer and not demo:
                         return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", ""), "tailnet": tail})
                     return self.out(200, dict(game.public(viewer), tailnet=tail))
@@ -1691,6 +1695,14 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     if not who:
                         return self.out(409, {"error": "вход по Tailscale здесь не включён или страница открыта не через tailnet"})
                     p = tail_admit(who)
+                    shown = cut(" ".join(re.sub(r"[^\w .-]", "", str(d.get("name", ""))).split()), 40)
+                    if shown and shown != p.get("name"):  # имя на столе человек выбирает сам: в сети оно бывает общим на команду
+                        with GATE:
+                            data = table.roster()
+                            for x in data["people"]:
+                                if x.get("tail") == who["key"]:
+                                    x["name"] = p["name"] = shown
+                            table.save_roster(data)
                     game.enter(p["login"], "Tailscale")
                     return self.out(200, {"ok": True}, extra={"Set-Cookie": session_cookie(p, "Tailscale")})
                 if u.path == "/api/demo/login":

@@ -182,8 +182,9 @@
     var seats = (S.seats || []).map(function (s) {
       return h('button', { onclick: function () { api('POST', 'api/demo/login', { login: s.login }).then(load, out(box)); } }, s.name + (s.taken ? ' · уже был' : ''));
     });
-    var tail = S.tailnet ? [h('div', { class: 'row' }, h('button', { class: 'go', onclick: function () { api('POST', 'api/tailnet/login', {}).then(load, out(box)); } }, 'войти как ' + S.tailnet.name)),
-      h('p', { class: 's' }, 'Сервер узнал тебя по Tailscale: отдельная ссылка не нужна. На столе будет видно это имя.')] : null;
+    var nm = S.tailnet ? h('input', { type: 'text', id: 'tname', maxlength: 40, value: S.tailnet.name, 'aria-label': 'имя на столе', style: 'max-width:260px' }) : null;
+    var tail = S.tailnet ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сервер узнал тебя по Tailscale · имя на столе можно поправить'),
+      h('div', { class: 'row' }, nm, h('button', { class: 'go', onclick: function () { api('POST', 'api/tailnet/login', { name: nm.value }).then(load, out(box)); } }, 'войти'))] : null;
     return [
       h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),

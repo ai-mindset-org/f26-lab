@@ -287,8 +287,10 @@ def main():
             say("вход по Tailscale даёт сессию и место в составе", code == 200 and me["viewer"]["login"] == "sova-lesnaya" and me["viewer"]["auth"] == "Tailscale", str(me.get("viewer")))
             roster = (table4 / "roster.json").read_text(encoding="utf-8")
             say("в составе лежит отпечаток почты, самой почты нет", "primer.example" not in roster and '"tail"' in roster)
-            c.call("POST", "/api/tailnet/login", {}, headers=tail)
-            say("повторный вход не плодит людей", roster.count('"login"') == (table4 / "roster.json").read_text(encoding="utf-8").count('"login"'))
+            c.call("POST", "/api/tailnet/login", {"name": "Сова Лесная <b>"}, headers=tail)
+            again = (table4 / "roster.json").read_text(encoding="utf-8")
+            say("повторный вход не плодит людей, имя на столе человек правит сам", roster.count('"login"') == again.count('"login"')
+                and c.call("GET", "/api/state")[1]["viewer"]["name"] == "Сова Лесная b", again[:200])
             code, tk, _ = c.call("POST", "/api/take", {"lane": me["lanes"][0]["id"]})
             say("вошедший по Tailscale берёт skill", code == 200, str(tk)[:200])
         finally:
