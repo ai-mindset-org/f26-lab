@@ -95,7 +95,7 @@
       S = d; skew = d.now - Date.now() / 1000; render();
       if (!RULES && !load.asked) { load.asked = 1; rules().then(function () { key = ''; render(); }, function () { }); }
     }, function (e) {
-      if (e.status === 401) { S = { mode: 'живой', lanes: [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', tailnet: (e.data || {}).tailnet || null, totals: {} }; render(); }
+      if (e.status === 401) { S = { mode: 'живой', lanes: [], viewer: null, locked: true, login_url: (e.data || {}).login_url || '', tailnet: (e.data || {}).tailnet || null, lock: (e.data || {}).lock || 300, hour: (e.data || {}).hour || 3600, totals: {} }; render(); }
       else if (!S) fill($('panel'), h('div', { class: 'msg' }, 'Стол не отвечает. Страница открывается сервером эстафеты: python3 relay.py serve <стол> --demo'));
     });
   }
@@ -189,7 +189,7 @@
       h('div', { class: 'kick' }, '{ открытая эстафета · ' + (S.mode === 'демо' ? 'деморежим' : S.tailnet ? 'вход по Tailscale' : 'вход по ссылке') + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
       h('p', { class: 'why' }, 'Skill растёт по одному изменению. Каждый участник добавляет одно и за ' + span(S.lock) + ' коммитит: в дорожке лежит новая версия для следующего.'),
-      S.lanes && S.lanes.length ? how() : null,
+      how(),
       S.mode === 'демо' ? [h('div', { class: 'lab', style: 'margin-top:20px' }, 'сядь на место: в демо входа нет, пауза после взятия ' + span(S.hour)), h('div', { class: 'row' }, seats),
         S.tailnet ? tail : null,
         h('div', { class: 'row' }, h('a', { class: 'btn', href: 'show' }, 'как это работает: один круг по шагам'))] :

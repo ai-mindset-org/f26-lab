@@ -1603,7 +1603,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                             known = next((x for x in table.roster()["people"] if x.get("tail") == who["key"]), None)
                         tail = {"name": (known or who)["name"]}
                     if not viewer and not demo:
-                        return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", ""), "tailnet": tail})
+                        return self.out(401, {"error": "нет входа", "mode": "живой", "login_url": os.environ.get("RELAY_BOT_LINK", ""), "tailnet": tail,
+                                              "lock": game.lock, "hour": game.hour})
                     return self.out(200, dict(game.public(viewer), tailnet=tail))
                 if u.path == "/api/rules":
                     return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "principles": BOOK.get("principles", []), "parts": BOOK.get("parts", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
