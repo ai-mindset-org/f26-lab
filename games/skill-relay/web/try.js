@@ -203,6 +203,6 @@
     if (!st.kind && KINDS.length) st.kind = KINDS[0].id;
     look(); draw(); drawRules();
   }, function (e) {
-    fill($('result'), h('div', { class: 'msg' }, e.message === 'нет входа' ? 'Песочница открыта в деморежиме или после входа в эстафету.' : e.message));
+    fill($('result'), e.message === 'нет входа' ? h('div', { class: 'msg' }, 'Песочница открывается после входа в эстафету. ', h('a', { href: './' }, 'Войти на странице стола'), '.') : h('div', { class: 'msg' }, e.message));
   });
 })();

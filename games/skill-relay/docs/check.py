@@ -546,6 +546,8 @@ def main():
             say("рамкой встаёт только версия для LMS и карточка", "frame-ancestors 'none'" in _csp("/") and "frame-ancestors 'self' https://lms.example" in _csp("/lms/") and "frame-ancestors 'self' https://lms.example" in _csp("/card") and "frame-ancestors 'none'" in _csp("/about"), _csp("/lms/"))
             shell = Client(pt).call("GET", "/shell.js")[1]
             say("переключателя веб и LMS нет, вид задаёт адрес", "surf" not in str(shell) and "skin=" not in str(shell) and "lms" in str(shell), str(shell)[:80])
+            guest = Client(pt).call("GET", "/api/state")
+            say("гость без входа получает адрес страницы в LMS, и страница входа его читает", guest[0] == 401 and "lms" in guest[1] and "lms: (e.data || {}).lms" in (HERE / "web" / "app.js").read_text(encoding="utf-8"), str(guest[1])[:80])
             code, page, _ = Client(pt).call("GET", "/lms-preview")
             say("макет размещения в LMS открывается", code == 200 and "lms/" in str(page) and "card" in str(page))
             log = lms.call("GET", "/api/log?n=40")[1]["events"]

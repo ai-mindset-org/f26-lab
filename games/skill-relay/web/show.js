@@ -131,7 +131,15 @@
     return api('POST', 'api/show/go', { to: n }).then(take, function (e) { fill($('err'), h('div', { class: 'msg' }, e.message)); })
       .then(function () { busy = false; render(); });
   }
-  function load() { return api('GET', 'api/show').then(take, function (e) { fill($('err'), h('div', { class: 'msg' }, e.message === 'нет входа' ? 'Прогон открыт в деморежиме или после входа в эстафету.' : e.message)); }); }
+  // гость без входа: пульт и пустая сцена прогона убраны, остаётся одна строка с дорогой на стол
+  function gate() {
+    $('text').textContent = 'Прогон идёт на отдельном учебном столе: один круг по шагам, каждое действие настоящее.';
+    ['.head > div + div', '.scene', '.under2', 'details'].forEach(function (q) {
+      Array.prototype.forEach.call(document.querySelectorAll('main ' + q), function (el) { el.style.display = 'none'; });
+    });
+    fill($('err'), h('div', { class: 'msg' }, 'Прогон открывается после входа в эстафету. ', h('a', { href: './' }, 'Войти на странице стола'), '.'));
+  }
+  function load() { return api('GET', 'api/show').then(take, function (e) { if (e.message === 'нет входа') return gate(); fill($('err'), h('div', { class: 'msg' }, e.message)); }); }
   function stopAuto() { clearInterval(auto); auto = null; if (S) render(); }
   function toggleAuto() {
     if (auto) return stopAuto();
