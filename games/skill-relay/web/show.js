@@ -95,8 +95,27 @@
       h('b', null, e.who),
       h('span', null, e.what + (e.lane ? ' · ' + e.lane : '') + ' ', h('i', null, '· через: '), e.via === 'агент' ? h('u', null, how(e)) : h('i', null, how(e))));
   }
+  // схема круга с главной: та же анимация, фаза идёт за шагом прогона; под ней правило шага ссылкой в книгу
+  var animBox = null;
+  function phaseOf() {
+    var w = S.windows.filter(function (x) { return x.login === S.focus; })[0], c = w && w.card, t = String(S.title || '').toLowerCase();
+    if (/коммит|версия v|круг закрыт|конец/.test(t)) return 3;
+    if (c && c.verdict) return 2;
+    if (c && c.rule) return 1;
+    return 0;
+  }
+  function anim() {
+    if (!window.ART || !window.ART.intro) return;
+    if (!animBox) { animBox = window.ART.intro({ manual: true, lock: '5 мин' }); }
+    var w = S.windows.filter(function (x) { return x.login === S.focus; })[0], c = w && w.card;
+    fill($('anim'), animBox, c && c.rule ? h('p', { class: 'arule' }, 'правило этого шага: ',
+      h('a', { href: 'rules#' + encodeURIComponent(c.rule) }, c.rule + (c.rule_title ? ' · ' + c.rule_title : '') + ' →'), ' · ',
+      h('a', { href: 'try' }, 'попробовать на своём skill →')) : null);
+    animBox.setPhase(phaseOf());
+  }
   function render() {
     var n = S.step, last = S.total - 1;
+    anim();
     $('ph').textContent = '{ шаг ' + two(n) + ' из ' + two(last) + ' }';
     $('title').replaceChildren(document.createTextNode(S.title), h('em', null, '.'));
     $('text').textContent = S.text;

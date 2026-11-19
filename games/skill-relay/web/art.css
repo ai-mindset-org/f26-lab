@@ -545,3 +545,16 @@ button[disabled]{opacity:.45;cursor:progress}
 [data-skin=lms] button.sk{border-radius:0}
 [data-skin=lms] .row>button.go:not(.quiet):not(.kind),[data-skin=lms] .row>a.btn.go{border-color:var(--acc)}
 [data-skin=lms] .row>button.go:not(.quiet):not(.kind):hover,[data-skin=lms] .row>a.btn.go:hover{border-color:#b91c1c}
+
+/* прогон: схема круга над сценой, фаза идёт за шагом */
+.anim{margin:18px 0 6px}
+.anim .intro{margin-top:0}
+.anim .isteps button{pointer-events:none}
+.anim .arule{margin:6px 0 0;font-size:12.5px;color:var(--ink2)}
+.anim .arule a{color:var(--acc)}
+/* стол в LMS: та же схема круга под стадионом, свернуть можно */
+.lmsintro{margin:0 0 14px}
+.lmsintro>summary{cursor:pointer;font-size:12px;color:var(--ink2);font-family:var(--mono,inherit);list-style:none}
+.lmsintro>summary::before{content:'+ '}
+.lmsintro[open]>summary::before{content:'− '}
+.lmsintro .intro{margin-top:8px}

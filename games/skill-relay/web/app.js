@@ -426,12 +426,21 @@
       h('p', { class: 's' }, 'Вставь SKILL.md целиком: шапка с name и description, дальше текст. Сервер проверит его на личное и секреты. Skill ляжет версией v0 с твоим именем, дальше его правят все. От участника до ' + a.max + ' skills.'),
       ta, h('div', { class: 'row' }, btn), res);
   }
+  // в LMS стола со стадионом слева нет: схема круга с главной стоит под стадионом, свёрнутое состояние помнится
+  function lmsIntro() {
+    var closed = false;
+    try { closed = localStorage.getItem('relay.intro') === 'closed'; } catch (e) { }
+    var d = h('details', { class: 'lmsintro', open: closed ? null : true }, h('summary', null, 'как устроен круг: взять → одно правило → проверка → новая версия'), intro());
+    d.addEventListener('toggle', function () { try { localStorage.setItem('relay.intro', d.open ? 'open' : 'closed'); } catch (e) { } });
+    return d;
+  }
   function viewLanes() {
     var v = S.viewer, resting = v.rest > 0, tb = h('div');
     return [
       h('div', { class: 'kick' }, '{ стол · твоих версий ' + v.legs + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + ' }'),
       h('h1', { class: 'h1s' }, 'эстафета skills', h('em', null, '.')),
       whoLine(v),
+      window.SKIN === 'lms' ? lmsIntro() : null,
       resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, 'возьми ', h('em', null, 'skill')),
       h('p', { class: 's' }, resting ? 'Следующий skill можно взять, когда выйдет время. Версии и правила можно читать.' :
         'Взял: skill твой на ' + span(S.lock) + '. Применяешь одно правило и отдаёшь новой версией, дальше его берёт следующий. После взятия ' + span(S.hour) + ' паузы на все skills.'),
@@ -851,8 +860,8 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, hgt);
     if (!S || !S.lanes || !S.lanes.length) return;
     var N = S.lanes.length, small = w < 520, few = N <= 4, t = still ? 2.2 : ms / 1000; // три-четыре дорожки стоят шире: на них помещается имя skill
-    var outer = Math.min(hgt * 0.4, w * (few ? 0.27 : 0.3)), gap = Math.min(small ? (few ? 21 : 17) : few ? 40 : 27, outer * (few ? 0.5 : 0.62) / Math.max(1, N - 1)), inner = outer - gap * (N - 1);
-    var L = Math.max(10, w / 2 - outer - (small ? 14 : 30)), cx = w / 2, cy = hgt / 2 - (small ? 0 : 6);
+    var outer = Math.min(hgt * (window.SKIN === 'lms' ? 0.34 : 0.4), w * (few ? 0.27 : 0.3)), gap = Math.min(small ? (few ? 21 : 17) : few ? 40 : 27, outer * (few ? 0.5 : 0.62) / Math.max(1, N - 1)), inner = outer - gap * (N - 1);
+    var L = Math.max(10, w / 2 - outer - (small ? 14 : 30)), cx = w / 2, cy = hgt / 2 - (small || window.SKIN === 'lms' ? 0 : 6) + (window.SKIN === 'lms' ? 8 : 0);
     var lt = [Math.cos(t * 0.5) * 0.72, -0.45, 0.55 + Math.sin(t * 0.5) * 0.2];
     ctx.save(); ctx.lineCap = 'round'; ctx.lineWidth = 1.5; ctx.setLineDash([0.1, small ? 6 : 7]); ctx.strokeStyle = INK3;
     S.lanes.forEach(function (l, i) {

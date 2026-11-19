@@ -193,6 +193,9 @@
     function tick() { if (box.isConnected && !document.hidden) show((ph + 1) % CAP.length); }
     box.appendChild(svg); box.appendChild(steps); box.appendChild(cap);
     var calm = o.still || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    // ведомый режим: фазу ставит хозяин страницы (прогон по шагам), своего таймера нет
+    box.setPhase = function (i) { clearInterval(timer); if (i !== ph) show(Math.max(0, Math.min(CAP.length - 1, i))); };
+    if (o.manual) { show(o.phase || 0); return box; }
     show(calm ? 0 : 3);
     if (!calm) { setTimeout(function () { show(0); }, 60); timer = setInterval(tick, INTRO_MS); }
     return box;
