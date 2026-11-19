@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>обложка ссылки · эстафета skills</title>
+<style>
+@font-face{font-family:'JetBrains Mono';src:url('../../web/fonts/jetbrains-mono.woff2') format('woff2');font-weight:100 800;font-style:normal}
+:root{--ink:#111;--ink2:rgba(17,17,17,.56);--ink3:rgba(17,17,17,.24);--acc:#FF8C00}
+*{box-sizing:border-box}
+html,body{margin:0;width:1200px;height:630px;overflow:hidden;background:#fff;color:var(--ink);font-family:'JetBrains Mono',ui-monospace,monospace;-webkit-font-smoothing:antialiased}
+body{position:relative;background-image:radial-gradient(rgba(17,17,17,.085) 1.1px,transparent 1.4px);background-size:24px 24px;background-position:12px 15px}
+.fr i{position:absolute;width:22px;height:22px;border:0 solid var(--ink3)}
+.fr .tl{left:26px;top:26px;border-left-width:1.5px;border-top-width:1.5px}.fr .tr{right:26px;top:26px;border-right-width:1.5px;border-top-width:1.5px}
+.fr .bl{left:26px;bottom:26px;border-left-width:1.5px;border-bottom-width:1.5px}.fr .br{right:26px;bottom:26px;border-right-width:1.5px;border-bottom-width:1.5px}
+.brand{position:absolute;left:58px;top:50px;display:flex;align-items:center;gap:14px;font-size:27px;font-weight:700;letter-spacing:.01em}
+.brand img{width:58px;height:58px;display:block;margin:-6px -6px -6px -8px}
+.type{position:absolute;left:60px;top:128px;font-size:20px;color:var(--ink2);letter-spacing:.02em}
+.type b{font-weight:500;color:var(--acc)}
+h1{position:absolute;left:56px;top:176px;margin:0;font-size:108px;line-height:.98;font-weight:700;letter-spacing:-.035em}
+h1 em{font-style:normal;color:var(--acc)}
+.why{position:absolute;left:60px;top:420px;margin:0;font-size:20px;line-height:1.55;color:var(--ink2);max-width:548px}
+.why b{font-weight:600;color:var(--ink)}
+.foot{position:absolute;left:60px;right:60px;bottom:50px;display:flex;justify-content:space-between;align-items:baseline;font-size:18px;color:var(--ink2);border-top:1.5px solid var(--ink);padding-top:14px}
+.foot b{font-weight:600;color:var(--ink)}
+canvas{position:absolute;left:578px;top:92px;width:610px;height:430px}
+</style>
+</head>
+<body>
+<div class="fr"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
+<div class="brand"><img src="aim-logo.png" alt="">AI Mindset</div>
+<div class="type">игра лабы · <b>skills для агентов</b></div>
+<h1>эстафета<br>skills<em>.</em></h1>
+<p class="why">Берёшь skill со стола, применяешь <b>одно правило</b> и отдаёшь новой версией следующему.</p>
+<div class="foot"><b>3 skills · одно правило · 5 минут</b><span>текст · саммари · исследование</span></div>
+<canvas id="cv" width="1220" height="860"></canvas>
+<script>
+// тот же шар из знаков и те же дорожки, что на стадионе игры
+(function () {
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d'), RAMP = '.·:-=+*#%@', INK = '#111', ACC = '#FF8C00';
+  function sphere(x, y, r, col, alpha, lt, div) {
+    ctx.save(); ctx.fillStyle = col;
+    ctx.globalAlpha = alpha * (col === ACC ? 0.16 : 0.09); ctx.beginPath(); ctx.arc(x, y, r * 1.06, 0, Math.PI * 2); ctx.fill();
+    var c = Math.max(4.4, r / (div || 4.6)); ctx.font = '600 ' + (c * 1.25).toFixed(1) + 'px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = alpha;
+    var n = Math.ceil(r / c), i, j;
+    for (j = -n; j <= n; j++) for (i = -n; i <= n; i++) {
+      var px = i * c, py = j * c, d2 = (px * px + py * py) / (r * r); if (d2 > 1) continue;
+      var nx = px / r, ny = py / r, nz = Math.sqrt(1 - d2), lgt = Math.max(0, nx * lt[0] + ny * lt[1] + nz * lt[2]);
+      ctx.fillText(RAMP[Math.min(RAMP.length - 1, Math.floor((0.1 + 0.9 * lgt) * RAMP.length))], x + px, y + py);
+    }
+    ctx.restore();
+  }
+  function text(t, x, y, size, col, align, weight) {
+    ctx.save(); ctx.font = (weight || 400) + ' ' + size + 'px "JetBrains Mono", monospace'; ctx.fillStyle = col;
+    ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, x, y); ctx.restore();
+  }
+  function draw() {
+    ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 610, 430);
+    var cx = 268, cy = 222, L = 88, R = [88, 128, 168], lt = [0.62, -0.5, 0.6];
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineWidth = 2.2; ctx.setLineDash([0.1, 8]); ctx.strokeStyle = 'rgba(17,17,17,.34)';
+    R.forEach(function (r) {
+      ctx.beginPath(); ctx.moveTo(cx - L, cy + r); ctx.lineTo(cx + L, cy + r); ctx.arc(cx + L, cy, r, Math.PI / 2, -Math.PI / 2, true);
+      ctx.lineTo(cx - L, cy - r); ctx.arc(cx - L, cy, r, -Math.PI / 2, Math.PI / 2, true); ctx.stroke();
+    });
+    ctx.setLineDash([]); ctx.strokeStyle = 'rgba(17,17,17,.56)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(cx - L, cy + R[0] - 16); ctx.lineTo(cx - L, cy + R[2] + 16); ctx.stroke(); ctx.restore();
+    text('12', cx, cy - 12, 76, INK, 'center', 600);
+    text('{ изменений принято }', cx, cy + 40, 14, 'rgba(17,17,17,.56)');
+    // двое ждут у старта, один skill в работе: большой оранжевый шар на внешней дорожке
+    [[0, '01 · текст · v4'], [1, '02 · саммари · v5']].forEach(function (q) {
+      var y = cy + R[q[0]], x = cx - L + 26;
+      sphere(x, y, 17, INK, 0.9, lt, 3);
+      ctx.save(); ctx.font = '400 14px "JetBrains Mono", monospace'; ctx.fillStyle = '#fff'; ctx.fillRect(x + 24, y - 11, ctx.measureText(q[1]).width + 14, 22); ctx.restore();
+      text(q[1], x + 30, y, 14, 'rgba(17,17,17,.62)', 'left');
+    });
+    var bx = cx + L + R[2] * Math.sin(0.95), by = cy - R[2] * Math.cos(0.95);
+    sphere(bx, by, 62, ACC, 1, lt);
+    text('03 · исследование · у тебя', cx + 6, cy - R[2] - 24, 15, ACC, 'center', 600);
+  }
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () { draw(); document.body.setAttribute('data-ready', '1'); });
+})();
+</script>
+</body>
+</html>

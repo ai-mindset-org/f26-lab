@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>о системе · эстафета skills · AI Mindset</title>
+<meta name="description" content="Как устроена эстафета skills: что происходит на столе, как устроен вход, где лежат версии и журнал, что видит сервер и как связаны веб-версия и версия в LMS.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="__ORIGIN__/about">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI Mindset">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="о системе · эстафета skills · AI Mindset">
+<meta property="og:description" content="Как устроена эстафета skills: что происходит на столе, как устроен вход, где лежат версии и журнал, что видит сервер и как связаны веб-версия и версия в LMS.">
+<meta property="og:url" content="__ORIGIN__/about">
+<meta property="og:image" content="__ORIGIN__/og.png?v=14">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Обложка: AI Mindset, эстафета skills. Стадион из трёх дорожек, два skill ждут у старта, третий в работе: большой оранжевый шар из знаков.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="о системе · эстафета skills · AI Mindset">
+<meta name="twitter:description" content="Как устроена эстафета skills: что происходит на столе, как устроен вход, где лежат версии и журнал, что видит сервер и как связаны веб-версия и версия в LMS.">
+<meta name="twitter:image" content="__ORIGIN__/og.png?v=14">
+<meta name="twitter:image:alt" content="Обложка: AI Mindset, эстафета skills. Стадион из трёх дорожек, два skill ждут у старта, третий в работе: большой оранжевый шар из знаков.">
+<link rel="stylesheet" href="pages.css">
+<link rel="stylesheet" href="art.css">
+<script src="shell.js"></script>
+</head>
+<body data-field>
+<div class="frame"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
+<div class="top"><a class="brand" href="./" title="на стол"><b>AI Mindset</b><span class="x"> · f26</span> · эстафета skills</a><nav class="tabs"></nav><span class="ph">{ о системе }</span></div>
+<main class="page">
+  <div class="kick">{ о системе · что это, как войти, где лежат данные }</div>
+  <h1>эстафета skills<em>.</em></h1>
+  <p class="s">Игра лабы F26. Skill лежит на столе. Участник берёт его, skill закрепляется за ним на несколько минут, участник применяет одно правило и отдаёт skill новой версией. Сервер хранит каждую версию целиком и записывает, кто её внёс, по какому правилу и каким способом вошёл.</p>
+  <div class="flowrow">
+    <div><b>1 · вход</b>единый вход, ссылка из LMS или место в демо</div>
+    <div class="a"><b>2 · взять</b>skill закреплён за одним человеком, идёт таймер</div>
+    <div><b>3 · одно правило</b>изменение вносит агент, человек выбирает правило</div>
+    <div><b>4 · проверка</b>сервер ищет личное и секреты, разбор смотрит на изменение</div>
+    <div class="a"><b>5 · новая версия</b>в журнале: кто, что и зачем; skill свободен для следующего</div>
+  </div>
+  <div class="about">
+    <div class="bx me" id="me"><h3>кого видит сервер</h3><p>Спрашиваю сервер…</p></div>
+    <div class="bx" id="limits"><h3>пределы одного изменения</h3><p>Читаю настройки стола…</p></div>
+    <div class="bx"><h3>как устроен вход</h3>
+      На один стол ведут три двери. <b>Единый вход AI Mindset</b>: тот же аккаунт, что в других сервисах лабы. <b>Ссылка из LMS</b>: LMS подтверждает участника, сервер выдаёт одноразовую ссылку на 15 минут. <b>Tailscale</b>: для команды во внутренней сети. В деморежиме входа нет, человек садится на место с выдуманным именем.
+      <ul><li>после входа сервер ставит cookie сессии, пароль игра не хранит</li><li>способ входа записан в журнале рядом с именем</li><li>до входа стол виден на чтение, имена участников скрыты</li></ul></div>
+    <div class="bx"><h3>два инструмента, один стол</h3>
+      <b>Веб-платформа</b> открывается на своём адресе: широкий экран, стадион, полная история и песочница. <b>Версия для LMS</b> стоит рамкой на странице лабы: одна колонка под ширину LMS, без стадиона. Стол и журнал у них общие: изменение, внесённое в LMS, сразу видно на веб-платформе.
+      <ul><li><a href="lms/" target="_blank" rel="noopener">версия для LMS отдельно</a></li><li><a href="lms-preview" target="_blank" rel="noopener">макет: как она встаёт на страницу лабы</a></li><li><a href="card" target="_blank" rel="noopener">карточка для правой колонки LMS</a></li></ul></div>
+    <div class="bx"><h3>где лежат данные</h3>
+      Стол это папка на сервере. В ней нет базы данных, только файлы:
+      <ul><li><code>lanes/&lt;skill&gt;/SKILL.md</code> текущая версия skill</li><li><code>lanes/&lt;skill&gt;/legs/NNN.md</code> каждая версия целиком, рядом <code>NNN.json</code>: автор, правило, разбор</li><li><code>events.jsonl</code> и <code>TRAIL.md</code> журнал: входы, взятия, версии</li></ul>
+      <p id="git"></p></div>
+    <div class="bx"><h3>что уходит модели</h3>
+      Изменение вносит модель через OpenRouter. Ей уходит текст skill и выбранное правило. До отправки сервер проверяет текст: строки с личными данными, ключами и адресами останавливают изменение. Разбор готового изменения делает та же модель и отвечает на четыре вопроса: правило применено, skill остался общим, личного нет, остальной текст цел.</div>
+    <div class="bx wide"><h3>что смотреть дальше</h3>
+      <a href="show">один круг по шагам</a> показывает механику на настоящих действиях. <a href="try">Песочница</a> применяет правила к твоему skill и не трогает стол. <a href="rules">Книга правил</a> объясняет каждое правило и называет первоисточник. <a href="./?view=log">Журнал</a> показывает, кто взял skill и что поменял.</div>
+  </div>
+</main>
+<script src="field.js" defer></script>
+<script src="about.js" defer></script>
+</body>
+</html>

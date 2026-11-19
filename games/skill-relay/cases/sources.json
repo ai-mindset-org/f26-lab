@@ -1,0 +1,45 @@
+{
+ "note": "Кейсы игры написаны заново по мотивам самых ставимых skills. Тексты оригиналов не копировались. Числа установок: таблица лидеров skills.sh, срез осени 2026 года.",
+ "cases": {
+  "grill-me": {
+   "origin": "grill-me",
+   "repo": "mattpocock/skills",
+   "license": "MIT",
+   "installs": "1,56 млн",
+   "rank": "второе место среди рабочих skills",
+   "url": "https://github.com/mattpocock/skills"
+  },
+  "handoff": {
+   "origin": "handoff",
+   "repo": "mattpocock/skills",
+   "license": "MIT",
+   "installs": "1,15 млн",
+   "rank": "",
+   "url": "https://github.com/mattpocock/skills"
+  },
+  "brainstorming": {
+   "origin": "brainstorming",
+   "repo": "obra/superpowers",
+   "license": "MIT",
+   "installs": "433 тыс.",
+   "rank": "самый ставимый skill набора Superpowers",
+   "url": "https://github.com/obra/superpowers"
+  },
+  "systematic-debugging": {
+   "origin": "systematic-debugging",
+   "repo": "obra/superpowers",
+   "license": "MIT",
+   "installs": "337 тыс.",
+   "rank": "",
+   "url": "https://github.com/obra/superpowers"
+  },
+  "skill-creator": {
+   "origin": "skill-creator",
+   "repo": "anthropics/skills",
+   "license": "указана в папке skill",
+   "installs": "",
+   "rank": "четвёртое место редакционного рейтинга ста skills, октябрь 2026",
+   "url": "https://github.com/anthropics/skills"
+  }
+ }
+}
