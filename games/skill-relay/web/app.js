@@ -196,6 +196,7 @@
   // встать из-за стола: skill из рук возвращается на стол без изменения, вход и версии остаются; вернуться можно одной кнопкой
   var LEAVE_TIP = 'skill из рук вернётся на стол без изменения, твои версии и вход останутся';
   function leaveTable() {
+    if (S && S.viewer && S.viewer.holding && !confirm('skill у тебя в руках вернётся на стол без изменения. Встать из-за стола?')) return;
     api('POST', 'api/leave', {}).then(function (d) { leg = null; view = 'auto'; key = ''; if (d.dropped) toast('skill вернулся на стол без изменения'); load(); }, function (e) { toast(e.message); });
   }
   function backToTable() { api('POST', 'api/back', {}).then(function () { key = ''; load(); }, function (e) { toast(e.message); }); }
@@ -240,8 +241,9 @@
     if (me && me.away) return [ // человек встал из-за стола: вход жив, вернуться можно одной кнопкой
       h('div', { class: 'kick' }, '{ ты встал из-за стола · ' + (demo ? 'деморежим' : 'вход: ' + (me.auth || 'сессия')) + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
-      h('p', { class: 'why' }, 'Место за тобой, ', h('b', null, me.name || me.login), '. ' + (me.legs ? 'Твоих версий в дорожках: ' + me.legs + ', они остаются на столе.' : 'Версий от тебя пока нет.') +
-        (me.rest > 0 ? ' Пауза после взятия идёт дальше.' : '')),
+      h('div', { class: 'awayhead' }, h('h2', null, 'Ты встал из-за стола'),
+        h('p', null, 'Место за тобой, ', h('b', null, me.name || me.login), '. ' + (me.legs ? 'Твоих версий в дорожках: ' + me.legs + ', они остаются на столе с твоим именем.' : 'Версий от тебя пока нет.') +
+          ' Нажми «вернуться за стол», чтобы взять следующий свободный skill' + (me.rest > 0 ? ' (пауза после взятия идёт дальше).' : '.'))),
       h('div', { class: 'away' }, A.away ? A.away() : null,
         h('ol', null, h('li', null, h('b', null, 'skill из рук'), ' вернулся на стол без изменения: его может взять следующий'),
           h('li', null, h('b', null, 'твои версии'), ' лежат в дорожках с твоим именем'),
@@ -745,6 +747,7 @@
     if (!S) return;
     var held = S.viewer && S.viewer.holding && view === 'auto';
     var v = S.viewer && !S.viewer.away ? S.viewer : null, hold = v && v.holding, kids, k;
+    document.body.classList.toggle('seated', !!v && view !== 'log');
     document.body.classList.toggle('wide', !stadium && !held && (view.indexOf('lane:') === 0 || (view === 'auto' && !!v)));
     if (hold && view === 'auto') {
       k = 'leg:' + hold;

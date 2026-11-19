@@ -1944,6 +1944,17 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                                               "lms": os.environ.get("RELAY_LMS_LINK", ""),
                                               "lock": game.lock, "hour": game.hour, "lanes": brief})
                     return self.out(200, dict(game.public(viewer), tailnet=tail, lms=os.environ.get("RELAY_LMS_LINK", "")))
+                if u.path == "/api/pulse":
+                    # живая карточка стола для правой колонки LMS: только числа, без имён и текстов.
+                    # Читать её разрешено сайтам из RELAY_FRAME_ANCESTORS, тем же, кому разрешена рамка
+                    pub = game.public(None)
+                    lanes = [{"n": x.get("n"), "title": x.get("title", ""), "laps": x.get("laps", 0), "held": x.get("status") == "бежит",
+                              "left": max(0, int((x.get("until") or 0) - time.time())) if x.get("status") == "бежит" else 0}
+                             for x in pub["lanes"]]
+                    o = self.headers.get("Origin") or ""
+                    allow = {"Access-Control-Allow-Origin": o, "Vary": "Origin"} if o and o in os.environ.get("RELAY_FRAME_ANCESTORS", "").split() else {}
+                    return self.out(200, {"lanes": lanes, "laps": sum(x["laps"] for x in lanes), "running": sum(1 for x in lanes if x["held"]),
+                                          "lock": game.lock, "mode": "демо" if demo else "живой"}, extra=allow)
                 if u.path == "/api/rules":
                     return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "principles": BOOK.get("principles", []), "parts": BOOK.get("parts", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
                                           "sources": json.loads((GUIDES / "sources.json").read_text(encoding="utf-8")),
