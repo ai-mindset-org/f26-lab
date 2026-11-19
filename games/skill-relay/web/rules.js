@@ -135,6 +135,8 @@
       if (d.rules.some(function (x) { return x.id === hash; })) st.sel = hash;
       var q0 = new URLSearchParams(location.search).get('q');
       if (q0) { st.q = q0; input.value = q0; }
+      var k0 = new URLSearchParams(location.search).get('kind');
+      if (k0 && (d.kinds || []).some(function (k) { return k.id === k0; })) st.kind = k0;
       paint();
       return h('section', { class: 'board', id: 'map' },
         h('h2', null, 'карта правил'),
@@ -211,13 +213,9 @@
       h('h2', { id: 'kinds-h' }, 'семь видов изменения'),
       h('div', { class: 'kinds', id: 'kinds' }, (d.kinds || []).map(function (k) {
         var n = d.rules.filter(function (x) { return x.kind === k.id; }).length;
-        return h('a', { class: 'kcard', href: '#k-' + k.id }, window.ART.kind(k.id), h('b', null, k.add), h('span', null, k.text), h('i', null, n + ' ' + (n === 1 ? 'правило' : n < 5 ? 'правила' : 'правил')));
+        return h('a', { class: 'kcard', id: 'k-' + k.id, href: '?kind=' + k.id + '#map', title: 'показать на карте только этот вид' }, window.ART.kind(k.id), h('b', null, k.add), h('span', null, k.text), h('i', null, n + ' ' + (n === 1 ? 'правило' : n < 5 ? 'правила' : 'правил')));
       })),
-      (d.kinds || []).map(function (k) {
-        return [h('h2', { id: 'k-' + k.id, class: 'kh' }, window.ART.kind(k.id), k.add),
-          h('p', { class: 's' }, k.text),
-          h('div', { class: 'cols' }, d.rules.filter(function (x) { return x.kind === k.id; }).map(rule))];
-      }),
+      h('p', { class: 's' }, 'Нажми на вид: карта правил выше оставит только его правила.'),
       h('h2', { id: 'settings' }, 'настройка skill в харнессе'),
       h('p', { class: 's' }, 'Где лежит skill, что стоит в шапке, кто его запускает и какие права он получает. Эти настройки остаются у человека: в эстафету идёт только общий текст SKILL.md.'),
       h('div', { class: 'cols' },

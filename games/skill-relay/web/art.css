@@ -558,3 +558,7 @@ button[disabled]{opacity:.45;cursor:progress}
 .lmsintro>summary::before{content:'+ '}
 .lmsintro[open]>summary::before{content:'− '}
 .lmsintro .intro{margin-top:8px}
+
+/* части SKILL.md: плитки не режут подписи – в узкой колонке переносятся на вторую строку */
+.sch:not(.mini){grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
+.sch .sp b{overflow-wrap:anywhere}
