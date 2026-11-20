@@ -552,6 +552,17 @@ def main():
             say("макет размещения в LMS открывается", code == 200 and "lms/" in str(page) and "card" in str(page))
             log = lms.call("GET", "/api/log?n=40")[1]["events"]
             say("в сессии и в журнале вход помечен «LMS»", lms.call("GET", "/api/auth/me")[1]["viewer"]["auth"] == "LMS" and any(e["kind"] == "enter" and e["what"] == "вход: LMS" for e in log))
+            # рамка LMS входит на каждой загрузке: второй вход тем же способом журнал не пишет, счётчик визитов растёт
+            n_enter = sum(1 for e in log if e["kind"] == "enter" and e["who"] == "Чиж")
+            code, d2, _ = c.call("POST", "/api/mint", {"tg_id": "555001", "username": "chizh", "source": "lms"}, headers={"X-Mint-Secret": "m" * 40, "Origin": None})
+            Client(pt).call("GET", "/auth/complete" + d2["auth_link"].split("/auth/complete")[1])
+            log2 = lms.call("GET", "/api/log?n=80")[1]["events"]
+            say("повторный вход из LMS не засоряет журнал", sum(1 for e in log2 if e["kind"] == "enter" and e["who"] == "Чиж") == n_enter, str(n_enter))
+            ppl = lms.call("GET", "/api/state")[1].get("people") or []
+            me_row = next((x for x in ppl if x["name"] == "Чиж"), None)
+            say("участник видит, кто заходил за стол: имя, способ входа, визиты", bool(me_row) and me_row["auth"] == "LMS" and me_row["visits"] >= 2, str(ppl)[:200])
+            pz = Client(pt).call("GET", "/api/pulse")[1]
+            say("пульс для карточки LMS считает вошедших без имён", pz.get("people", 0) >= 1 and "Чиж" not in json.dumps(pz, ensure_ascii=False), str(pz)[:160])
             w = lms.call("GET", "/api/whoami")[1]
             say("сервер говорит, кого видит и какие входы включены", w["viewer"] == "chizh" and w["auth"] == "LMS" and w["mode"] == "живой" and "ссылка из LMS или бота" in w["ways"], str(w))
             lid = lms.call("GET", "/api/state")[1]["lanes"][0]["id"]

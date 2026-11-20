@@ -31,8 +31,11 @@ h2{font-size:clamp(18px,1.7vw,24px);font-weight:500;letter-spacing:-.01em;margin
 button,a.btn{font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1px solid var(--ink3);padding:10px 14px;cursor:pointer;border-radius:0;text-decoration:none;display:inline-block}
 button:hover,a.btn:hover{border-color:var(--ink)}
 button:focus-visible,a:focus-visible{outline:1px solid var(--ink);outline-offset:1px}
-button.go{background:var(--ink);color:var(--bg);border-color:var(--ink);padding:10px 22px}
-button.go:hover{background:var(--acc);border-color:var(--acc)}
+button.go,a.btn.go{background:var(--ink);color:var(--bg);border-color:var(--ink);padding:10px 22px}
+button.go:hover,a.btn.go:hover{background:var(--acc);border-color:var(--acc)}
+.tomar{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.tomar p{font-size:13px;line-height:1.55;margin:0 0 10px}
+.tomar .row{display:flex;flex-wrap:wrap;gap:8px}
 button.on{border-color:var(--acc);color:var(--acc)}
 button[disabled]{opacity:.4;cursor:default}
 .lab{font-size:11px;color:var(--ink2);letter-spacing:.02em;margin:0 0 8px}

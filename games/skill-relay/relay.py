@@ -61,6 +61,7 @@ def nick_of(p):
     login = p.get("login", "")
     return login if p.get("tg_id") and not p.get("seat") and not re.match(r"^id\d+$", login) else ""
 SKILL_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+ENTER_QUIET = 3 * 3600  # повторный вход того же человека раньше этого срока журнал не пишет
 MAX_LINES, MAX_CHARS, MAX_CHANGED, MAX_REVIEWS = 180, 14000, 12, 3
 MAX_LANES, MAX_ADDED = 12, 2  # дорожек на столе и своих skills от одного участника
 HOUR_LIVE, LOCK_LIVE = 3600, 300  # одно изменение коммитится за пять минут
@@ -658,7 +659,16 @@ class Table:
             row["agent"] = agent
         row.update({k: v for k, v in more.items() if v not in ("", None)})
         self.st.setdefault("trail", []).append(row)
-        self.st["trail"] = self.st["trail"][-400:]
+        tr = self.st["trail"]
+        if len(tr) > 400:  # входы и взятия уходят первыми: версии журнал держит дольше
+            cut = len(tr) - 400
+            keep = []
+            for e in tr:
+                if cut and e.get("kind") not in ("give", "add"):
+                    cut -= 1
+                    continue
+                keep.append(e)
+            self.st["trail"] = keep[-400:]
         stamp = datetime.datetime.fromtimestamp(row["at"]).strftime("%Y-%m-%d %H:%M:%S")
         how = via + (" " + agent if agent else "")
         with open(self.root / "TRAIL.md", "a", encoding="utf-8") as f:
@@ -794,6 +804,7 @@ class Game:
                                               "token": secrets.token_urlsafe(18), "reviews": 0, "draft": None}
             r = self.t.st["runners"].setdefault(login, {})
             r["last_take"] = int(now)
+            r["takes"] = r.get("takes", 0) + 1
             r.pop("away", None)
             self.t.event(login, "skill взят: закреплён за логином на " + (f"{round(hold / 60)} мин" if hold >= 60 else f"{round(hold)} с"),
                          lid, kind="take", via=via)
@@ -1106,7 +1117,8 @@ class Game:
                    "model": model_name() or "", "limits": {"lines": MAX_LINES, "changed": MAX_CHANGED, "reviews": MAX_REVIEWS},
                    "lanes": lanes, "viewer": None,
                    "totals": {"laps": sum(l["laps"] for l in st["lanes"].values()), "running": sum(1 for l in st["lanes"].values() if l.get("lock")),
-                              "runners": sum(1 for r in st["runners"].values() if r.get("legs")), "people": len(people)},
+                              "runners": sum(1 for r in st["runners"].values() if r.get("legs")), "people": len(people),
+                              "entered": sum(1 for r in st["runners"].values() if r.get("seen") or r.get("legs") or r.get("last_take"))},
                    "trail": [dict(e, who=self.t.name(e["who"])) for e in st.get("trail", [])[-14:]][::-1],
                    "events": len(st.get("trail", [])), "created": st.get("created", 0),
                    "login_url": os.environ.get("RELAY_BOT_LINK", "")}
@@ -1121,7 +1133,23 @@ class Game:
                                  "auth": viewer.get("auth") or r.get("auth", ""),
                                  "rest": self.rest_left(login), "rest_until": r.get("last_take", 0) + self.hour if r.get("last_take") else 0,
                                  "holding": self.holding(login), "legs": r.get("legs", 0), "away": bool(r.get("away"))}
+                out["people"] = self.people(st)
             return out
+
+    def people(self, st):
+        """кто заходил за стол: имя, способ входа, версии, взятия, когда был; свежие сверху"""
+        held = {l["lock"]["login"]: lid for lid, l in st["lanes"].items() if l.get("lock")}
+        nums = {lid: i for i, lid in enumerate(st["order"], 1)}
+        rows = []
+        for login, r in st["runners"].items():
+            if not (r.get("seen") or r.get("legs") or r.get("last_take") or r.get("auth")):
+                continue
+            added = sum(1 for l in st["lanes"].values() if l.get("added_by") == login)
+            rows.append({"name": self.t.name(login), "auth": r.get("auth", ""), "legs": r.get("legs", 0), "takes": r.get("takes", 0),
+                         "dropped": r.get("dropped", 0), "added": added, "seen": max(r.get("seen", 0), r.get("last_take", 0)),
+                         "visits": r.get("visits", 0), "holding": nums.get(held.get(login, ""), 0), "away": bool(r.get("away"))})
+        rows.sort(key=lambda x: (-bool(x["holding"]), -x["seen"]))
+        return rows[:60]
 
     def agent_seen(self, login, lid, agent=""):
         with GATE:
@@ -1162,7 +1190,14 @@ class Game:
             self.t.load()
             if self.sweep():
                 self.t.save()
-            rows = [e for e in self.t.st.get("trail", []) if not lane or e.get("lane") == lane]
+            rows = self.t.st.get("trail", [])
+            f = self.t.root / "events.jsonl"
+            if f.exists():  # полный журнал стола: в state.json лежат только последние 400 записей
+                try:
+                    rows = [json.loads(x) for x in f.read_text(encoding="utf-8").splitlines() if x.strip()]
+                except ValueError:
+                    rows = self.t.st.get("trail", [])
+            rows = [e for e in rows if not lane or e.get("lane") == lane]
             auth = {k: r.get("auth", "") for k, r in self.t.st["runners"].items()}
             return [dict(e, who=self.t.name(e["who"]), auth=auth.get(e["who"], "")) for e in rows[-max(1, min(int(n), 400)):]][::-1]
 
@@ -1171,9 +1206,16 @@ class Game:
         with GATE:
             self.t.load()
             r = self.t.st["runners"].setdefault(login, {})
+            now = int(time.time())
+            # рамка LMS входит на каждой загрузке: тем же способом в журнал идёт первый вход за три часа
+            quiet = r.get("auth") == auth and now - r.get("seen", 0) < ENTER_QUIET and not r.get("away")
             r["auth"] = auth
             r.pop("away", None)  # новый вход сажает за стол
-            self.t.event(login, "вход: " + auth, kind="enter")
+            r["visits"] = r.get("visits", 0) + 1
+            r.setdefault("first", now)
+            r["seen"] = now
+            if not quiet:
+                self.t.event(login, "вход: " + auth, kind="enter")
             self.t.save()
 
     def lane(self, lid, viewer):
@@ -1954,7 +1996,8 @@ def serve(root, port, demo, lan, open_roster, hour, lock, n_bots, use_git, publi
                     o = self.headers.get("Origin") or ""
                     allow = {"Access-Control-Allow-Origin": o, "Vary": "Origin"} if o and o in os.environ.get("RELAY_FRAME_ANCESTORS", "").split() else {}
                     return self.out(200, {"lanes": lanes, "laps": sum(x["laps"] for x in lanes), "running": sum(1 for x in lanes if x["held"]),
-                                          "lock": game.lock, "mode": "демо" if demo else "живой"}, extra=allow)
+                                          "lock": game.lock, "mode": "демо" if demo else "живой",
+                          "people": pub["totals"].get("entered", 0)}, extra=allow)
                 if u.path == "/api/rules":
                     return self.out(200, {"rules": list(RULES.values()), "kinds": BOOK.get("kinds", []), "principles": BOOK.get("principles", []), "parts": BOOK.get("parts", []), "settings": BOOK.get("settings", []), "evidence": BOOK.get("evidence", []),
                                           "sources": json.loads((GUIDES / "sources.json").read_text(encoding="utf-8")),

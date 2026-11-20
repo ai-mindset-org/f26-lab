@@ -158,7 +158,7 @@
     }
     if (e.kind === 'add') return 'добавил свой skill' + no + (e.plus ? ' · ' + lines(e.plus) : '');
     if (e.kind === 'take') return 'взял skill' + no;
-    if (e.kind === 'enter') return e.what;
+    if (e.kind === 'enter') return e.what + (e.times > 1 ? ' · ×' + e.times : '');
     if (e.kind === 'stop') return 'стоп: проверка текста не пропустила' + no;
     if (e.kind === 'expire') return 'срок вышел, skill снова свободен' + no;
     if (e.kind === 'refuse') return 'отказ: ' + e.what.replace(/^отказ[^:]*:\s*/, '');
@@ -175,9 +175,19 @@
       h('span', null, body, e.via && e.via !== 'страница' && e.via !== 'система' ? h('u', null, ' · ' + who(e)) : null,
         full && e.kind === 'give' && (r || e.note) ? h('span', { class: 'why' }, (r ? e.rule + ' · ' + r.title : '') + (r && e.note ? ' · ' : '') + (e.note || '')) : null));
   }
+  // подряд идущие входы одного человека сливаются в одну строку «вошёл ×N»: журнал остаётся про версии
+  function squash(rows) {
+    var out = [];
+    rows.forEach(function (e) {
+      var p = out[out.length - 1];
+      if (p && e.kind === 'enter' && p.kind === 'enter' && p.who === e.who) { p.times = (p.times || 1) + 1; return; }
+      out.push(e.kind === 'enter' ? Object.assign({}, e) : e);
+    });
+    return out;
+  }
   function trailBlock(n) {
     if (!S.trail) return null;
-    var rows = S.trail.filter(function (e) { return !QUIET[e.kind]; }).slice(0, n || 7);
+    var rows = squash(S.trail.filter(function (e) { return !QUIET[e.kind]; })).slice(0, n || 7);
     return h('div', { class: 'trail' },
       h('div', { class: 'lab' }, 'журнал · ' + sysLine()),
       rows.map(function (e) { return eventRow(e); }),
@@ -426,6 +436,15 @@
       h('p', { class: 's' }, 'Вставь SKILL.md целиком: шапка с name и description, дальше текст. Сервер проверит его на личное и секреты. Skill ляжет версией v0 с твоим именем, дальше его правят все. От участника до ' + a.max + ' skills.'),
       ta, h('div', { class: 'row' }, btn), res);
   }
+  // из песочницы: «положить этот skill на стол» приносит текст сюда и открывает форму
+  function addFromTry(box) {
+    var t = '';
+    try { t = location.hash === '#add' ? sessionStorage.getItem('relay.add') || '' : ''; sessionStorage.removeItem('relay.add'); } catch (e) { }
+    if (!box || !t) return box;
+    box.open = true; box.querySelector('textarea').value = t;
+    setTimeout(function () { if (box.scrollIntoView) box.scrollIntoView({ block: 'start' }); }, 50);
+    return box;
+  }
   // в LMS стола со стадионом слева нет: схема круга с главной стоит под стадионом, свёрнутое состояние помнится
   function lmsIntro() {
     var closed = false;
@@ -434,18 +453,42 @@
     d.addEventListener('toggle', function () { try { localStorage.setItem('relay.intro', d.open ? 'open' : 'closed'); } catch (e) { } });
     return d;
   }
+  // кто заходил за стол: участники видят друг друга, у каждого версии, взятия и когда был
+  function peopleBlock() {
+    var ps = S.people || [];
+    if (!ps.length) return null;
+    var mk = function (p) {
+      return h('div', { class: 'pp' + (p.holding ? ' run' : '') },
+        h('span', { class: 'av', 'aria-hidden': 'true' }, (p.name || '?').trim().charAt(0).toUpperCase()),
+        h('b', null, p.name),
+        h('span', { class: 'pm' }, p.holding ? 'правит ' + two(p.holding) : p.legs ? 'версий ' + p.legs : p.takes ? 'брал, без версии' : 'смотрит'),
+        h('i', null, (p.auth ? p.auth + ' · ' : '') + (p.seen ? ago(now() - p.seen) + ' назад' : '')));
+    };
+    return h('details', { class: 'people' }, h('summary', null, 'кто за столом · ' + ps.length + ' · с версиями ' + ps.filter(function (p) { return p.legs; }).length),
+      h('p', { class: 's' }, 'Все, кто вошёл: через LMS, ссылку или бота. Версии лежат под этими именами в дорожках и в журнале.'),
+      h('div', { class: 'pplist' }, ps.map(mk)));
+  }
+  // skill в руках, а человек ушёл на стол посмотреть: полоса напоминает и возвращает к нему
+  function heldBar(v) {
+    var l = laneOf(v.holding);
+    if (!l) return null;
+    return h('div', { class: 'heldbar' },
+      h('span', null, 'у тебя в руках ', h('b', null, two(l.n) + ' · ' + l.title), ' · v' + l.laps + ' → v' + (l.laps + 1) + ' · осталось ', until(l.until)),
+      h('button', { class: 'go', onclick: function () { go('auto'); } }, 'вернуться к skill →'));
+  }
   function viewLanes() {
-    var v = S.viewer, resting = v.rest > 0, tb = h('div');
+    var v = S.viewer, resting = v.rest > 0 && !v.holding, tb = h('div');
     return [
+      v.holding ? heldBar(v) : null,
       h('div', { class: 'kick' }, '{ стол · твоих версий ' + v.legs + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + ' }'),
       h('h1', { class: 'h1s' }, 'эстафета skills', h('em', null, '.')),
       whoLine(v),
       window.SKIN === 'lms' ? lmsIntro() : null,
-      resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, 'возьми ', h('em', null, 'skill')),
-      h('p', { class: 's' }, resting ? 'Следующий skill можно взять, когда выйдет время. Версии и правила можно читать.' :
+      v.holding ? h('p', { class: 'm' }, 'skill ', h('em', null, 'в руках')) : resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, 'возьми ', h('em', null, 'skill')),
+      h('p', { class: 's' }, v.holding ? 'Пока он у тебя, другие skills взять нельзя: смотри версии и журнал и возвращайся к нему полосой сверху.' : resting ? 'Следующий skill можно взять, когда выйдет время. Версии и правила можно читать.' :
         'Взял: skill твой на ' + span(S.lock) + '. Применяешь одно правило и отдаёшь новой версией, дальше его берёт следующий. После взятия ' + span(S.hour) + ' паузы на все skills.'),
       deck(false, function () { fill(tb, trailBlock()); }),
-      addBlock(), tb,
+      addFromTry(addBlock()), tb, peopleBlock(),
       h('div', { class: 'row widebtn' }, h('button', { class: 'quiet', onclick: function () { stadium = !stadium; key = ''; render(); } }, stadium ? 'стол во всю ширину' : 'показать стадион')),
       links()
     ];
@@ -489,9 +532,28 @@
     var pk = { kind: '' }, chipBox = h('div', { class: 'bkinds' }), tileBox = h('div', { class: 'pickgrid' }), pickHint = h('p', { class: 'bhint' });
     var ta = h('textarea', { class: 'code', spellcheck: 'false', value: leg.text, oninput: function () { leg.text = ta.value; count(); } });
     var f = {}, next = 'v' + (l.laps + 1);
-    var sch = h('div'), applyBtn = h('button', { class: 'go', onclick: applyRule }, 'применить правило');
+    var sch = h('div'), applyBtn = h('button', { class: 'go', onclick: applyRule }, 'применить правило'), parcel = h('div', { class: 'parcel' });
+    // посылка: что человек держит, что выбрал и что уйдёт следующему; отсюда же вернуть skill или выйти на стол
+    function drawParcel() {
+      var r = RULES && RULES[leg.rule], d = leg.result, rv = d && d.review, st;
+      st = !r ? 'выбери правило' : !d ? 'правило выбрано, изменения ещё нет' :
+        d.ok && rv ? (rv.verdict === 'принять' ? 'готово к коммиту' : 'разбор просит доработать: можно закоммитить с замечанием') : 'проверка не пропустила: поправь или верни';
+      fill(parcel,
+        h('div', { class: 'pl' },
+          h('span', { class: 'lab' }, 'посылка'),
+          h('span', null, h('b', null, two(l.n) + ' · ' + l.title), ' · v' + l.laps + ' → ', h('b', null, next)),
+          r ? h('span', null, ' · ', kindTag(r.kind), r.id + ' ' + r.title) : null,
+          d && (d.ok || rv) ? h('span', null, ' · −' + d.minus + ' / +' + d.plus + ' строк') : null,
+          h('span', { class: 'st' }, ' · ' + st), h('span', null, ' · осталось ', until(leg.until))),
+        h('div', { class: 'row' },
+          h('button', { class: 'quiet', title: 'skill остаётся у тебя: таймер идёт, вернуться можно полосой сверху стола', onclick: function () { go('table'); } }, '← в марафон'),
+          h('button', { class: 'quiet', title: 'skill вернётся на стол без изменения, его сможет взять другой', onclick: drop }, 'вернуть без изменения')));
+    }
     function drawScheme() { var r = RULES && RULES[leg.rule]; fill(sch, (leg.parts || l.parts) ? A.scheme(leg.parts || l.parts, { hit: r ? r.part : '', fresh: leg.fresh || [] }) : null); }
-    function drop() { api('POST', 'api/drop', { lane: leg.lane }).then(function () { leg = null; load(); }, function (e) { toast(e.message); }); }
+    function drop() {
+      if (leg.result && !confirm('изменение не уйдёт следующему, skill вернётся на стол без него. Вернуть?')) return;
+      api('POST', 'api/drop', { lane: leg.lane }).then(function () { leg = null; toast('skill вернулся на стол без изменения'); load(); }, function (e) { toast(e.message); });
+    }
     // правило применяет модель стола: человек выбирает правило, видит разницу и разбор и коммитит
     function applyRule() {
       var r = RULES && RULES[leg.rule];
@@ -540,7 +602,7 @@
       var r = RULES[id];
       drawPick();
       fill(ruleBox, ruleCard(r, true));
-      drawScheme(); applyBtn.textContent = r ? 'применить ' + r.id + ' · ' + r.title : 'применить правило';
+      drawScheme(); drawParcel(); applyBtn.textContent = r ? 'применить ' + r.id + ' · ' + r.title : 'применить правило';
     }
     function showResult(d) {
       leg.result = d;
@@ -555,6 +617,7 @@
           rv.verdict !== 'принять' ? h('span', { class: 'cnt' }, 'или исправь и проверь снова: следующий увидит замечание разбора') : null));
       }
       fill(res, kids);
+      drawParcel();
       var mark = res.querySelector('.rv') || res.querySelector('.msg');
       if (mark && mark.scrollIntoView) mark.scrollIntoView({ block: 'center' });
       rail();
@@ -570,8 +633,10 @@
     ask();
     count();
     drawScheme();
+    drawParcel();
     if (leg.result) setTimeout(function () { showResult(leg.result); }, 0);
     return [
+      parcel,
       h('div', { class: 'kick' }, '{ дорожка ' + two(l.n) + ' · ' + l.skill + ' · сейчас v' + l.laps + ' }'),
       h('p', { class: 'm' }, 'skill закреплён за тобой · ', until(leg.until)),
       h('div', { class: 'task' }, h('div', { class: 'lab' }, 'твоя задача'),
@@ -608,7 +673,7 @@
               .then(showResult, function (e) { fill(res, h('div', { class: 'msg' }, e.message)); })
               .then(function () { b.disabled = false; b.textContent = 'проверить'; });
           } }, 'проверить'),
-          h('button', { class: 'quiet', onclick: function () { api('POST', 'api/drop', { lane: leg.lane }).then(function () { leg = null; load(); }, function (e) { toast(e.message); }); } }, 'вернуть без изменения')))),
+          h('button', { class: 'quiet', onclick: drop }, 'вернуть без изменения')))),
       links()
     ];
   }
@@ -664,7 +729,7 @@
       bar, box] };
   }
   function viewLane(id) {
-    var box = h('div', null, h('p', { class: 's' }, 'читаю версии…')), l = laneOf(id) || {}, want = focusV;
+    var box = h('div', null, h('p', { class: 's' }, 'читаю версии…')), l = laneOf(id) || {}, want = focusV, jr = h('div', null, h('p', { class: 's' }, 'читаю журнал…'));
     Promise.all([api('GET', 'api/lane?id=' + encodeURIComponent(id)), rules().then(null, function () { return null; })]).then(function (rr) {
       var d = rr[0], open = want || d.laps, cmp = d.laps && d.origin ? compare(d) : null;
       fill(box,
@@ -690,7 +755,12 @@
               h('div', { class: 'note' }, h('i', null, 'от чьего лица: '), g.runner + (g.account && g.account !== g.runner ? ' · аккаунт ' + g.account : '') + ' · прислал ' + who(g) + (g.auth ? ' · вход: ' + g.auth : '')),
               reviewBlock(g.review, true)));
         }),
-        h('details', null, h('summary', null, 'skill сейчас целиком · v' + d.laps), h('pre', { class: 'skill' }, d.text)));
+        h('details', null, h('summary', null, 'skill сейчас целиком · v' + d.laps), h('pre', { class: 'skill' }, d.text)),
+        h('div', { class: 'lab', style: 'margin-top:26px' }, 'журнал этого skill · кто брал, что внёс, что вернул'), jr);
+      api('GET', 'api/log?n=200&lane=' + encodeURIComponent(id)).then(function (g) {
+        var ev = g.events.filter(function (e) { return !QUIET[e.kind] || e.kind === 'review'; });
+        fill(jr, ev.length ? h('div', { class: 'trail' }, ev.map(function (e) { return eventRow(e, true); })) : h('p', { class: 's' }, 'Записей по этому skill ещё нет.'));
+      }, function () { fill(jr, null); });
       if (want) { var el = $('v-' + want); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }
     }, out(box));
     focusV = 0;
@@ -780,7 +850,7 @@
       // вход и стол: экран собирается заново, только когда меняется его состав. Новые версии и взятия обновляют сам дашборд:
       // поиск, фильтры, выбранная плитка и открытая форма своего skill остаются на месте
       k = !v ? 'entry:' + (S.seats || []).map(function (s) { return s.taken ? 1 : 0; }).join('') + ':' + (S.lanes.length ? 1 : 0) + ':' + (S.viewer ? 'away' + S.viewer.legs + (S.viewer.rest > 0) : '') :
-        'lanes:' + v.login + ':' + (v.rest > 0) + ':' + v.legs + ':' + ((S.add || {}).left || 0) + ':' + stadium;
+        'lanes:' + v.login + ':' + (v.holding || '') + ':' + (v.rest > 0) + ':' + v.legs + ':' + ((S.add || {}).left || 0) + ':' + stadium;
       var sig = S.lanes.map(function (l) { return l.id + l.laps + l.status + (l.runner || '') + (l.doing || '') + (l.why_not ? 1 : 0); }).join() + (S.events || 0);
       if (k === key && deckUI && deckUI.node.isConnected) {
         if (deckUI.sig !== sig) { deckUI.sig = sig; deckUI.paint(); }

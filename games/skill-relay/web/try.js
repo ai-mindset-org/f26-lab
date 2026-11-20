@@ -135,7 +135,13 @@
         h('button', { onclick: copy, id: 'copy' }, 'скопировать SKILL.md'),
         h('button', { onclick: download }, 'скачать SKILL.md'),
         h('button', { onclick: undo, title: 'последняя версия снимается, в поле возвращается текст до неё' }, 'отменить v' + st.versions.length + ' · ' + ZK),
-        st.redo.length ? h('button', { onclick: redo }, 'вернуть v' + (st.versions.length + 1) + ' · ' + YK) : null)] :
+        st.redo.length ? h('button', { onclick: redo }, 'вернуть v' + (st.versions.length + 1) + ' · ' + YK) : null),
+      // проба остаётся в песочнице: на стол уходит только то, что человек сделает со skill, взятым в марафоне
+      h('div', { class: 'tomar' },
+        h('p', null, h('b', null, 'попробовал: '), st.versions.map(function (v) { return v.rule; }).join(' → '),
+          '. Это осталось здесь, в песочнице: никто, кроме тебя, этих версий не видит. В эстафету уходит одно изменение на skill со стола, под твоим именем.'),
+        h('div', { class: 'row' }, h('a', { class: 'btn go', href: './' }, '← вернуться в марафон: взять skill со стола'),
+          h('a', { class: 'btn', href: './#add', onclick: function () { try { sessionStorage.setItem('relay.add', $('text').value); } catch (e) { } } }, 'положить этот skill на стол новой дорожкой')))] :
       [h('p', { class: 'hint' }, 'Принятые изменения встанут сюда версиями: v1, v2, v3. ' + ZK + ' отменяет последнюю.'),
         st.redo.length ? h('div', { class: 'row' }, h('button', { onclick: redo }, 'вернуть v1 · ' + YK)) : null]);
   }
