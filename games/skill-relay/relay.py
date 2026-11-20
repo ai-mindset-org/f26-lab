@@ -1142,7 +1142,7 @@ class Game:
         nums = {lid: i for i, lid in enumerate(st["order"], 1)}
         rows = []
         for login, r in st["runners"].items():
-            if not (r.get("seen") or r.get("legs") or r.get("last_take") or r.get("auth")):
+            if not (r.get("seen") or r.get("legs") or r.get("last_take")):  # бот демо без хода и человек без входа в список не идут
                 continue
             added = sum(1 for l in st["lanes"].values() if l.get("added_by") == login)
             rows.append({"name": self.t.name(login), "auth": r.get("auth", ""), "legs": r.get("legs", 0), "takes": r.get("takes", 0),

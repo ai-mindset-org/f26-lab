@@ -429,7 +429,7 @@
       btn.disabled = true;
       api('POST', 'api/lane/add', { text: ta.value }).then(function (d) {
         var dt = btn.closest('details'); if (dt) dt.open = false;
-        toast('skill на столе: дорожка ' + d.lane); focusV = 0; key = ''; load();
+        fromTry = ''; toast('skill на столе: дорожка ' + d.lane); focusV = 0; key = ''; load();
       }, function (e) { btn.disabled = false; fill(res, h('div', { class: 'msg' }, e.message)); });
     } }, 'проверить и положить на стол');
     return h('details', { class: 'own addown' }, h('summary', null, 'добавить свой skill новой дорожкой'),
@@ -437,11 +437,14 @@
       ta, h('div', { class: 'row' }, btn), res);
   }
   // из песочницы: «положить этот skill на стол» приносит текст сюда и открывает форму
+  var fromTry = (function () { var t = ''; try { t = location.hash === '#add' ? sessionStorage.getItem('relay.add') || '' : ''; sessionStorage.removeItem('relay.add'); } catch (e) { } return t; })();
   function addFromTry(box) {
-    var t = '';
-    try { t = location.hash === '#add' ? sessionStorage.getItem('relay.add') || '' : ''; sessionStorage.removeItem('relay.add'); } catch (e) { }
+    var t = fromTry;
     if (!box || !t) return box;
-    box.open = true; box.querySelector('textarea').value = t;
+    // текст из песочницы держится, пока skill не лёг на стол: перерисовка стола его не теряет
+    var ta = box.querySelector('textarea');
+    box.open = true; ta.value = t;
+    ta.addEventListener('input', function () { fromTry = ta.value; });
     setTimeout(function () { if (box.scrollIntoView) box.scrollIntoView({ block: 'start' }); }, 50);
     return box;
   }
@@ -628,7 +631,7 @@
       if (a.pending && tries++ < 25) setTimeout(ask, 3000);
       leg.analysis = a;
       pick(leg.rule || (a.candidates[0] || {}).rule);
-    }, function (e) { pk.kind = '*'; drawPick(); fill(pickHint, h('span', { class: 'msg' }, e.message)); }); }
+    }, function (e) { if (leg !== mine) return; pk.kind = '*'; drawPick(); fill(pickHint, h('span', { class: 'msg' }, e.message)); }); }
     drawPick();
     ask();
     count();
