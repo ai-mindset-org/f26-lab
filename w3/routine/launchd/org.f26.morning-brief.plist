@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.f26.morning-brief</string>
+  <!-- zsh -lc: launchd стартует с пустым окружением, login-shell находит claude и node -->
+  <key>ProgramArguments</key>
+  <array><string>/bin/zsh</string><string>-lc</string><string>__DIR__/run.sh</string></array>
+  <!-- каждый день 09:07 по часам мака; спящий мак догонит запуск при пробуждении, выключенный пропустит -->
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>7</integer></dict>
+  <key>StandardOutPath</key><string>__DIR__/out/launchd.log</string>
+  <key>StandardErrorPath</key><string>__DIR__/out/launchd.log</string>
+</dict>
+</plist>

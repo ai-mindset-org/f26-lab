@@ -32,7 +32,7 @@
   <div class="navs">
     <button id="searchBtn" class="search" title="поиск по файлам и фазам · ⌘K">⌕ поиск <kbd>⌘K</kbd></button>
     <nav class="modes" aria-label="режим"><button data-mode="replay" title="Demo: рост папки по неделям лабы, 12 фаз">Demo</button><button data-mode="live" title="Local – локальное хранение: папка на этом компьютере, в браузере или через bin/open.sh">Local</button></nav>
-    <a class="pagelink" href="https://f26.aimindset.org/" target="_blank" rel="noopener">F26 ↗</a><nav class="pages" aria-label="страницы"><a class="pagelink" href="?layer=2" title="слой 2: skill на харнесе – сегодня, блоки, онтология">слой 2</a><a class="pagelink" href="guide.html" title="Guide: как развернуть свою папку и как она растёт по неделям">Guide</a><a class="pagelink" href="access.html" title="About: что это, абстракции, онтология, имена">About</a></nav>
+    <a class="pagelink" href="https://f26.aimindset.org/" target="_blank" rel="noopener">F26 ↗</a><nav class="pages" aria-label="страницы"><a class="pagelink" href="?layer=2" title="слой 2: skill на харнесе – сегодня, блоки, онтология">слой 2</a><a class="pagelink" href="?layer=3" title="слой 3: рутина на харнесе – шаги, блоки, карта вопросов, журнал недели">слой 3</a><a class="pagelink" href="guide.html" title="Guide: как развернуть свою папку и как она растёт по неделям">Guide</a><a class="pagelink" href="access.html" title="About: что это, абстракции, онтология, имена">About</a></nav>
   </div>
   <div class="clock"><b id="phaseLabel">00 · пустая папка</b><span id="clock">00:00</span></div>
 </header>
@@ -48,7 +48,7 @@
 
   <section id="colC" class="panel">
     <div class="gh">
-      <h2><span>03 · граф self</span><a id="l2link" class="l2-link" href="?layer=2" title="слой 2: skill на харнесе, без слоя людей">слой 2 →</a></h2>
+      <h2><span>03 · граф self</span><a id="l2link" class="l2-link" href="?layer=2" title="слой 2: skill на харнесе, без слоя людей">слой 2 →</a> <a id="l3link" class="l2-link" href="?layer=3" title="слой 3: рутина на харнесе, журнал недели и карта вопросов">слой 3 →</a></h2>
       <div id="legend"></div>
     </div>
     <div id="stage">
@@ -182,7 +182,7 @@
     <div class="st-hd"><span>AI Mindset · Fall ’26 Lab · n24 · 09.11–07.12.2026</span><span>fig. 0</span></div>
     <h3 id="inTitle">self-harness: папка, в которой агент знает тебя</h3>
     <p>в центре – один файл, <code>self.md</code>: кто ты, чем занят, как решаешь, как с тобой работать, чего не трогать. вокруг за четыре недели лабы вырастает остальное: правила агента, сырьё и опись, имена файлов, онтология личного контекста (люди, проекты, решения, встречи), люди лабы F26, практики, рутины с проверками и одна точка входа. пример собран на контексте самой лабы и дорабатывается вместе с ней.</p>
-    <div class="weeks4"><button id="lv1" type="button">1 · собрать<small>смотреть сборку →</small></button><a id="lv2" href="?layer=2">2 · научить<small>слой 2 →</small></a><b>3 · отпустить<small>неделя 3</small></b><b>4 · пользоваться<small>неделя 4</small></b></div>
+    <div class="weeks4"><button id="lv1" type="button">1 · собрать<small>смотреть сборку →</small></button><a id="lv2" href="?layer=2">2 · научить<small>слой 2 →</small></a><a id="lv3" href="?layer=3">3 · отпустить<small>слой 3 →</small></a><b>4 · пользоваться<small>неделя 4</small></b></div>
     <p class="lv-cap">уровни: 1 собирает папку · 2 учит её skills · 3 отпускает агентов · 4 – работа каждый день</p>
     <div class="resource-links"><a href="guide.html" target="_blank" rel="noopener">как развернуть у себя →</a><a href="access.html" target="_blank" rel="noopener">абстракции и онтология →</a><a href="https://github.com/ai-mindset-org/f26-lab" target="_blank" rel="noopener">GitHub ↗</a><a href="f26-self-harness-kit.zip" download>скачать набор ↓</a></div><ul id="inPoints">
       <li>каждая фигура на графе – файл; стрелки – ссылки между файлами; оранжевое – self и то, что появилось только что</li>
@@ -211,6 +211,7 @@
 
 <script src="vendor/d3.min.js"></script>
 <script src="layer2.js"></script>
+<script src="layer3.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

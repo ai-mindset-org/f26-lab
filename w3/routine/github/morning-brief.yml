@@ -1,0 +1,36 @@
+# утренняя сводка в GitHub Actions: работает без мака, нужен свой приватный репозиторий с этой папкой в routine/
+# 1) в Claude Code: /install-github-app – секрет ANTHROPIC_API_KEY или CLAUDE_CODE_OAUTH_TOKEN
+# 2) положить файл в .github/workflows/morning-brief.yml · 3) Actions → morning-brief → Run workflow
+# стоп: файл routine/STOP или Disable workflow во вкладке Actions
+name: morning-brief
+on:
+  schedule:
+    - cron: "7 9 * * *"   # 09:07 UTC: запуск ровно в :00 часто задерживается
+  workflow_dispatch:
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('routine/STOP') == '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: zsh для run.sh
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: "Прочитай routine/SKILL.md и routine/input/notes.md. Сделай ответ строго по правилам skill и запиши его в routine/out/latest.md. Больше ничего не меняй."
+          claude_args: --allowedTools "Read,Write"
+      - name: проверка, журнал, экран
+        if: always()
+        run: cd routine && ./run.sh --result out/latest.md || true
+      - name: сохранить журнал
+        if: always()
+        run: |
+          git config user.name "morning-brief"
+          git config user.email "actions@users.noreply.github.com"
+          git add routine/run-log.csv routine/status.json routine/status.html routine/out/*.md
+          git commit -m "morning-brief $(date -u +%F)" || true
+          git push
