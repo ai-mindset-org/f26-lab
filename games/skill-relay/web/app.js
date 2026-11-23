@@ -201,12 +201,12 @@
       window.SKIN === 'lms' ? h('a', { class: 'quiet', href: '../', target: '_blank', rel: 'noopener', title: 'тот же стол на широком экране со стадионом' }, 'на весь экран ↗') : null,
       view !== 'log' && S.trail ? h('button', { class: 'quiet', onclick: function () { go('log'); } }, 'журнал') : null,
       view !== 'auto' ? h('button', { class: 'quiet', onclick: function () { go('auto'); } }, '← на стол') : null,
-      S.viewer && !S.viewer.away ? h('button', { class: 'quiet', title: LEAVE_TIP, onclick: leaveTable }, 'встать из-за стола') : null);
+      S.viewer && !S.viewer.away ? h('button', { class: 'quiet', title: LEAVE_TIP, onclick: leaveTable }, 'выйти из эстафеты') : null);
   }
-  // встать из-за стола: skill из рук возвращается на стол без изменения, вход и версии остаются; вернуться можно одной кнопкой
+  // выйти из эстафеты: skill из рук возвращается на стол без изменения, вход и версии остаются; вернуться можно одной кнопкой
   var LEAVE_TIP = 'skill из рук вернётся на стол без изменения, твои версии и вход останутся';
   function leaveTable() {
-    if (S && S.viewer && S.viewer.holding && !confirm('skill у тебя в руках вернётся на стол без изменения. Встать из-за стола?')) return;
+    if (S && S.viewer && S.viewer.holding && !confirm('skill у тебя в руках вернётся на стол без изменения. Выйти из эстафеты?')) return;
     api('POST', 'api/leave', {}).then(function (d) { leg = null; view = 'auto'; key = ''; if (d.dropped) toast('skill вернулся на стол без изменения'); load(); }, function (e) { toast(e.message); });
   }
   function backToTable() { api('POST', 'api/back', {}).then(function () { key = ''; load(); }, function (e) { toast(e.message); }); }
@@ -222,9 +222,9 @@
   function whoLine(v) {
     return h('div', { class: 'who', title: 'под этим именем твои версии видны на столе и в журнале' },
       h('span', { class: 'av', 'aria-hidden': 'true' }, (v.name || v.login || '?').trim().charAt(0).toUpperCase()),
-      h('span', null, 'ты за столом как ', h('b', null, v.name || v.login), v.nick ? [' · ', h('span', { class: 'nick' }, '@' + v.nick)] : null,
+      h('span', null, 'ты в эстафете как ', h('b', null, v.name || v.login), v.nick ? [' · ', h('span', { class: 'nick' }, '@' + v.nick)] : null,
         v.auth ? h('i', null, ' · вход: ' + v.auth) : null),
-      h('button', { class: 'out', title: LEAVE_TIP, onclick: leaveTable }, 'встать из-за стола'));
+      h('button', { class: 'out', title: LEAVE_TIP, onclick: leaveTable }, 'выйти из эстафеты'));
   }
 
   // ---------- вход ----------
@@ -248,18 +248,18 @@
     var sum = h('summary'), tb = h('div');
     function onTable() { var t = S.totals || {}; sum.textContent = 'что сейчас на столе · skills ' + S.lanes.length + (t.laps != null ? ' · версий ' + t.laps : ''); fill(tb, trailBlock(6)); }
     var me = S.viewer;
-    if (me && me.away) return [ // человек встал из-за стола: вход жив, вернуться можно одной кнопкой
-      h('div', { class: 'kick' }, '{ ты встал из-за стола · ' + (demo ? 'деморежим' : 'вход: ' + (me.auth || 'сессия')) + ' }'),
+    if (me && me.away) return [ // человек вышел из эстафеты: вход жив, вернуться можно одной кнопкой
+      h('div', { class: 'kick' }, '{ ты вышел из эстафеты · ' + (demo ? 'деморежим' : 'вход: ' + (me.auth || 'сессия')) + ' }'),
       h('h1', null, 'эстафета', h('br'), 'skills', h('em', null, '.')),
-      h('div', { class: 'awayhead' }, h('h2', null, 'Ты встал из-за стола'),
+      h('div', { class: 'awayhead' }, h('h2', null, 'Ты вышел из эстафеты'),
         h('p', null, 'Место за тобой, ', h('b', null, me.name || me.login), '. ' + (me.legs ? 'Твоих версий в дорожках: ' + me.legs + ', они остаются на столе с твоим именем.' : 'Версий от тебя пока нет.') +
-          ' Нажми «вернуться за стол», чтобы взять следующий свободный skill' + (me.rest > 0 ? ' (пауза после взятия идёт дальше).' : '.'))),
+          ' Нажми «вернуться в эстафету», чтобы взять следующий свободный skill' + (me.rest > 0 ? ' (пауза после взятия идёт дальше).' : '.'))),
       h('div', { class: 'away' }, A.away ? A.away() : null,
         h('ol', null, h('li', null, h('b', null, 'skill из рук'), ' вернулся на стол без изменения: его может взять следующий'),
           h('li', null, h('b', null, 'твои версии'), ' лежат в дорожках с твоим именем'),
-          h('li', null, h('b', null, 'в журнале'), ' записано, когда ты встал; вернёшься, появится вторая запись'))),
-      h('div', { class: 'row', style: 'margin-top:18px' }, h('button', { class: 'go', onclick: backToTable }, 'вернуться за стол'),
-        h('button', { class: 'quiet', title: demo ? 'место освободится для другого гостя' : 'вход закроется: в следующий раз зайди со страницы лабы или по ссылке', onclick: signOut }, demo ? 'освободить место' : 'выйти совсем')),
+          h('li', null, h('b', null, 'в журнале'), ' записано, когда ты вышел; вернёшься, появится вторая запись'))),
+      h('div', { class: 'row', style: 'margin-top:18px' }, h('button', { class: 'go', onclick: backToTable }, 'вернуться в эстафету'),
+        h('button', { class: 'quiet', title: demo ? 'место освободится для другого гостя' : 'вход закроется: в следующий раз зайди со страницы лабы или по ссылке', onclick: signOut }, demo ? 'освободить место' : 'закрыть вход')),
       box,
       S.lanes && S.lanes.length ? h('details', { class: 'own onTable' }, sum, deck(true, onTable), tb) : null,
       links()
@@ -479,6 +479,17 @@
       h('span', null, 'у тебя в руках ', h('b', null, two(l.n) + ' · ' + l.title), ' · v' + l.laps + ' → v' + (l.laps + 1) + ' · осталось ', until(l.until)),
       h('button', { class: 'go', onclick: function () { go('auto'); } }, 'вернуться к skill →'));
   }
+  // с чего начать: три понятных хода для того, кто ещё не внёс ни одной версии
+  function startBlock(v) {
+    if (v.holding || v.legs) return null;
+    function tile(n, t, d, act) { return h(act.href ? 'a' : 'button', { class: 'stt', href: act.href || null, type: act.href ? null : 'button', onclick: act.click || null }, h('span', { class: 'n' }, n), h('b', null, t), h('span', null, d)); }
+    return h('div', { class: 'start' },
+      h('div', { class: 'lab' }, 'с чего начать'),
+      h('div', { class: 'stg' },
+        tile('01', 'посмотри круг', 'минута: как skill переходит из рук в руки', { href: 'show' }),
+        tile('02', 'возьми skill', 'свободный skill твой на ' + span(S.lock) + ': одно правило, модель правит, ты коммитишь', { click: function () { var d = document.querySelector('.bstats') || document.querySelector('.lanes'); if (d && d.scrollIntoView) d.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }),
+        tile('03', 'попробуй на своём', 'песочница: правила на твоём SKILL.md, видишь только ты', { href: 'try' })));
+  }
   function viewLanes() {
     var v = S.viewer, resting = v.rest > 0 && !v.holding, tb = h('div');
     return [
@@ -486,6 +497,7 @@
       h('div', { class: 'kick' }, '{ стол · твоих версий ' + v.legs + (v.profile && v.profile.harness ? ' · ' + v.profile.harness : '') + ' }'),
       h('h1', { class: 'h1s' }, 'эстафета skills', h('em', null, '.')),
       whoLine(v),
+      startBlock(v),
       window.SKIN === 'lms' ? lmsIntro() : null,
       v.holding ? h('p', { class: 'm' }, 'skill ', h('em', null, 'в руках')) : resting ? h('p', { class: 'm' }, 'пауза ', until(v.rest_until)) : h('p', { class: 'm' }, 'возьми ', h('em', null, 'skill')),
       h('p', { class: 's' }, v.holding ? 'Пока он у тебя, другие skills взять нельзя: смотри версии и журнал и возвращайся к нему полосой сверху.' : resting ? 'Следующий skill можно взять, когда выйдет время. Версии и правила можно читать.' :

@@ -580,3 +580,15 @@ button[disabled]{opacity:.45;cursor:progress}
 .pp .pm{font-size:11px;color:var(--ink2);white-space:nowrap}
 .pp i{grid-column:2/4;font-style:normal;font-size:10.5px;color:var(--ink3)}
 .pp.run{border-color:var(--acc)}.pp.run .av{background:var(--acc)}.pp.run .pm{color:var(--acc)}
+/* с чего начать: три хода крупными плитками */
+.start{margin:6px 0 18px}
+.start .lab{margin-bottom:8px}
+.stg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stt{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:4px;border:1px solid var(--ink);padding:12px 14px;min-height:96px;color:var(--ink);font-size:12px;line-height:1.45;background:var(--bg);transition:border-color .2s,background .2s}
+.stt .n{font-size:10.5px;color:var(--ink3)}
+.stt b{font-size:15px;font-weight:600}
+.stt span:last-child{color:var(--ink2)}
+.stt:hover{border-color:var(--acc)}.stt:hover b{color:var(--acc)}
+.stt:first-child{border-left:3px solid var(--acc)}
+@media (max-width:620px){.stg{grid-template-columns:1fr}.stt{min-height:0}}
+[data-skin=lms] .stt{border-radius:10px;font-family:var(--mono)}

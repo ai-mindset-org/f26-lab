@@ -340,7 +340,7 @@ def main():
                 r.returncode == 0 and [x["id"] for x in st["lanes"]] == ["tone-of-voice", "text-summary", "source-research"]
                 and json.loads((table7 / "state.json").read_text(encoding="utf-8"))["pack"] == "main", r.stderr[-200:] + str([x["id"] for x in st["lanes"]]))
             say("к каждому основному skill есть заготовки изменений", all(len(fx7.get(x["id"], [])) >= 3 for x in st["lanes"]), str({x["id"]: len(fx7.get(x["id"], [])) for x in st["lanes"]}))
-            say("без входа встать из-за стола нельзя", m1.call("POST", "/api/leave", {})[0] == 401 and m1.call("POST", "/api/back", {})[0] == 401)
+            say("без входа выйти из эстафеты нельзя", m1.call("POST", "/api/leave", {})[0] == 401 and m1.call("POST", "/api/back", {})[0] == 401)
             m1.call("POST", "/api/demo/login", {"login": "gost1"})
             m2.call("POST", "/api/demo/login", {"login": "gost2"})
             laps7 = st["lanes"][0]["laps"]
@@ -349,7 +349,7 @@ def main():
             code, lv, _ = m1.call("POST", "/api/leave", {})
             st = m1.call("GET", "/api/state")[1]
             row = st["lanes"][0]
-            say("встать из-за стола: skill уходит на стол без изменения, вход остаётся",
+            say("выйти из эстафеты: skill уходит на стол без изменения, вход остаётся",
                 code == 200 and lv.get("dropped") == "tone-of-voice" and st["viewer"] and st["viewer"].get("away") and st["viewer"]["login"] == "gost1"
                 and row["status"] == "свободна" and row["laps"] == laps7, str(lv) + str(st.get("viewer"))[:160])
             code, tk, _ = m2.call("POST", "/api/take", {"lane": "tone-of-voice"})
@@ -357,7 +357,7 @@ def main():
             code, bk, _ = m1.call("POST", "/api/back", {})
             st = m1.call("GET", "/api/state")[1]
             kinds7 = [e["kind"] for e in m1.call("GET", "/api/log?n=50")[1]["events"] if e.get("who") == "Гость 1"]
-            say("вернуться за стол: отметка снята, в журнале встал и вернулся",
+            say("вернуться в эстафету: отметка снята, в журнале вышел и вернулся",
                 code == 200 and not st["viewer"].get("away") and {"leave", "back", "drop"} <= set(kinds7), str(kinds7))
             m3 = Client(pt)
             m3.call("POST", "/api/demo/login", {"login": "gost3"})  # у первого гостя после взятия идёт пауза, поэтому здесь третий
@@ -389,7 +389,7 @@ def main():
             say("значок вкладки подключён на каждой странице", all('rel="icon" href="favicon.svg"' in b for b in heads.values()))
             js = (HERE / "web" / "app.js").read_text(encoding="utf-8")
             say("кнопка входа называет следующий экран, уход и возврат есть на странице",
-                "выбрать skill" in js and "сесть за стол" not in js and "встать из-за стола" in js and "вернуться за стол" in js and "api/leave" in js and "api/back" in js)
+                "выбрать skill" in js and "сесть за стол" not in js and "выйти из эстафеты" in js and "вернуться в эстафету" in js and "api/leave" in js and "api/back" in js)
             say("на стадионе у дорожки стоит имя skill и подпись старта", "short(" in js and "'старт'" in js)
         finally:
             srv.terminate()
@@ -637,7 +637,7 @@ def main():
             say("правило в изменении выбирают фильтрами и плитками, отдельного списка нет", "function drawPick" in pages["app.js"] and "pickgrid" in pages["app.js"] and "h('select'" not in pages["app.js"])
             say("стили дашборда общие для стола и карты правил, под узкую рамку он складывается сам", all(w in css for w in (".bstats", ".bmap", ".story", "@container", ".take", "[data-skin=lms] .bmap")) and ".bstats" not in str(Client(pt).call("GET", "/pages.css")[1]))
             say("кнопки одной высоты: главная с заливкой, обычная с рамкой, ссылка-действие", all(w in css for w in ("button.go,a.btn.go{", "min-height:40px", ".row>button.quiet")))
-            say("экраны стола встают шагами в историю браузера, из демо можно встать из-за стола", "history.pushState" in pages["app.js"] and "addEventListener('popstate'" in pages["app.js"] and "встать из-за стола" in pages["app.js"])
+            say("экраны стола встают шагами в историю браузера, из демо можно выйти из эстафеты", "history.pushState" in pages["app.js"] and "addEventListener('popstate'" in pages["app.js"] and "выйти из эстафеты" in pages["app.js"])
             say("на входе одна кнопка и одна фраза", "один круг по шагам" not in pages["app.js"] and "Skill растёт по одному изменению" not in pages["app.js"])
             rb = a.call("GET", "/lms/api/rules")[1]
             keys = {g["key"] for g in rb["sources"]["guides"] + rb["sources"]["research"]}
