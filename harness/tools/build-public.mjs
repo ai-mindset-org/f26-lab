@@ -9,7 +9,7 @@ const out=path.join(root,'.public');
 fs.mkdirSync(out,{recursive:true});
 // Only this generated, fixed path may be replaced.
 for(const entry of fs.readdirSync(out)) fs.rmSync(path.join(out,entry),{recursive:true,force:true});
-const allowed=['index.html','guide.html','access.html','styles.css','doc.css','app.js','layer2.js','doc.js','scenario.json','kit-docs.json','og.png','assets','vendor'];
+const allowed=['index.html','guide.html','access.html','styles.css','doc.css','app.js','layer2.js','layer3.js','doc.js','scenario.json','kit-docs.json','og.png','assets','vendor'];
 for(const f of allowed) fs.cpSync(path.join(root,'web',f),path.join(out,f),{recursive:true});
 for(const f of ['index.html','guide.html','access.html']) {
  let s=fs.readFileSync(path.join(out,f),'utf8');
@@ -37,6 +37,8 @@ with zipfile.ZipFile(out/'f26-self-harness-kit.zip','w',zipfile.ZIP_DEFLATED) as
    z.write(p,'f26-self-harness/'+str(p.relative_to(root)))
  for p in out.rglob('*'):
   if p.is_file() and p.suffix!='.zip':z.write(p,'f26-self-harness/web/'+str(p.relative_to(out)))
+ for p in (root.parent/'w3').rglob('*'):
+  if p.is_file() and p.name!='.DS_Store' and '/out/' not in str(p):z.write(p,'f26-self-harness/w3/'+str(p.relative_to(root.parent/'w3')))
  for p in (root.parent/'kit').rglob('*'):
   if p.is_file() and p.name!='.DS_Store':z.write(p,'f26-self-harness/starter-kit/'+str(p.relative_to(root.parent/'kit')))
  z.write(root/'START-HERE.md','f26-self-harness/README.md')
