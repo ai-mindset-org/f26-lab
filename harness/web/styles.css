@@ -686,93 +686,31 @@ body.l2-off-reviewer .lane[data-lane="reviewer"] .dot{background:none; border-st
   .l2-body{overflow:visible}
 }
 
-/* ---------- layer 3 · отпустить (?layer=3): five steps with their files, the map answered by clicks, the week of runs ---------- */
+/* ---------- layer 3 · отпустить (?layer=3): five phases with their traces, five blocks, three loops, the journal of the example ---------- */
 body.l3 .l2-rail{grid-template-columns:repeat(5,minmax(0,1fr))}
 body.l3 .l2-rail button{font-size:10px; white-space:normal; line-height:1.15; padding:3px 2px}
 .l3-chain{grid-template-columns:repeat(5,minmax(0,1fr))}
-.l3-chain li:nth-child(3){background:var(--bg)}
-.l3-chain li:nth-child(3) b{color:inherit}
 .l3-chain li:nth-child(4){background:var(--paper)}
 .l3-chain li:nth-child(4) b{color:var(--accent-ink)}
 .l3-file{border:1px solid var(--ink); margin:0 0 8px}
 .l3-file i{display:block; font-style:normal; font-size:10px; letter-spacing:.06em; padding:3px 7px; border-bottom:1px solid var(--ink); background:var(--paper); overflow-wrap:anywhere}
 .l3-file pre{margin:0; padding:6px 7px; font:inherit; font-size:10.5px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; max-height:156px; overflow:auto}
-.l3-sum{font-size:12.5px; line-height:1.5; margin:0 0 8px}
-.l3-q{list-style:none; margin:0 0 8px; padding:0; border:1px solid var(--ink)}
-.l3-q li{display:grid; grid-template-columns:26px minmax(0,1fr) auto; gap:7px; align-items:center; padding:4px 7px; border-bottom:1px solid var(--hair); font-size:11.5px}
-.l3-q li:last-child{border-bottom:none}
-.l3-q li b{font-weight:700; font-size:10.5px; padding:1px 0; text-align:center; border:1px solid var(--ink)}
-.l3-q li small{display:block; color:var(--muted); font-size:10px; line-height:1.3}
-.l3-q li em{font-style:normal; font-size:10px; color:var(--muted); white-space:nowrap}
-.l3-q li.done b{background:var(--ink); color:var(--bg)}
-.l3-q li.front{background:var(--paper)}
-.l3-q li.front b{border-color:var(--accent); color:var(--accent-ink)}
-.l3-q li.front em{color:var(--accent-ink); font-weight:500}
-.l3-q li.wait span{color:var(--muted)}
-.l3-q li.wait b{border-style:dashed; border-color:var(--soft); color:var(--muted)}
-.l3-qnav{display:grid; grid-template-columns:minmax(0,1fr) auto}
-.l3-qnav button + button{border-left:none; padding:7px 12px}
-.l3-qnav button:disabled{opacity:.45; pointer-events:none}
-.l3-qout{font-size:12px; line-height:1.45; margin:6px 0 4px; color:var(--accent-ink)}
-.l3-qout:empty{display:none}
+body.l3 .l2-pane a{color:var(--accent-ink)}
+body.l3 .l2-dl dt b{font-weight:700}
+body.l3 .l2-dl dd small{color:var(--muted)}
 #l3Pulse{border-top:1px dotted var(--soft); margin:0 -10px; padding:6px 10px 5px; font-size:10.5px}
-.l3-ph,.l3-pr{display:grid; grid-template-columns:minmax(118px,1.7fr) repeat(7,minmax(0,.5fr)) minmax(64px,auto); gap:2px; align-items:center}
-.l3-ph i{font-style:normal; color:var(--muted); letter-spacing:.16em; text-transform:uppercase}
-.l3-ph span{color:var(--muted); text-align:center; font-size:9.5px; white-space:nowrap}
-.l3-ph em{font-style:normal; color:var(--accent-ink); text-align:right; font-weight:500; white-space:nowrap}
-.l3-pr b{font-weight:500; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
-.l3-pr b small{color:var(--muted); font-weight:400; margin-left:6px; font-size:9.5px}
-.l3-pr em{font-style:normal; color:var(--muted); text-align:right}
-.l3-c{border:none; background:none; padding:2px 0; font:inherit; font-size:13px; line-height:1; color:var(--ink); cursor:pointer; text-align:center}
-.l3-c.none{color:var(--soft); cursor:default}
-.l3-c.err,.l3-c.silent{color:var(--accent-ink); font-weight:700}
-.l3-c:hover:not(.none){background:var(--hair)}
-.l3-c.sel{outline:1.5px solid var(--accent); outline-offset:-1px}
-.l3-help{margin:4px 0 0; color:var(--accent-ink); font-size:10px; line-height:1.45}
+.l3-jh{display:flex; gap:10px; align-items:baseline; margin-bottom:2px}
+.l3-jh i{font-style:normal; color:var(--muted); letter-spacing:.16em; text-transform:uppercase}
+.l3-jh span{color:var(--muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+.l3-jr{display:grid; grid-template-columns:64px 78px minmax(0,1fr); gap:6px; align-items:baseline; padding:1px 0}
+.l3-jr b{font-weight:500}
+.l3-jr small{color:var(--muted); font-size:10.5px; overflow-wrap:anywhere}
+.l3-jr.err span,.l3-jr.err small{color:var(--accent-ink); font-weight:700}
+.l3-help{margin:4px 0 0; color:var(--muted); font-size:10px; line-height:1.45}
+.l3-help a,#l2Intro .l2-calls a{color:var(--accent-ink)}
 #l3Pulse.l3-off{opacity:.32}
-body.l3-tab-map #l2Cap{top:auto; bottom:8px}
-body.l3-tab-map .l2dim:not(.dim){opacity:.14}
-.node.l3done path{fill:var(--ink)}
-.node.l3front path{stroke:var(--accent); stroke-width:2; fill:var(--bg)}
-.node.l3front text{fill:var(--accent-ink)}
 @media (max-width:760px){
   .l3-chain{grid-template-columns:repeat(2,minmax(0,1fr))}
   .l3-chain li:nth-child(odd)::before{display:none}
-  .l3-ph,.l3-pr{grid-template-columns:minmax(82px,1.3fr) repeat(7,minmax(0,.5fr)) auto}
-  .l3-pr b small{display:none}
-  .l3-ph span{font-size:9px}
-  .l3-ph span small{display:none}
+  .l3-jr{grid-template-columns:58px 70px minmax(0,1fr)}
 }
-
-/* layer 3 · пункты на стартовой карточке */
-#l2Intro .l3-pts{list-style:none; margin:12px 0 0; padding:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:0; border:1px solid var(--ink)}
-#l2Intro .l3-pts li{border-right:1px solid var(--hair, #e4e0d8); min-width:0}
-#l2Intro .l3-pts li:last-child{border-right:0}
-#l2Intro .l3-pts button{display:block; width:100%; height:100%; text-align:left; background:transparent; border:0; padding:8px 10px; cursor:pointer; font:inherit; color:inherit}
-#l2Intro .l3-pts button:hover{background:var(--ink); color:var(--bg)}
-#l2Intro .l3-pts button:hover small{color:inherit}
-#l2Intro .l3-pts b{display:block; font-size:12px}
-#l2Intro .l3-pts small{display:block; font-size:10.5px; color:var(--muted); line-height:1.4; margin-top:3px}
-#l2Intro .l3-tools a{border:1px solid var(--ink); padding:1px 6px; text-decoration:none; color:inherit; font-size:11px}
-@media (max-width:700px){#l2Intro .l3-pts{grid-template-columns:minmax(0,1fr)} #l2Intro .l3-pts li{border-right:0; border-bottom:1px solid var(--hair, #e4e0d8)}}
-#l2Intro .l3-pts-h{font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:12px 0 0}
-#l2Intro .l3-pts-h + .l3-pts{margin-top:6px}
-
-/* слой 3 · волна ясности на стартовой карточке */
-#l2Intro .l3-wave{margin:12px 0 4px}
-#l2Intro .l3-wave svg{display:block;width:100%;height:auto;border:1px solid var(--ink)}
-#l2Intro .l3-wave .b{fill:var(--bg)}#l2Intro .l3-wave .b.alt{fill:var(--paper)}
-#l2Intro .l3-wave .bt{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;fill:var(--muted)}
-#l2Intro .l3-wave .cv{fill:none;stroke:var(--ink);stroke-width:1.8}
-#l2Intro .l3-wave .cv.lost{stroke:var(--accent);stroke-width:2.6}
-#l2Intro .l3-wave .lt{font-size:10px;fill:var(--accent-ink)}
-#l2Intro .l3-wave .ct{font-size:10px;fill:var(--ink)}
-#l2Intro .l3-wave .pt{cursor:pointer}
-#l2Intro .l3-wave .pt .hit{fill:transparent}
-#l2Intro .l3-wave .pt circle{fill:var(--ink);stroke:var(--bg);stroke-width:2.5}
-#l2Intro .l3-wave .pt.lost circle{fill:var(--accent)}
-#l2Intro .l3-wave .pt text{font-size:11.5px;font-weight:700;fill:var(--ink)}
-#l2Intro .l3-wave .pt:hover circle,#l2Intro .l3-wave .pt:focus circle{stroke:var(--accent);stroke-width:3}
-#l2Intro .l3-wave figcaption{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4}
-#l2Intro .l3-wave + .l3-chain{display:none}
-@media (max-width:560px){#l2Intro .l3-wave{display:none}#l2Intro .l3-wave + .l3-chain{display:grid}}
